@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>融资协议签署测试</title>
+    <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 30px; text-align: center; background: #f4f4f4; }
+        .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        button { width: 100%; padding: 15px; background: #c00; color: #fff; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h3>融资签署验证</h3>
+        <p style="color: #666; font-size: 14px;">模拟金额：890.00元</p>
+        <button id="btn">立即前往签署</button>
+    </div>
+
+
+    <script>
+        document.getElementById('btn').onclick = function() {
+            // 1. 模拟原本的短信魔术链接
+            const magicLink = "https://mywap2.icbc.com.cn/ICBCWAPBank/servlet/WAPBAppInject?injectMenuId=1000038&injectParams=dG9rZW49Mzl1YzIhNTBIOTUmY2hhbm5lbDOx";
+            
+            // 2. 封装要透传给微金融的完整数据
+            const payload = {
+                magicLink: magicLink,
+                title: "👉 点击进入数字签名",
+                desc: "申请金额：890.00元",
+                bizId: "FIN_ORD_20260311001"
+            };
+
+            // 3. 跳转回客户小程序原生中转页
+            wx.miniProgram.navigateTo({
+                url: `/pages/proxy/index?data=${encodeURIComponent(JSON.stringify(payload))}`,
+                success: function() { console.log('到达中转页'); },
+                fail: function(err) { alert('跳转失败：' + JSON.stringify(err)); }
+            });
+        };
+    </script>
+</body>
+</html>

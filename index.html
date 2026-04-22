@@ -1,13 +1,100 @@
-<!doctype html>
-<html lang="en">
+
+<!DOCTYPE html>
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
-  </head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover" />
+    <title>知识通 - 启蒙教育门户</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;700;900&family=ZCOOL+KuaiLe&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-orange': '#F28C33',
+                        'brand-orange-light': '#FFF5EB',
+                        'morandi-oatmeal': '#F7F6F2',
+                        'morandi-taupe': '#94A3B8',
+                        'morandi-charcoal': '#4B4B4B',
+                        'morandi-border': '#EAE9E4',
+                        'morandi-blue': '#8BA696',
+                        'morandi-sage': '#A69B91',
+                        'dark-bg': '#0F172A',
+                        'dark-card': '#1E293B',
+                        'dark-border': 'rgba(255,255,255,0.05)',
+                    },
+                    fontFamily: {
+                        sans: ["'Noto Sans SC'", "sans-serif"],
+                        serif: ["'Noto Serif SC'", "serif"],
+                        kids: ["'ZCOOL KuaiLe'", "cursive"],
+                    },
+                    borderRadius: {
+                      'ios': '2rem',
+                      'ios-lg': '2.5rem',
+                    },
+                    animation: {
+                      'spin-slow': 'spin 8s linear infinite',
+                      'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                      float: {
+                        '0%, 100%': { transform: 'translateY(0)' },
+                        '50%': { transform: 'translateY(-20px)' },
+                      }
+                    }
+                },
+            },
+        };
+    </script>
+    <style type="text/tailwindcss">
+      @layer base {
+        body {
+          @apply bg-morandi-oatmeal text-morandi-charcoal antialiased transition-colors duration-300;
+        }
+        .dark body {
+          @apply bg-dark-bg text-slate-200;
+        }
+        .serif-font {
+          font-family: 'Noto Serif SC', serif;
+        }
+      }
+      .soft-shadow {
+        box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.04);
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      
+      /* Custom Glassmorphism */
+      .glass {
+        @apply bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/5;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "framer-motion": "https://esm.sh/framer-motion@^12.27.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.90.1",
+    "@neondatabase/serverless": "https://esm.sh/@neondatabase/serverless@^1.0.2"
+  }
+}
+</script>
+</head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/index.tsx"></script>
+    <!-- 关键：在此处引入微信 JS-SDK -->
+    <script type="text/javascript" src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
   </body>
 </html>
-
