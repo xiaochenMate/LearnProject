@@ -5,70 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>移动端手写签名板</title>
     <style>
-        /* 全局样式重置 */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
-            background-color: #f5f5f5;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            height: 100vh; /* 占满全屏 */
+            margin: 0; padding: 20px; box-sizing: border-box;
+            background-color: #f5f5f5; display: flex;
+            flex-direction: column; align-items: center; height: 100vh;
         }
-
-        h2 {
-            margin: 10px 0 20px;
-            color: #333;
-            font-size: 1.5rem;
-        }
-
-        /* 画布容器 */
+        
         .canvas-container {
-            width: 100%;
-            max-width: 500px; /* 限制最大宽度 */
-            height: 500px;
-            background-color: #999;
-            position: relative;
-            overflow: hidden; /* 防止内容溢出 */
+            width: 100%; max-width: 500px; height: 500px;
+            background-color: #999; position: relative; overflow: hidden;
         }
-
         canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            touch-action: none; /* 关键：禁止浏览器默认的触摸行为（如滚动） */
-            cursor: crosshair;
+            display: block; width: 100%; height: 100%;
+            touch-action: none; cursor: crosshair;
         }
 
-        /* 按钮组样式 */
-        .btn-group {
-            margin-top: 25px;
-            display: flex;
-            gap: 20px;
-        }
-
+        .btn-group { margin-top: 25px; display: flex; gap: 15px; }
         button {
-            padding: 12px 24px;
-            font-size: 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.2s;
-            font-weight: bold;
+            padding: 12px 18px; font-size: 16px; border: none;
+            border-radius: 6px; cursor: pointer; transition: background 0.2s; font-weight: bold;
         }
 
-        .btn-clear {
-            background-color: #ff4d4f;
-            color: white;
-        }
+        /* 按钮样式 */
+        .btn-close { background-color: #8c8c8c; color: white; }
+        .btn-close:active { background-color: #595959; }
+
+        .btn-clear { background-color: #ff4d4f; color: white; }
         .btn-clear:active { background-color: #cf1322; }
 
-        .btn-save {
-            background-color: #52c41a;
-            color: white;
-        }
+        .btn-save { background-color: #52c41a; color: white; }
         .btn-save:active { background-color: #389e0d; }
     </style>
 </head>
@@ -79,83 +45,59 @@
     </div>
 
     <div class="btn-group">
+        <!-- 关闭按钮 -->
+        <button class="btn-close" id="closeBtn">关闭页</button>
         <button class="btn-clear" id="clearBtn">清除重签</button>
         <button class="btn-save" id="saveBtn">确认保存</button>
     </div>
 
-
     <script>
-        // --- 1. 初始化与配置 ---
         const canvas = document.getElementById('signatureCanvas');
         const ctx = canvas.getContext('2d');
+        const closeBtn = document.getElementById('closeBtn');
         const clearBtn = document.getElementById('clearBtn');
         const saveBtn = document.getElementById('saveBtn');
-        let recoPoints = []
-
+        let recoPoints =[];
         let isDrawing = false;
 
-        // 初始化画布尺寸（解决高清屏模糊问题）
         function initCanvas() {
             const container = canvas.parentElement;
             const dpr = window.devicePixelRatio || 1;
-            
-            // 设置画布物理像素尺寸
             canvas.width = container.clientWidth * dpr;
             canvas.height = container.clientHeight * dpr;
-            
-            // 缩放绘图上下文，使坐标系统适应 CSS 像素
             ctx.scale(dpr, dpr);
-            
-            // 设置画笔样式
-            ctx.lineCap = 'round'; // 线条末端圆角
-            ctx.lineJoin = 'round'; // 线条连接处圆角
-            ctx.lineWidth = 3;     // 线条宽度
-            ctx.strokeStyle = '#000000'; // 线条颜色
+            ctx.lineCap = 'round'; 
+            ctx.lineJoin = 'round'; 
+            ctx.lineWidth = 3;     
+            ctx.strokeStyle = '#000000'; 
         }
 
-        // 监听窗口大小变化，重新初始化
         window.addEventListener('resize', initCanvas);
         initCanvas();
 
-        // --- 2. 核心坐标计算（含边界钳制） ---
         function getCoordinates(e) {
-            // 兼容触摸事件和鼠标事件
             const clientX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX;
             const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-            
-            // 获取 Canvas 在页面中的位置和尺寸
             const rect = canvas.getBoundingClientRect();
-            
-            // 计算相对坐标
             let x = clientX - rect.left;
             let y = clientY - rect.top;
-
-            // 【关键修复】边界钳制：确保坐标永远在 [0, 宽高] 之间
-            // 防止手指滑出画布边缘时产生负数坐标或绘制到画布外
-            const width = rect.width;
-            const height = rect.height;
             
-            x = Math.max(0, Math.min(x, width));
-            y = Math.max(0, Math.min(y, height));
-            console.log('return ---',x,y)
-            recoPoints.push(x,y)
-
+            x = Math.max(0, Math.min(x, rect.width));
+            y = Math.max(0, Math.min(y, rect.height));
+            recoPoints.push(x, y);
             return { x, y };
         }
 
-        // --- 3. 绘图逻辑 ---
         function startDrawing(e) {
             isDrawing = true;
             const pos = getCoordinates(e);
-            
             ctx.beginPath();
             ctx.moveTo(pos.x, pos.y);
         }
 
         function draw(e) {
             if (!isDrawing) return;
-            e.preventDefault(); // 阻止页面滚动
-
+            e.preventDefault(); // 阻止滚动
             const pos = getCoordinates(e);
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
@@ -163,49 +105,10 @@
 
         function stopDrawing() {
             isDrawing = false;
-            recoPoints.push(-1, 0)
+            recoPoints.push(-1, 0);
         }
 
-        // --- 4. 功能函数 ---
         function clearCanvas() {
             const container = canvas.parentElement;
-            const dpr = window.devicePixelRatio || 1;
-            // 清除整个画布 (注意要使用 CSS 像素尺寸)
             ctx.clearRect(0, 0, container.clientWidth, container.clientHeight);
-            recoPoints = []
-        }
-
-        function saveSignature() {
-            recoPoints.concat(-1,-1)
-            console.log('recoPoints',recoPoints)
-            // 导出为 PNG 图片
-            const dataURL = canvas.toDataURL('image/png');
-            
-            // 模拟点击下载
-            const link = document.createElement('a');
-            link.href = dataURL;
-            link.download = '签名_' + new Date().getTime() + '.png';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        // --- 5. 事件绑定 ---
-        
-        // 触摸事件 (移动端) - passive: false 允许阻止默认行为
-        canvas.addEventListener('touchstart', startDrawing, { passive: false });
-        canvas.addEventListener('touchmove', draw, { passive: false });
-        canvas.addEventListener('touchend', stopDrawing);
-
-        // 鼠标事件 (PC端调试)
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDrawing);
-
-        // 按钮点击
-        clearBtn.addEventListener('click', clearCanvas);
-        saveBtn.addEventListener('click', saveSignature);
-
-    </script>
-</body>
-</html>
+            recoPoints =
