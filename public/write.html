@@ -11,7 +11,6 @@
             background-color: #f5f5f5; display: flex;
             flex-direction: column; align-items: center; height: 100vh;
         }
-        
         .canvas-container {
             width: 100%; max-width: 500px; height: 500px;
             background-color: #999; position: relative; overflow: hidden;
@@ -20,22 +19,14 @@
             display: block; width: 100%; height: 100%;
             touch-action: none; cursor: crosshair;
         }
-
-        .btn-group { margin-top: 25px; display: flex; gap: 15px; }
+        .btn-group { margin-top: 25px; display: flex; gap: 10px; }
         button {
-            padding: 12px 18px; font-size: 16px; border: none;
-            border-radius: 6px; cursor: pointer; transition: background 0.2s; font-weight: bold;
+            padding: 12px 16px; font-size: 16px; border: none;
+            border-radius: 6px; cursor: pointer; font-weight: bold;
         }
-
-        /* 按钮样式 */
         .btn-close { background-color: #8c8c8c; color: white; }
-        .btn-close:active { background-color: #595959; }
-
         .btn-clear { background-color: #ff4d4f; color: white; }
-        .btn-clear:active { background-color: #cf1322; }
-
         .btn-save { background-color: #52c41a; color: white; }
-        .btn-save:active { background-color: #389e0d; }
     </style>
 </head>
 <body>
@@ -45,10 +36,9 @@
     </div>
 
     <div class="btn-group">
-        <!-- 关闭按钮 -->
-        <button class="btn-close" id="closeBtn">关闭页</button>
-        <button class="btn-clear" id="clearBtn">清除重签</button>
-        <button class="btn-save" id="saveBtn">确认保存</button>
+        <button class="btn-close" id="closeBtn">关闭</button>
+        <button class="btn-clear" id="clearBtn">清除</button>
+        <button class="btn-save" id="saveBtn">保存</button>
     </div>
 
     <script>
@@ -57,7 +47,7 @@
         const closeBtn = document.getElementById('closeBtn');
         const clearBtn = document.getElementById('clearBtn');
         const saveBtn = document.getElementById('saveBtn');
-        let recoPoints =[];
+        let recoPoints = [];
         let isDrawing = false;
 
         function initCanvas() {
@@ -66,10 +56,10 @@
             canvas.width = container.clientWidth * dpr;
             canvas.height = container.clientHeight * dpr;
             ctx.scale(dpr, dpr);
-            ctx.lineCap = 'round'; 
-            ctx.lineJoin = 'round'; 
-            ctx.lineWidth = 3;     
-            ctx.strokeStyle = '#000000'; 
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#000000';
         }
 
         window.addEventListener('resize', initCanvas);
@@ -81,7 +71,6 @@
             const rect = canvas.getBoundingClientRect();
             let x = clientX - rect.left;
             let y = clientY - rect.top;
-            
             x = Math.max(0, Math.min(x, rect.width));
             y = Math.max(0, Math.min(y, rect.height));
             recoPoints.push(x, y);
@@ -97,7 +86,7 @@
 
         function draw(e) {
             if (!isDrawing) return;
-            e.preventDefault(); // 阻止滚动
+            e.preventDefault();
             const pos = getCoordinates(e);
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
@@ -108,7 +97,22 @@
             recoPoints.push(-1, 0);
         }
 
-        function clearCanvas() {
-            const container = canvas.parentElement;
-            ctx.clearRect(0, 0, container.clientWidth, container.clientHeight);
-            recoPoints =
+        canvas.addEventListener('touchstart', startDrawing, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+
+        closeBtn.addEventListener('click', () => { window.history.back(); });
+        clearBtn.addEventListener('click', () => { 
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            recoPoints = []; 
+        });
+        saveBtn.addEventListener('click', () => {
+            alert('保存功能可在小程序端通过 postMessage 或生成图片长按实现');
+            console.log('签名轨迹:', recoPoints);
+        });
+    </script>
+</body>
+</html>
