@@ -72,16 +72,40 @@
         // --- 按钮事件绑定 ---
         
         // 1. 保存按钮 (获取轨迹数组)
-        document.getElementById('saveBtn').addEventListener('click', () => {
-            if (signaturePad.isEmpty()) {
-                return alert("请先签名！");
-            }
-            // 获取你要上传的轨迹数组 (核心代码)
-            const data = signaturePad.toData();
-            console.log("=== 打印即将上传的轨迹数组 ===");
-            console.log(data);
-            alert("签名已生成！轨迹数据已打印至控制台(F12)");
-        });
+      // 1. 保存按钮 (获取并格式化轨迹数组)
+document.getElementById('saveBtn').addEventListener('click', () => {
+    if (signaturePad.isEmpty()) {
+        return alert("请先签名！");
+    }
+    
+    // 1. 获取原始轨迹数组
+    const rawData = signaturePad.toData();
+    
+    // 2. 处理数组：剔除负数，保留两位小数
+    const formattedData = rawData.map(group => {
+        return {
+            ...group, // 保留原有的颜色、线宽等属性
+            points: group.points.map(point => {
+                return {
+                    ...point, // 保留原有的 time(时间) 和 pressure(压力)
+                    // Math.max(0, x) 确保最小是 0（过滤负数）
+                    // .toFixed(2) 保留两位小数
+                    // Number() 将字符串转回数字类型，符合后台 JSON 格式
+                    x: Number(Math.max(0, point.x).toFixed(2)),
+                    y: Number(Math.max(0, point.y).toFixed(2))
+                };
+            })
+        };
+    });
+
+    console.log("=== 打印格式化后（传给后台）的轨迹数组 ===");
+    console.log(formattedData);
+    
+    alert("处理完成！请按 F12 查看控制台干净的坐标数据");
+    
+    // 最终你发给后台的就是 formattedData
+    // fetch('/api/upload', { method: 'POST', body: JSON.stringify(formattedData) })
+});
 
         // 2. 清除按钮
         document.getElementById('clearBtn').addEventListener('click', () => {
