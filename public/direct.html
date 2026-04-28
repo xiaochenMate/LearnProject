@@ -2,22 +2,50 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>融资协议签署测试</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
     <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 30px; text-align: center; background: #f4f4f4; }
-        .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        button { width: 100%; padding: 15px; background: #c00; color: #fff; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f4f5f7; }
+        .slide-up { animation: slideUp 0.3s ease-out forwards; }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
-<body>
-    <div class="card">
-        <h3>融资签署验证</h3>
-        <p style="color: #666; font-size: 14px;">模拟金额：890.00元</p>
-        <button id="btn">立即前往签署</button>
-    </div>
+<body class="antialiased text-gray-800 flex flex-col min-h-screen">
+    
+    <header class="bg-white px-4 py-3 flex items-center justify-center shadow-sm sticky top-0 z-10">
+        <h1 class="text-gray-800 font-medium text-lg">微金融服务</h1>
+    </header>
 
+    <main class="flex-1 p-4 flex flex-col items-center justify-center">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-lg p-6 text-center slide-up">
+            <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            </div>
+            <h2 class="text-xl font-bold text-gray-900 mb-1">融资签署验证</h2>
+            <p class="text-gray-500 text-sm mb-6">请确认您的融资申请信息并完成签署</p>
+            
+            <div class="bg-gray-50 rounded-xl p-4 mb-8 text-left">
+                <div class="text-sm text-gray-500 mb-1">模拟申请金额</div>
+                <div class="text-2xl font-mono font-semibold text-gray-900">¥ 890.00</div>
+            </div>
+
+            <button id="btn" class="w-full py-3.5 bg-[#c00] hover:bg-red-700 text-white font-medium rounded-xl shadow-md transition-colors active:scale-[0.98] transform">
+                立即前往签署
+            </button>
+            <div class="mt-4 text-xs text-gray-400">
+                本页面仅为测试用途，不产生实际扣款
+            </div>
+        </div>
+    </main>
+
+    <footer class="py-4 text-center text-xs text-gray-400">
+        &copy; 2026 业务验证系统
+    </footer>
 
     <script>
         document.getElementById('btn').onclick = function() {
@@ -33,11 +61,15 @@
             };
 
             // 3. 跳转回客户小程序原生中转页
-            wx.miniProgram.navigateTo({
-                url: `/pages/proxy/index?data=${encodeURIComponent(JSON.stringify(payload))}`,
-                success: function() { console.log('到达中转页'); },
-                fail: function(err) { alert('跳转失败：' + JSON.stringify(err)); }
-            });
+            if (typeof wx !== 'undefined' && wx.miniProgram) {
+                wx.miniProgram.navigateTo({
+                    url: `/pages/proxy/index?data=${encodeURIComponent(JSON.stringify(payload))}`,
+                    success: function() { console.log('到达中转页'); },
+                    fail: function(err) { alert('跳转失败：' + JSON.stringify(err)); }
+                });
+            } else {
+                alert('请在微信小程序环境中打开此页面！\n\n' + JSON.stringify(payload, null, 2));
+            }
         };
     </script>
 </body>

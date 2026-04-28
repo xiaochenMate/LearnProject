@@ -2,47 +2,89 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>业务办理页面</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; text-align: center; background: #f5f5f5;}
-        .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .btn { display: inline-block; padding: 12px 24px; background: #1890ff; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; }
-        .result-box { margin-top: 30px; display: none; } /* 初始隐藏 */
-        .result-box img { max-width: 100%; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);}
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f4f5f7; }
+        .slide-up { animation: slideUp 0.3s ease-out forwards; }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
-<body>
+<body class="antialiased text-gray-800">
 
-    <div class="card">
-        <h2>个人贷款申请</h2>
-        <a href="write.html" class="btn">去手写签名</a>
+    <!-- 顶部状态栏及导航 -->
+    <header class="bg-white px-4 py-3 flex items-center justify-between shadow-sm sticky top-0 z-10">
+        <div class="flex items-center text-gray-800 font-medium text-lg">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            个人贷款申请
+        </div>
+    </header>
+
+    <main class="p-4 safe-area-pb">
+        <!-- 核心业务卡片 -->
+        <div class="bg-white rounded-xl shadow-sm p-5 mb-5 slide-up" style="animation-delay: 0.1s;">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-gray-500 text-sm font-medium">申请金额 (元)</h2>
+                <span class="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded">待签名</span>
+            </div>
+            <div class="text-3xl font-semibold text-gray-900 mb-6 font-mono">¥ 890.00</div>
+            
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between border-b border-gray-100 pb-3">
+                    <span class="text-gray-500">业务编号</span>
+                    <span class="text-gray-800 font-medium tracking-wide">FIN_ORD_20260311</span>
+                </div>
+                <div class="flex justify-between border-b border-gray-100 pb-3">
+                    <span class="text-gray-500">贷款期限</span>
+                    <span class="text-gray-800 font-medium">12个月</span>
+                </div>
+                <div class="flex justify-between pb-1">
+                    <span class="text-gray-500">收款账户</span>
+                    <span class="text-gray-800 font-medium">工商银行 (尾号8888)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center slide-up" style="animation-delay: 0.2s;">
+            <a href="write.html" class="block w-full py-3.5 bg-blue-600 text-white rounded-lg text-base font-medium shadow-md shadow-blue-200 active:bg-blue-700 transition">
+                前往手写签名
+            </a>
+            <p class="mt-3 text-xs text-gray-400">点击进入签名页，提交后自动返回此页</p>
+        </div>
         
         <!-- 用于展示回调返回的竖屏白底黑字签名 -->
-        <div class="result-box" id="resultBox">
-            <h3 style="color: #52c41a;">✓ 签名成功</h3>
-            <p style="font-size: 12px; color: #888;">(已自动转换为白底黑字 + 竖屏显示)</p>
-            <img id="signImage" src="" alt="签名结果">
+        <div id="resultBox" class="bg-white rounded-xl shadow-sm p-5 mt-6 hidden slide-up" style="animation-delay: 0.1s;">
+            <div class="flex items-center text-green-600 mb-3">
+                <svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                <span class="font-medium text-base">签名验证成功</span>
+            </div>
+            <p class="text-xs text-gray-500 mb-4">(已自动转换为白底黑字 + 竖屏显示)</p>
+            <div class="border border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center p-2">
+                <img id="signImage" src="" alt="签名结果" class="max-h-64 object-contain drop-shadow-md bg-white">
+            </div>
         </div>
-    </div>
+    </main>
 
     <script>
         // 核心回调逻辑：监听 pageshow 事件（兼容浏览器前进后退缓存）
         window.addEventListener('pageshow', function() {
-            // 1. 从 sessionStorage 中获取签名页传来的结果
-            // 实际业务中，这里拿到的可能是一个 imageId，然后你再 fetch 请求服务器图片
-            // 这里为了纯 H5 演示，我们直接传递 Base64 图片数据
             const signData = sessionStorage.getItem('upload_sign_result');
             
             if (signData) {
-                // 2. 显示签名结果
                 document.getElementById('signImage').src = signData;
-                document.getElementById('resultBox').style.display = 'block';
+                document.getElementById('resultBox').classList.remove('hidden');
                 
-                // 3. 消费完数据后清除，防止刷新页面重复触发
+                // 消费完数据后清除，防止刷新页面重复触发
                 sessionStorage.removeItem('upload_sign_result');
                 
-                // 实际业务中：在这里执行 fetch('/api/get-image?id=' + signData) 
+                // 滚动到底部展示结果
+                setTimeout(() => {
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                }, 100);
             }
         });
     </script>
