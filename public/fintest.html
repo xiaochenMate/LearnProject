@@ -2,63 +2,49 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>手写签名测试入口</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>业务办理页面</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            margin: 0; padding: 0;
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-            height: 100vh; background-color: #f0f2f5;
-        }
-        .container {
-            background: #fff; padding: 30px;
-            border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            width: 85%; max-width: 320px; text-align: center;
-        }
-        input {
-            width: 100%; padding: 12px; margin-bottom: 20px;
-            border: 1px solid #ccc; border-radius: 6px;
-            box-sizing: border-box; font-size: 16px;
-        }
-        .btn-nav {
-            display: block; background-color: #1890ff; color: #fff;
-            text-decoration: none; padding: 14px; border-radius: 6px;
-            font-size: 16px; font-weight: bold; margin-bottom: 20px;
-        }
-        .btn-nav:active { background-color: #096dd9; }
-        
-        .history-btns {
-            display: flex; gap: 10px; justify-content: space-between;
-        }
-        .history-btns button {
-            flex: 1; padding: 10px; border: 1px solid #ddd;
-            background: #fafafa; border-radius: 6px; font-size: 14px; color: #333;
-        }
-        .history-btns button:active { background: #ebebeb; }
+        body { font-family: sans-serif; padding: 20px; text-align: center; background: #f5f5f5;}
+        .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .btn { display: inline-block; padding: 12px 24px; background: #1890ff; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; }
+        .result-box { margin-top: 30px; display: none; } /* 初始隐藏 */
+        .result-box img { max-width: 100%; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);}
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2>状态保留测试</h2>
-        <!-- 测试输入框 -->
-        <input type="text" id="testInput" placeholder="输入内容，测试页面返回是否保留..." />
+    <div class="card">
+        <h2>个人贷款申请</h2>
+        <a href="write.html" class="btn">去手写签名</a>
         
-        <!-- 跳转签名页 -->
-        <a href="write.html" class="btn-nav">点击进入手写签名</a>
-
-        <div class="history-btns">
-            <!-- 测试历史记录功能 -->
-            <button onclick="window.history.back()">返回 (Back)</button>
-            <button onclick="window.history.forward()">前进 (Forward)</button>
+        <!-- 用于展示回调返回的竖屏白底黑字签名 -->
+        <div class="result-box" id="resultBox">
+            <h3 style="color: #52c41a;">✓ 签名成功</h3>
+            <p style="font-size: 12px; color: #888;">(已自动转换为白底黑字 + 竖屏显示)</p>
+            <img id="signImage" src="" alt="签名结果">
         </div>
-        <p style="font-size: 12px; color: #888; margin-top: 15px; text-align: left;">
-            提示：从签名页"关闭"回来后，输入框内容应保留。<br>
-            此时点击"前进"可再次打开签名页。
-        </p>
     </div>
 
+    <script>
+        // 核心回调逻辑：监听 pageshow 事件（兼容浏览器前进后退缓存）
+        window.addEventListener('pageshow', function() {
+            // 1. 从 sessionStorage 中获取签名页传来的结果
+            // 实际业务中，这里拿到的可能是一个 imageId，然后你再 fetch 请求服务器图片
+            // 这里为了纯 H5 演示，我们直接传递 Base64 图片数据
+            const signData = sessionStorage.getItem('upload_sign_result');
+            
+            if (signData) {
+                // 2. 显示签名结果
+                document.getElementById('signImage').src = signData;
+                document.getElementById('resultBox').style.display = 'block';
+                
+                // 3. 消费完数据后清除，防止刷新页面重复触发
+                sessionStorage.removeItem('upload_sign_result');
+                
+                // 实际业务中：在这里执行 fetch('/api/get-image?id=' + signData) 
+            }
+        });
+    </script>
 </body>
 </html>

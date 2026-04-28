@@ -3,59 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>手写签名测试</title>
-    
-    <!-- 1. 引入同级目录下的 js 文件（你的路径写得很对） -->
+    <title>数字签名申请</title>
     <script src="./signature_pad.umd.js"></script>
-    
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            margin: 0; padding: 20px; box-sizing: border-box;
-            background-color: #f5f5f5; display: flex;
-            flex-direction: column; align-items: center; height: 100vh;
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #f2f2f2; display: flex; flex-direction: column; overflow: hidden;
         }
-        .canvas-container {
-            width: 100%; max-width: 500px; height: 500px;
-            background-color: #fff; /* 改成了纯白背景更好看 */
-            border: 1px solid #ddd; border-radius: 8px;
-            position: relative; overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        .header { display: flex; align-items: center; padding: 12px 20px; color: #666; font-size: 14px; }
+        .back-btn { font-size: 18px; margin-right: 10px; cursor: pointer; color: #333; font-weight: bold; }
+        .notice-text { font-size: 13px; }
+        .canvas-wrapper {
+            flex: 1; margin: 0 20px; background-color: #4c514e; position: relative; border-radius: 4px;
         }
-        canvas {
-            display: block; width: 100%; height: 100%;
-            touch-action: none; cursor: crosshair;
+        .placeholder {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: rgba(255, 255, 255, 0.4); font-size: 24px; font-weight: bold; pointer-events: none; transition: opacity 0.3s;
         }
-        .btn-group { margin-top: 25px; display: flex; gap: 15px; }
-        button {
-            padding: 12px 18px; font-size: 16px; border: none;
-            border-radius: 6px; cursor: pointer; font-weight: bold;
-        }
-        .btn-close { background-color: #8c8c8c; color: white; }
-        .btn-clear { background-color: #ff4d4f; color: white; }
-        .btn-save { background-color: #52c41a; color: white; }
+        canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+        .footer { display: flex; padding: 15px 20px; gap: 15px; justify-content: flex-start; }
+        button { padding: 12px 30px; font-size: 16px; border-radius: 4px; cursor: pointer; font-weight: bold; border: none; }
+        .btn-clear { background-color: #fff; color: #555; border: 1px solid #ccc; }
+        .btn-submit { background-color: #4c514e; color: #fff; }
     </style>
 </head>
 <body>
 
-    <!-- 这里是页面结构，必须要有的！ -->
-    <div class="canvas-container">
+    <div class="header">
+        <span class="back-btn" id="closeBtn">&lt;</span>
+        <span class="notice-text">*维达,您正在通过工行数字签名进行个人贷款申请</span>
+    </div>
+
+    <div class="canvas-wrapper">
+        <div class="placeholder" id="placeholder">请在框内签名，确保字迹清晰</div>
+        <!-- 这是用户看到的深色透明画板 -->
         <canvas id="signatureCanvas"></canvas>
     </div>
 
-    <div class="btn-group">
-        <button class="btn-close" id="closeBtn">关闭页</button>
-        <button class="btn-clear" id="clearBtn">清除重签</button>
-        <button class="btn-save" id="saveBtn">确认保存</button>
+    <div class="footer">
+        <button class="btn-clear" id="clearBtn">重签</button>
+        <button class="btn-submit" id="saveBtn">提交</button>
     </div>
 
-    <!-- 2. 初始化与逻辑 -->
     <script>
         const canvas = document.getElementById('signatureCanvas');
+        const placeholder = document.getElementById('placeholder');
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
 
-        // 处理高清屏模糊（必不可少）
         function resizeCanvas() {
-            const ratio =  Math.max(window.devicePixelRatio || 1, 1);
             canvas.width = canvas.offsetWidth * ratio;
             canvas.height = canvas.offsetHeight * ratio;
             canvas.getContext("2d").scale(ratio, ratio);
@@ -63,58 +58,68 @@
         window.addEventListener("resize", resizeCanvas);
         resizeCanvas();
 
-        // 实例化 SignaturePad
+        // 用户界面：透明底 + 白笔迹
         const signaturePad = new SignaturePad(canvas, {
-            backgroundColor: 'rgb(255, 255, 255)', // 白底
-            penColor: 'rgb(0, 0, 0)' // 黑笔
+            backgroundColor: 'rgba(0,0,0,0)', 
+            penColor: 'rgb(255, 255, 255)',  
+            minWidth: 1.5, maxWidth: 3.5 
         });
 
-        // --- 按钮事件绑定 ---
-        
-        // 1. 保存按钮 (获取轨迹数组)
-      // 1. 保存按钮 (获取并格式化轨迹数组)
-document.getElementById('saveBtn').addEventListener('click', () => {
-    if (signaturePad.isEmpty()) {
-        return alert("请先签名！");
-    }
-    
-    // 1. 获取原始轨迹数组
-    const rawData = signaturePad.toData();
-    
-    // 2. 处理数组：剔除负数，保留两位小数
-    const formattedData = rawData.map(group => {
-        return {
-            ...group, // 保留原有的颜色、线宽等属性
-            points: group.points.map(point => {
-                return {
-                    ...point, // 保留原有的 time(时间) 和 pressure(压力)
-                    // Math.max(0, x) 确保最小是 0（过滤负数）
-                    // .toFixed(2) 保留两位小数
-                    // Number() 将字符串转回数字类型，符合后台 JSON 格式
-                    x: Number(Math.max(0, point.x).toFixed(2)),
-                    y: Number(Math.max(0, point.y).toFixed(2))
-                };
-            })
-        };
-    });
+        const hidePlaceholder = () => { placeholder.style.opacity = '0'; };
+        canvas.addEventListener('touchstart', hidePlaceholder);
+        canvas.addEventListener('mousedown', hidePlaceholder);
 
-    console.log("=== 打印格式化后（传给后台）的轨迹数组 ===");
-    console.log(formattedData);
-    
-    alert("处理完成！请按 F12 查看控制台干净的坐标数据");
-    
-    // 最终你发给后台的就是 formattedData
-    // fetch('/api/upload', { method: 'POST', body: JSON.stringify(formattedData) })
-});
-
-        // 2. 清除按钮
         document.getElementById('clearBtn').addEventListener('click', () => {
-            signaturePad.clear(); // 直接调用库内置的清除方法
+            signaturePad.clear();
+            placeholder.style.opacity = '1';
         });
 
-        // 3. 关闭按钮
-        document.getElementById('closeBtn').addEventListener('click', () => {
-            window.history.back(); // 返回测试页
+        document.getElementById('closeBtn').addEventListener('click', () => { window.history.back(); });
+
+        // --- 核心转换与提交逻辑 ---
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            if (signaturePad.isEmpty()) return alert("请在框内签名后再提交！");
+
+            // 1. 获取原轨迹数据
+            const pointData = signaturePad.toData();
+
+            // 2. 创建一个离屏 Canvas，用于画【白底黑字】
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            tempCanvas.getContext('2d').scale(ratio, ratio);
+
+            const tempPad = new SignaturePad(tempCanvas, {
+                backgroundColor: 'rgb(255, 255, 255)', // 强制白底
+                penColor: 'rgb(0, 0, 0)',             // 强制黑字
+                minWidth: 1.5, maxWidth: 3.5 
+            });
+            tempPad.fromData(pointData); // 把轨迹重绘在白底黑字画板上
+
+            // 3. 创建最终 Canvas，用于【横屏转竖屏 (顺时针旋转90度)】
+            const finalCanvas = document.createElement('canvas');
+            // 宽高互换
+            finalCanvas.width = tempCanvas.height;
+            finalCanvas.height = tempCanvas.width;
+            const ctx = finalCanvas.getContext('2d');
+
+            // 执行旋转矩阵：平移到右上角，然后顺时针旋转 90 度
+            ctx.translate(finalCanvas.width, 0);
+            ctx.rotate(Math.PI / 2);
+            // 将白底黑字的图片画上去
+            ctx.drawImage(tempCanvas, 0, 0);
+
+            // 4. 导出最终的 JPEG 图片（白底不需要透明度，用 JPEG 更小）
+            const finalBase64 = finalCanvas.toDataURL('image/jpeg', 0.9);
+
+            // 5. 模拟上传服务器并回调
+            // 实际业务： fetch('/api/upload', { body: finalBase64 }).then(res => ...)
+            
+            // 使用 sessionStorage 在 H5 跨页面传参
+            sessionStorage.setItem('upload_sign_result', finalBase64);
+            
+            // 返回上一页触发回调
+            window.history.back();
         });
     </script>
 </body>
