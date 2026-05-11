@@ -19,43 +19,65 @@ import { motion as motionBase, AnimatePresence } from 'framer-motion';
 const motion = motionBase as any;
 import { GoEngine, BoardState, StoneColor } from '../lib/goLibrary';
 
-type GameState = 'SELECTION' | 'PLAYING' | 'SETTLEMENT';
+type GameState = 'SELECTION' | 'PLAYING' | 'SETTLEMENT' | 'SCORING';
 type BoardSize = 9 | 13 | 19;
 
 const STONE_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3';
 
 // --- Sub-components ---
 
-const Stone = memo(({ type, isLast }: { type: number, isLast: boolean }) => (
-  <motion.div 
-    initial={isLast ? { scale: 0, opacity: 0 } : { scale: 1, opacity: 1 }} 
-    animate={{ scale: 1, opacity: 1 }}
-    transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-    className={`
-      w-[88%] h-[88%] rounded-full relative z-20 flex items-center justify-center
-      ${type === 1 
-        ? 'bg-slate-900 shadow-stone-black' 
-        : 'bg-white shadow-stone-white'
-      }
-      ${isLast ? 'ring-2 ring-red-400 ring-offset-2 ring-offset-transparent shadow-lg' : ''}
-    `}
-  >
-    {/* Highlights for 3D effect */}
-    <div className={`absolute top-1 left-2 w-1/4 h-1/4 rounded-full blur-[1px] ${type === 1 ? 'bg-white/10' : 'bg-black/5'}`}></div>
-    {isLast && <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>}
-  </motion.div>
-));
+const Stone = memo(({ type, isLast, isTerritory }: { type: number, isLast: boolean, isTerritory?: boolean }) => {
+  if (isTerritory) {
+    return (
+      <motion.div 
+        initial={{ scale: 0 }}
+        animate={{ scale: 0.4 }}
+        className={`w-[60%] h-[60%] rounded-sm ${type === 11 ? 'bg-slate-900' : 'bg-white'} shadow-sm opacity-60`}
+      />
+    );
+  }
+
+  return (
+    <motion.div 
+      initial={isLast ? { scale: 0.3, opacity: 0 } : { scale: 1, opacity: 1 }} 
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+      className={`
+        w-[92%] h-[92%] rounded-full relative z-20 flex items-center justify-center
+        ${type === 1 
+          ? 'bg-gradient-to-br from-slate-700 to-slate-950 shadow-black-stone' 
+          : 'bg-gradient-to-br from-white to-slate-200 shadow-white-stone'
+        }
+        ${isLast ? 'ring-1 ring-red-500/60 ring-offset-1 ring-offset-transparent' : ''}
+      `}
+    >
+      {/* 增强3D光泽感 */}
+      <div className={`absolute top-1 left-1.5 w-[30%] h-[30%] rounded-full blur-[2px] ${type === 1 ? 'bg-white/20' : 'bg-white/60'}`}></div>
+      {isLast && <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>}
+    </motion.div>
+  );
+});
 
 const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [gameState, setGameState] = useState<GameState>('SELECTION');
   const [boardSize, setBoardSize] = useState<BoardSize>(19);
   const [board, setBoard] = useState<BoardState>(GoEngine.createBoard(19));
-  const [history, setHistory] = useState<string[]>([]); // Serialized board states for Ko/Undo
+  const [territoryMap, setTerritoryMap] = useState<number[][]>([]);
+  const [history, setHistory] = useState<string[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<StoneColor>(1);
   const [captures, setCaptures] = useState({ b: 0, w: 0 });
   const [lastMove, setLastMove] = useState<{r: number, c: number} | null>(null);
+  const [passCount, setPassCount] = useState(0);
+  const [timer, setTimer] = useState(0);
+  const [scores, setScores] = useState({ b: 0, w: 0 });
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showCoords, setShowCoords] = useState(true);
+  const [hoverPos, setHoverPos] = useState<{r: number, c: number} | null>(null);
+  
+  // AI State
+  const [isPvE, setIsPvE] = useState(true);
+  const [aiColor, setAiColor] = useState<StoneColor>(2); // AI is White by default
+  const [isAiThinking, setIsAiThinking] = useState(false);
   
   const engineRef = useRef<GoEngine>(new GoEngine(19));
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -63,6 +85,40 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   useEffect(() => {
     audioRef.current = new Audio(STONE_SOUND_URL);
   }, []);
+
+  // Timer logic
+  useEffect(() => {
+    let interval: any;
+    if (gameState === 'PLAYING') {
+      interval = setInterval(() => {
+        setTimer(t => t + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [gameState]);
+
+  // AI Turn Logic
+  useEffect(() => {
+    if (gameState === 'PLAYING' && isPvE && currentPlayer === aiColor && !isAiThinking) {
+      setIsAiThinking(true);
+      const timerId = setTimeout(() => {
+        const move = engineRef.current.getBestMove(board, aiColor, history[history.length - 1]);
+        if (move) {
+          handlePlaceStone(move.r, move.c, true);
+        } else {
+          handlePass(true);
+        }
+        setIsAiThinking(false);
+      }, 800); // slight delay for realism
+      return () => clearTimeout(timerId);
+    }
+  }, [gameState, currentPlayer, isPvE, aiColor, board, history, isAiThinking]);
+
+  const formatTime = (s: number) => {
+    const min = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  };
 
   const playSound = () => {
     if (soundEnabled && audioRef.current) {
@@ -76,13 +132,20 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     engineRef.current = new GoEngine(size);
     setBoard(GoEngine.createBoard(size));
     setHistory([]);
+    setPassCount(0);
+    setTimer(0);
     setCurrentPlayer(1);
     setCaptures({ b: 0, w: 0 });
     setLastMove(null);
+    setTerritoryMap([]);
+    setIsAiThinking(false);
     setGameState('PLAYING');
   };
 
-  const handlePlaceStone = (r: number, c: number) => {
+  const handlePlaceStone = (r: number, c: number, isAiMove = false) => {
+    if (gameState !== 'PLAYING') return;
+    if (isPvE && !isAiMove && currentPlayer === aiColor) return;
+
     const result = engineRef.current.validateMove(
         board, 
         r, 
@@ -112,6 +175,36 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setBoard(nextBoard);
     setLastMove({ r, c });
     setCurrentPlayer(currentPlayer === 1 ? 2 : 1);
+    setPassCount(0);
+  };
+
+  const handlePass = (isAiMove = false) => {
+    if (gameState !== 'PLAYING') return;
+    if (isPvE && !isAiMove && currentPlayer === aiColor) return;
+    
+    const newPassCount = passCount + 1;
+    setPassCount(newPassCount);
+    setCurrentPlayer(currentPlayer === 1 ? 2 : 1);
+    setLastMove(null);
+    
+    if (newPassCount >= 2) {
+      finishGame();
+    }
+  };
+
+  const finishGame = () => {
+    const result = engineRef.current.estimateScore(board);
+    setScores({ b: result.black, w: result.white });
+    setTerritoryMap(result.territory);
+    setGameState('SCORING');
+  };
+
+  const handleResign = () => {
+    if (confirm('确认认输吗？诚实即是围棋之道。')) {
+      const winner = currentPlayer === 1 ? 'White' : 'Black';
+      alert(`${winner === 'White' ? '白方' : '黑方'}不战而胜。`);
+      setGameState('SELECTION');
+    }
   };
 
   const undoMove = () => {
@@ -167,9 +260,24 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="w-full max-w-sm"
               >
-                  <div className="text-center mb-10">
+                  <div className="text-center mb-8">
                       <h2 className="text-3xl font-light text-white mb-3 serif-font italic">挑选棋局</h2>
-                      <p className="text-white/30 text-xs font-black uppercase tracking-widest">Select Board Dimension</p>
+                      <p className="text-white/30 text-xs font-black uppercase tracking-widest mb-6">Select Match Type</p>
+                      
+                      <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 mb-8">
+                          <button 
+                              onClick={() => setIsPvE(true)}
+                              className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all ${isPvE ? 'bg-amber-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                          >
+                              人机对奕 (PvE)
+                          </button>
+                          <button 
+                              onClick={() => setIsPvE(false)}
+                              className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all ${!isPvE ? 'bg-amber-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
+                          >
+                              双人同屏 (PvP)
+                          </button>
+                      </div>
                   </div>
                   <div className="space-y-4">
                       {[
@@ -202,27 +310,40 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     {/* Game Stats Panel - Left Side on Desktop */}
                     <div className="flex flex-row lg:flex-col gap-4 w-full lg:w-48 order-2 lg:order-1">
                         <PlayerStats 
-                            name="执黑·Black" 
+                            name={isPvE && aiColor === 1 ? "AI大师·黑" : "执黑·Black"} 
                             captures={captures.b} 
                             active={currentPlayer === 1} 
-                            stoneColor="bg-slate-900" 
+                            stoneColor="bg-slate-950" 
+                            score={gameState === 'SCORING' ? scores.b : undefined}
+                            isThinking={isPvE && aiColor === 1 && isAiThinking}
                         />
                         <PlayerStats 
-                            name="执白·White" 
+                            name={isPvE && aiColor === 2 ? "AI大师·白" : "执白·White"} 
                             captures={captures.w} 
                             active={currentPlayer === 2} 
-                            stoneColor="bg-white" 
+                            stoneColor="bg-slate-100" 
+                            score={gameState === 'SCORING' ? scores.w : undefined}
+                            isThinking={isPvE && aiColor === 2 && isAiThinking}
                         />
+                        
+                        <div className="hidden lg:flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl">
+                             <Timer size={14} className="text-white/30" />
+                             <span className="text-sm font-mono font-bold text-white/60 tracking-wider">
+                                {formatTime(timer)}
+                             </span>
+                        </div>
                     </div>
 
                     {/* The Board - Center */}
                     <div className="relative order-1 lg:order-2 shrink-0">
                         <div 
-                            className="bg-[#DAB671] rounded-sm shadow-2xl relative border-[4px] border-[#92713e]"
+                            className="bg-[#DAB671] rounded-sm shadow-2xl relative border-[6px] border-[#8a6b38]"
                             style={{ 
-                                width: 'min(85vw, 480px)', 
-                                height: 'min(85vw, 480px)',
-                                backgroundImage: `url('https://www.transparenttextures.com/patterns/wood-pattern-with-fine-lines.png')`
+                                width: 'min(90vw, 520px)', 
+                                height: 'min(90vw, 520px)',
+                                backgroundImage: `url('https://images.unsplash.com/photo-1544208062-331ae1872df0?auto=format&fit=crop&q=80&w=800')`,
+                                backgroundSize: 'cover',
+                                backgroundBlendMode: 'overlay'
                             }}
                         >
                             {/* Grid Lines */}
@@ -249,24 +370,29 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                                     return (
                                         <div key={i} className="relative w-full h-full flex items-center justify-center">
                                             {/* Intersection lines */}
-                                            <div className={`absolute w-px h-full bg-slate-800/60 ${r === 0 ? 'top-1/2' : r === boardSize - 1 ? 'bottom-1/2' : 'h-full'}`}></div>
-                                            <div className={`absolute h-px w-full bg-slate-800/60 ${c === 0 ? 'left-1/2' : c === boardSize - 1 ? 'right-1/2' : 'w-full'}`}></div>
+                                            <div className={`absolute w-[1.5px] h-full bg-slate-900/40 ${r === 0 ? 'top-1/2' : r === boardSize - 1 ? 'bottom-1/2' : 'h-full'}`}></div>
+                                            <div className={`absolute h-[1.5px] w-full bg-slate-900/40 ${c === 0 ? 'left-1/2' : c === boardSize - 1 ? 'right-1/2' : 'w-full'}`}></div>
                                             
                                             {/* Star points */}
                                             {isStarPoint(boardSize, r, c) && (
-                                                <div className="absolute w-2 h-2 bg-slate-900 rounded-full z-10 opacity-80"></div>
+                                                <div className="absolute w-2 h-2 bg-slate-900/80 rounded-full z-10"></div>
                                             )}
 
                                             {/* Interaction Area */}
                                             <div 
                                                 className="absolute inset-0 z-30 cursor-pointer flex items-center justify-center group"
                                                 onClick={() => handlePlaceStone(r, c)}
+                                                onMouseEnter={() => setHoverPos({r, c})}
+                                                onMouseLeave={() => setHoverPos(null)}
                                             >
-                                                {board[r][c] === 0 && (
-                                                    <div className={`w-[80%] h-[80%] rounded-full opacity-0 group-hover:opacity-30 transition-opacity ${currentPlayer === 1 ? 'bg-black' : 'bg-white'}`}></div>
+                                                {board[r][c] === 0 && gameState === 'PLAYING' && (
+                                                    <div className={`w-[85%] h-[85%] rounded-full opacity-0 group-hover:opacity-40 transition-opacity transform group-hover:scale-95 shadow-lg ${currentPlayer === 1 ? 'bg-black' : 'bg-white'}`}></div>
                                                 )}
                                                 {board[r][c] !== 0 && (
                                                     <Stone type={board[r][c]} isLast={lastMove?.r === r && lastMove?.c === c} />
+                                                )}
+                                                {gameState === 'SCORING' && territoryMap[r][c] > 10 && (
+                                                    <Stone type={territoryMap[r][c]} isLast={false} isTerritory />
                                                 )}
                                             </div>
                                         </div>
@@ -278,10 +404,10 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         {/* Coords labels */}
                         {showCoords && (
                             <>
-                                <div className="absolute -bottom-8 left-0 right-0 p-[5%] flex justify-between px-2 text-[10px] font-bold text-white/20 font-mono">
+                                <div className="absolute -bottom-8 left-0 right-0 p-[5%] flex justify-between px-2 text-[10px] font-black text-white/30 font-mono tracking-tighter">
                                     {Array.from({length: boardSize}).map((_, i) => <span key={i} className="w-full text-center">{String.fromCharCode(65 + (i >= 8 ? i + 1 : i))}</span>)}
                                 </div>
-                                <div className="absolute top-0 bottom-0 -left-8 p-[5%] flex flex-col justify-between py-2 text-[10px] font-bold text-white/20 font-mono">
+                                <div className="absolute top-0 bottom-0 -left-8 p-[5%] flex flex-col justify-between py-2 text-[10px] font-black text-white/30 font-mono tracking-tighter">
                                     {Array.from({length: boardSize}).map((_, i) => <span key={i} className="h-full flex items-center">{boardSize - i}</span>)}
                                 </div>
                             </>
@@ -289,34 +415,62 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     </div>
 
                     {/* Actions Drawer - Bottom on mobile/side on lg */}
-                    <div className="flex flex-col gap-4 w-full lg:w-48 order-3">
-                         <button 
-                            onClick={undoMove}
-                            disabled={history.length === 0}
-                            className="bg-white/5 hover:bg-white/10 border border-white/10 p-5 rounded-2xl flex items-center gap-4 transition-all group disabled:opacity-20"
-                         >
-                            <Undo2 size={20} className="text-amber-500/60 group-hover:text-amber-500" />
-                            <div className="text-left">
-                                <div className="text-xs font-bold text-white">悔棋</div>
-                                <div className="text-[10px] text-white/30 uppercase tracking-tighter">Undo Move</div>
-                            </div>
-                         </button>
+                    <div className="flex flex-col gap-3 w-full lg:w-48 order-3">
+                         {gameState === 'PLAYING' && (
+                            <>
+                                <GameAction 
+                                    icon={<History size={18}/>} 
+                                    title="停着" 
+                                    desc="Pass Turn" 
+                                    onClick={handlePass}
+                                    color="white"
+                                />
+                                <GameAction 
+                                    icon={<Undo2 size={18}/>} 
+                                    title="悔棋" 
+                                    desc="Undo (1)" 
+                                    disabled={history.length === 0}
+                                    onClick={undoMove}
+                                    color="white"
+                                />
+                                <GameAction 
+                                    icon={<RotateCcw size={18}/>} 
+                                    title="认输" 
+                                    desc="Resign Match" 
+                                    onClick={handleResign}
+                                    color="red"
+                                />
+                            </>
+                         )}
 
-                         <button 
-                            onClick={() => setGameState('SELECTION')}
-                            className="bg-white/5 hover:bg-red-500/10 border border-white/10 p-5 rounded-2xl flex items-center gap-4 transition-all group"
-                         >
-                            <RotateCcw size={20} className="text-red-400 group-hover:rotate-45 transition-transform" />
-                            <div className="text-left">
-                                <div className="text-xs font-bold text-white">重开</div>
-                                <div className="text-[10px] text-white/30 uppercase tracking-tighter">New Match</div>
-                            </div>
-                         </button>
+                         {gameState === 'SCORING' && (
+                             <div className="bg-amber-500 p-6 rounded-2xl shadow-xl shadow-amber-500/10">
+                                <Trophy size={20} className="text-white mb-2" />
+                                <h3 className="text-lg font-black text-white leading-tight">即兴结算</h3>
+                                <p className="text-[10px] text-white/60 font-bold uppercase mb-4 tracking-tighter">Final Scoring</p>
+                                <div className="space-y-4">
+                                     <div className="bg-black/10 rounded-xl p-3 flex justify-between items-center">
+                                         <span className="text-[11px] font-bold text-white/80">Black</span>
+                                         <span className="text-xl font-black text-white">{scores.b}</span>
+                                     </div>
+                                     <div className="bg-black/10 rounded-xl p-3 flex justify-between items-center">
+                                         <span className="text-[11px] font-bold text-white/80">White (贴)</span>
+                                         <span className="text-xl font-black text-white">{scores.w}</span>
+                                     </div>
+                                </div>
+                                <button 
+                                    onClick={() => setGameState('SELECTION')}
+                                    className="w-full mt-6 py-3 bg-white text-amber-600 rounded-xl font-black text-[11px] uppercase tracking-widest hover:scale-105 transition-all shadow-lg"
+                                >
+                                    返回大厅
+                                </button>
+                             </div>
+                         )}
 
-                         <div className="p-6 bg-amber-500/5 border border-amber-500/10 rounded-2xl lg:mt-auto">
-                            <Info size={16} className="text-amber-500/40 mb-3" />
-                            <p className="text-[10px] leading-relaxed text-amber-500/60 font-medium">
-                                落子无悔。围棋之道在于观全局而弃局部。Capture opponent's stones by depriving them of liberties.
+                         <div className="p-5 bg-white/5 border border-white/5 rounded-2xl lg:mt-auto">
+                            <Info size={14} className="text-amber-500/40 mb-3" />
+                            <p className="text-[10px] leading-relaxed text-amber-500/50 font-bold uppercase tracking-tight">
+                                中国围棋规则: 黑棋需贴6.5或7.5目。双停则终局。The way of Go is to gain by losing.
                             </p>
                          </div>
                     </div>
@@ -327,17 +481,17 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
       {/* Internal Shadow styles for stones */}
       <style>{`
-        .shadow-stone-black { 
+        .shadow-black-stone { 
             box-shadow: 
-                inset 2px 2px 5px rgba(255,255,255,0.1),
-                inset -5px -5px 15px rgba(0,0,0,0.8),
-                4px 6px 10px rgba(0,0,0,0.4);
+                inset 1px 1px 3px rgba(255,255,255,0.1),
+                inset -3px -3px 8px rgba(0,0,0,0.8),
+                3px 6px 10px rgba(0,0,0,0.4);
         }
-        .shadow-stone-white { 
+        .shadow-white-stone { 
             box-shadow: 
                 inset 1px 1px 4px rgba(255,255,255,1),
-                inset -3px -3px 8px rgba(0,0,0,0.05),
-                3px 5px 8px rgba(0,0,0,0.2);
+                inset -2px -2px 5px rgba(0,0,0,0.1),
+                3px 5px 8px rgba(0,0,0,0.15);
         }
         .serif-font { font-family: 'Noto Serif SC', serif; }
       `}</style>
@@ -345,23 +499,48 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   );
 };
 
-const PlayerStats = ({ name, captures, active, stoneColor }: any) => (
-    <div className={`flex-1 p-5 rounded-3xl border transition-all ${active ? 'bg-amber-500/10 border-amber-500/40 shadow-lg shadow-amber-500/5' : 'bg-white/5 border-white/5 opacity-40'}`}>
+const PlayerStats = ({ name, captures, active, stoneColor, score, isThinking }: any) => (
+    <div className={`flex-1 p-5 rounded-3xl border transition-all relative overflow-hidden ${active ? 'bg-white/5 border-amber-500/40 shadow-lg' : 'bg-white/5 border-white/5 opacity-40'}`}>
+        {isThinking && (
+           <motion.div 
+               animate={{ x: ['-100%', '100%'] }} 
+               transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+               className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent z-10" 
+           />
+        )}
         <div className="flex items-center gap-3 mb-2">
-            <div className={`w-4 h-4 rounded-full ${stoneColor} shadow-md`}></div>
-            <span className="text-[10px] font-black text-white/80 uppercase tracking-widest">{name}</span>
+            <div className={`w-3.5 h-3.5 rounded-full ${stoneColor} shadow-md`}></div>
+            <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">{name} {isThinking && <span className="animate-pulse ml-1 text-amber-400">(思考中...)</span>}</span>
         </div>
         <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-white">{captures}</span>
-            <span className="text-[10px] font-medium text-white/30 uppercase tracking-tighter">Captures</span>
+            <span className="text-2xl font-black text-white">{score !== undefined ? score : captures}</span>
+            <span className="text-[10px] font-bold text-white/30 uppercase tracking-tighter">
+                {score !== undefined ? 'Score' : 'Captures'}
+            </span>
         </div>
-        {active && (
+        {active && !isThinking && (
             <motion.div 
                 layoutId="active-indicator"
-                className="mt-3 h-1 w-full bg-amber-500 rounded-full"
+                className="mt-3 h-0.5 w-full bg-amber-500 rounded-full"
             />
         )}
     </div>
+);
+
+const GameAction = ({ icon, title, desc, onClick, disabled, color }: any) => (
+    <button 
+        onClick={onClick}
+        disabled={disabled}
+        className={`bg-white/5 hover:bg-white/10 border border-white/10 p-5 rounded-2xl flex items-center gap-4 transition-all group disabled:opacity-20 active:scale-95 ${color === 'red' ? 'hover:bg-red-500/10' : ''}`}
+    >
+        <div className={`${color === 'red' ? 'text-red-400' : 'text-amber-500/60'} group-hover:scale-110 transition-transform`}>
+            {icon}
+        </div>
+        <div className="text-left">
+            <div className="text-xs font-black text-white">{title}</div>
+            <div className="text-[9px] font-bold text-white/20 uppercase tracking-tighter">{desc}</div>
+        </div>
+    </button>
 );
 
 export default GoApp;
