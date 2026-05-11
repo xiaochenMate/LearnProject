@@ -28,6 +28,7 @@ const BrainTeaseApp = lazy(() => import('./components/BrainTeaseApp'));
 const GobangApp = lazy(() => import('./components/GobangApp'));
 const ChineseChessApp = lazy(() => import('./components/ChineseChessApp'));
 const ChessApp = lazy(() => import('./components/ChessApp'));
+const GoApp = lazy(() => import('./components/GoApp'));
 const ProArtApp = lazy(() => import('./components/ProArtApp'));
 const VocabularyApp = lazy(() => import('./components/VocabularyApp'));
 const IdiomApp = lazy(() => import('./components/IdiomApp'));
@@ -167,6 +168,7 @@ const App: React.FC = () => {
               case 'ent4': return <GobangApp onClose={closeApp} />;
               case 'ent5': return <ChineseChessApp onClose={closeApp} />;
               case 'ent6': return <ChessApp onClose={closeApp} />;
+              case 'ent7': return <GoApp onClose={closeApp} />;
               case 'u1': return <ProArtApp onClose={closeApp} />;
               case 'u2': return <VocabularyApp onClose={closeApp} userEmail={user?.email} />;
               case 'u3': return <IdiomApp onClose={closeApp} />;

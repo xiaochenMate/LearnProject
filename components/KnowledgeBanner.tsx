@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Sparkles, RefreshCw, Globe, Book, Zap, Cpu, Loader2, FileCheck } from 'lucide-react';
+import { Sparkles, RefreshCw, Globe, Book, Zap, Cpu, Loader2 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import Button from './ui/Button';
 import Card from './ui/Card';
@@ -63,7 +63,6 @@ const KnowledgeBanner: React.FC<KnowledgeBannerProps> = ({ onRun }) => {
       <div className="flex gap-4 md:gap-6 shrink-0 w-full md:w-auto justify-center md:justify-end border-t md:border-t-0 pt-6 md:pt-0 border-morandi-border/30 dark:border-white/5">
         <QuickLink icon={<Globe size={18}/>} label="3D地球" onClick={() => onRun('e1')} />
         <QuickLink icon={<Book size={18}/>} label="诗词馆" onClick={() => onRun('e5')} />
-        <QuickLink icon={<FileCheck size={18}/>} label="融资测试" onClick={() => onRun('u5')} />
         <QuickLink icon={<Cpu size={18}/>} label="AI对弈" onClick={() => onRun('ent6')} />
       </div>
     </Card>

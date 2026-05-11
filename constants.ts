@@ -144,6 +144,16 @@ export const ENTERTAINMENT_ITEMS: AppItem[] = [
     description: '每天更新趣味谜题，活跃思维，轻松一刻。',
     tags: ['益智', '幽默', '休闲'],
     icon: 'lightbulb'
+  },
+  {
+    id: 'ent7',
+    title: '棋语 · 围棋',
+    author: '@ZenMaster',
+    category: 'entertainment',
+    imageUrl: 'https://images.unsplash.com/photo-1549413204-63cb5303c621?auto=format&fit=crop&q=80&w=800',
+    description: '纵横十九路，落子定乾坤。体验中国传统围棋之美，支持 9/13/19 路棋盘。',
+    tags: ['博弈', '传统', 'AI'],
+    icon: 'api'
   }
 ];
 
