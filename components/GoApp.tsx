@@ -99,7 +99,7 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   // AI Turn Logic
   useEffect(() => {
-    if (gameState === 'PLAYING' && isPvE && currentPlayer === aiColor && !isAiThinking) {
+    if (gameState === 'PLAYING' && isPvE && currentPlayer === aiColor) {
       setIsAiThinking(true);
       const timerId = setTimeout(() => {
         const move = engineRef.current.getBestMove(board, aiColor, history[history.length - 1]);
@@ -112,7 +112,7 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       }, 800); // slight delay for realism
       return () => clearTimeout(timerId);
     }
-  }, [gameState, currentPlayer, isPvE, aiColor, board, history, isAiThinking]);
+  }, [gameState, currentPlayer, isPvE, aiColor, board, history]);
 
   const formatTime = (s: number) => {
     const min = Math.floor(s / 60);
