@@ -186,6 +186,7 @@ export class GoEngine {
 
   getBestMove(board: BoardState, color: StoneColor, lastBoard?: string): {r: number, c: number} | null {
     const validMoves: {r: number, c: number, score: number}[] = [];
+    const opponent = color === 1 ? 2 : 1;
     
     for (let r = 0; r < this.size; r++) {
       for (let c = 0; c < this.size; c++) {
@@ -194,10 +195,11 @@ export class GoEngine {
         const result = this.validateMove(board, r, c, color, lastBoard);
         if (result === null) continue;
         
-        let score = Math.random() * 10; 
+        let score = Math.random() * 20; 
         
+        // Reward capturing moves
         if (result.captured.length > 0) {
-          score += result.captured.length * 100;
+          score += result.captured.length * 200;
         }
         
         const nextBoard = board.map(row => [...row]);
@@ -208,18 +210,35 @@ export class GoEngine {
         
         const { liberties } = this.getGroupLiberties(nextBoard, r, c);
         
-        if (liberties === 1 && result.captured.length < 2) {
-            score -= 500; 
+        // Avoid self-atari (playing where it leads to 1 liberty and no captures)
+        if (liberties === 1 && result.captured.length === 0) {
+            score -= 1000; 
         } else {
-            score += liberties * 5;
+            score += liberties * 8;
         }
-        
-        const center = (this.size - 1) / 2;
-        const distToCenter = Math.abs(r - center) + Math.abs(c - center);
-        score += (this.size - distToCenter) * 0.5;
 
-        if (r === 0 || r === this.size - 1 || c === 0 || c === this.size - 1) {
-            score -= 10;
+        // Positional heuristics (prefer 3rd/4th line in opening, corners/sides)
+        const dR1 = r;
+        const dR2 = this.size - 1 - r;
+        const dC1 = c;
+        const dC2 = this.size - 1 - c;
+        
+        const minDR = Math.min(dR1, dR2);
+        const minDC = Math.min(dC1, dC2);
+
+        // Third and Fourth lines are good
+        if ((minDR === 2 || minDR === 3) && (minDC >= 2)) score += 30;
+        if ((minDC === 2 || minDC === 3) && (minDR >= 2)) score += 30;
+        
+        // Edge is bad early on
+        if (minDR === 0 || minDC === 0) {
+            score -= 20;
+        }
+
+        // Prevent opponent from making good shapes (defensive block)
+        const opResult = this.validateMove(board, r, c, opponent, lastBoard);
+        if (opResult && opResult.captured.length > 0) {
+            score += opResult.captured.length * 150; // Block opponent captures
         }
         
         validMoves.push({r, c, score});
@@ -228,12 +247,13 @@ export class GoEngine {
     
     validMoves.sort((a, b) => b.score - a.score);
     
-    if (validMoves.length === 0 || validMoves[0].score < -100) {
-        return null;
+    if (validMoves.length === 0 || validMoves[0].score < -150) {
+        return null; // Better to pass
     }
     
+    // Pick among top choices to add randomness but stay strong
     const bestScore = validMoves[0].score;
-    const topMoves = validMoves.filter(m => m.score >= bestScore - 5);
+    const topMoves = validMoves.filter(m => m.score >= bestScore - 15);
     const chosen = topMoves[Math.floor(Math.random() * topMoves.length)];
 
     return { r: chosen.r, c: chosen.c };

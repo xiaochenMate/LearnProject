@@ -73,9 +73,11 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showCoords, setShowCoords] = useState(true);
   const [hoverPos, setHoverPos] = useState<{r: number, c: number} | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   
   // AI State
   const [isPvE, setIsPvE] = useState(true);
+  const [playerPreferredColor, setPlayerPreferredColor] = useState<StoneColor>(1);
   const [aiColor, setAiColor] = useState<StoneColor>(2); // AI is White by default
   const [isAiThinking, setIsAiThinking] = useState(false);
   
@@ -84,6 +86,11 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   useEffect(() => {
     audioRef.current = new Audio(STONE_SOUND_URL);
+  }, []);
+
+  const showToast = useCallback((msg: string) => {
+      setToastMessage(msg);
+      setTimeout(() => setToastMessage(null), 2500);
   }, []);
 
   // Timer logic
@@ -101,6 +108,10 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   useEffect(() => {
     if (gameState === 'PLAYING' && isPvE && currentPlayer === aiColor) {
       setIsAiThinking(true);
+      
+      // Dynamic thinking time based on board state (randomized 600ms - 1500ms)
+      const thinkingTime = 600 + Math.random() * 900;
+      
       const timerId = setTimeout(() => {
         const move = engineRef.current.getBestMove(board, aiColor, history[history.length - 1]);
         if (move) {
@@ -109,7 +120,7 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           handlePass(true);
         }
         setIsAiThinking(false);
-      }, 800); // slight delay for realism
+      }, thinkingTime);
       return () => clearTimeout(timerId);
     }
   }, [gameState, currentPlayer, isPvE, aiColor, board, history]);
@@ -131,6 +142,11 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setBoardSize(size);
     engineRef.current = new GoEngine(size);
     setBoard(GoEngine.createBoard(size));
+    
+    if (isPvE) {
+        setAiColor(playerPreferredColor === 1 ? 2 : 1);
+    }
+    
     setHistory([]);
     setPassCount(0);
     setTimer(0);
@@ -139,6 +155,7 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setLastMove(null);
     setTerritoryMap([]);
     setIsAiThinking(false);
+    setToastMessage(null);
     setGameState('PLAYING');
   };
 
@@ -182,13 +199,17 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     if (gameState !== 'PLAYING') return;
     if (isPvE && !isAiMove && currentPlayer === aiColor) return;
     
+    const colorName = currentPlayer === 1 ? '黑方' : '白方';
+    showToast(`${colorName} 停着 (Pass)`);
+    
     const newPassCount = passCount + 1;
     setPassCount(newPassCount);
     setCurrentPlayer(currentPlayer === 1 ? 2 : 1);
     setLastMove(null);
     
     if (newPassCount >= 2) {
-      finishGame();
+      showToast('双方停着，对局结束');
+      setTimeout(finishGame, 1500);
     }
   };
 
@@ -264,7 +285,7 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                       <h2 className="text-3xl font-light text-white mb-3 serif-font italic">挑选棋局</h2>
                       <p className="text-white/30 text-xs font-black uppercase tracking-widest mb-6">Select Match Type</p>
                       
-                      <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 mb-8">
+                      <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 mb-6">
                           <button 
                               onClick={() => setIsPvE(true)}
                               className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all ${isPvE ? 'bg-amber-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
@@ -278,6 +299,32 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                               双人同屏 (PvP)
                           </button>
                       </div>
+
+                      <AnimatePresence>
+                          {isPvE && (
+                              <motion.div 
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="overflow-hidden mb-6"
+                              >
+                                  <div className="flex justify-center gap-4">
+                                      <button 
+                                          onClick={() => setPlayerPreferredColor(1)}
+                                          className={`px-6 py-2 rounded-full text-xs font-bold transition-all border ${playerPreferredColor === 1 ? 'bg-slate-900 border-amber-500 text-white shadow-md' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+                                      >
+                                          执黑 (先走)
+                                      </button>
+                                      <button 
+                                          onClick={() => setPlayerPreferredColor(2)}
+                                          className={`px-6 py-2 rounded-full text-xs font-bold transition-all border ${playerPreferredColor === 2 ? 'bg-white border-amber-500 text-slate-900 shadow-md' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
+                                      >
+                                          执白 (后走)
+                                      </button>
+                                  </div>
+                              </motion.div>
+                          )}
+                      </AnimatePresence>
                   </div>
                   <div className="space-y-4">
                       {[
@@ -336,6 +383,22 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
                     {/* The Board - Center */}
                     <div className="relative order-1 lg:order-2 shrink-0">
+                        {/* Toast Notification */}
+                        <AnimatePresence>
+                            {toastMessage && (
+                                <motion.div 
+                                    initial={{ opacity: 0, y: -20, scale: 0.9 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] pointer-events-none"
+                                >
+                                    <div className="bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-2xl shadow-2xl border border-white/10 font-bold tracking-widest uppercase text-sm">
+                                        {toastMessage}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                        
                         <div 
                             className="bg-[#DAB671] rounded-sm shadow-2xl relative border-[6px] border-[#8a6b38]"
                             style={{ 
@@ -470,7 +533,7 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                          <div className="p-5 bg-white/5 border border-white/5 rounded-2xl lg:mt-auto">
                             <Info size={14} className="text-amber-500/40 mb-3" />
                             <p className="text-[10px] leading-relaxed text-amber-500/50 font-bold uppercase tracking-tight">
-                                中国围棋规则: 黑棋需贴6.5或7.5目。双停则终局。The way of Go is to gain by losing.
+                                中国围棋规则: 黑棋需贴7.5目。双停则进入简易点目自动结算。为计算精确，请确信盘面已无死子后再停着。
                             </p>
                          </div>
                     </div>

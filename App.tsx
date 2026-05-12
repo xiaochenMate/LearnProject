@@ -13,30 +13,50 @@ import { AnimatePresence, motion as motionBase } from 'framer-motion';
 const motion = motionBase as any;
 import { Search, ChevronRight, Book, LayoutGrid, Compass, Bookmark, Settings, Moon, Sun, Sparkles, Crown, Zap, Loader2 } from 'lucide-react';
 
+// Resilient Lazy Loading for chunk errors
+const lazyWithRetry = (componentImport: () => Promise<any>) =>
+  lazy(async () => {
+    const pageHasAlreadyBeenForceRefreshed = JSON.parse(
+      sessionStorage.getItem('page-has-been-force-refreshed') || 'false'
+    );
+
+    try {
+      const component = await componentImport();
+      sessionStorage.setItem('page-has-been-force-refreshed', 'false');
+      return component;
+    } catch (error) {
+      if (!pageHasAlreadyBeenForceRefreshed) {
+        sessionStorage.setItem('page-has-been-force-refreshed', 'true');
+        return window.location.reload();
+      }
+      throw error;
+    }
+  });
+
 // Lazy load sub-apps
-const Earth3D = lazy(() => import('./components/Earth3D'));
-const FoodChainApp = lazy(() => import('./components/FoodChainApp'));
-const WaveApp = lazy(() => import('./components/WaveApp'));
-const CharacterApp = lazy(() => import('./components/CharacterApp'));
-const PoetryApp = lazy(() => import('./components/PoetryApp'));
-const HistorySortingApp = lazy(() => import('./components/HistorySortingApp'));
-const ClockApp = lazy(() => import('./components/ClockApp'));
-const MathSprintApp = lazy(() => import('./components/MathSprintApp'));
-const ThreeCharacterApp = lazy(() => import('./components/ThreeCharacterApp'));
-const ThousandCharacterApp = lazy(() => import('./components/ThousandCharacterApp'));
-const BrainTeaseApp = lazy(() => import('./components/BrainTeaseApp'));
-const GobangApp = lazy(() => import('./components/GobangApp'));
-const ChineseChessApp = lazy(() => import('./components/ChineseChessApp'));
-const ChessApp = lazy(() => import('./components/ChessApp'));
-const GoApp = lazy(() => import('./components/GoApp'));
-const ProArtApp = lazy(() => import('./components/ProArtApp'));
-const VocabularyApp = lazy(() => import('./components/VocabularyApp'));
-const IdiomApp = lazy(() => import('./components/IdiomApp'));
-const CurrencyConverterApp = lazy(() => import('./components/CurrencyConverterApp'));
-const CapybaraComicApp = lazy(() => import('./components/CapybaraComicApp'));
-const LibraryView = lazy(() => import('./components/LibraryView'));
-const SettingsView = lazy(() => import('./components/SettingsView'));
-const ExploreView = lazy(() => import('./components/ExploreView'));
+const Earth3D = lazyWithRetry(() => import('./components/Earth3D'));
+const FoodChainApp = lazyWithRetry(() => import('./components/FoodChainApp'));
+const WaveApp = lazyWithRetry(() => import('./components/WaveApp'));
+const CharacterApp = lazyWithRetry(() => import('./components/CharacterApp'));
+const PoetryApp = lazyWithRetry(() => import('./components/PoetryApp'));
+const HistorySortingApp = lazyWithRetry(() => import('./components/HistorySortingApp'));
+const ClockApp = lazyWithRetry(() => import('./components/ClockApp'));
+const MathSprintApp = lazyWithRetry(() => import('./components/MathSprintApp'));
+const ThreeCharacterApp = lazyWithRetry(() => import('./components/ThreeCharacterApp'));
+const ThousandCharacterApp = lazyWithRetry(() => import('./components/ThousandCharacterApp'));
+const BrainTeaseApp = lazyWithRetry(() => import('./components/BrainTeaseApp'));
+const GobangApp = lazyWithRetry(() => import('./components/GobangApp'));
+const ChineseChessApp = lazyWithRetry(() => import('./components/ChineseChessApp'));
+const ChessApp = lazyWithRetry(() => import('./components/ChessApp'));
+const GoApp = lazyWithRetry(() => import('./components/GoApp'));
+const ProArtApp = lazyWithRetry(() => import('./components/ProArtApp'));
+const VocabularyApp = lazyWithRetry(() => import('./components/VocabularyApp'));
+const IdiomApp = lazyWithRetry(() => import('./components/IdiomApp'));
+const CurrencyConverterApp = lazyWithRetry(() => import('./components/CurrencyConverterApp'));
+const CapybaraComicApp = lazyWithRetry(() => import('./components/CapybaraComicApp'));
+const LibraryView = lazyWithRetry(() => import('./components/LibraryView'));
+const SettingsView = lazyWithRetry(() => import('./components/SettingsView'));
+const ExploreView = lazyWithRetry(() => import('./components/ExploreView'));
 
 type Tab = 'HOME' | 'EXPLORE' | 'LIBRARY' | 'PROFILE';
 type Theme = 'light' | 'dark';
@@ -94,6 +114,24 @@ const NavBtn: React.FC<{
   </button>
 );
 
+// Utility for safe storage
+const safeStorage = {
+  get: (key: string) => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set: (key: string, value: string) => {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      console.warn('Storage quota exceeded or unavailable', e);
+    }
+  }
+};
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('HOME');
   const [selectedItem, setSelectedItem] = useState<AppItem | null>(null);
@@ -104,24 +142,24 @@ const App: React.FC = () => {
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [historyIds, setHistoryIds] = useState<string[]>([]);
   const [user, setUser] = useState<UserInfo | null>(null);
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('zst_theme') as Theme) || 'light');
+  const [theme, setTheme] = useState<Theme>(() => (safeStorage.get('zst_theme') as Theme) || 'light');
   const [isCapybaraOpen, setIsCapybaraOpen] = useState(false);
 
   const allModules = [...EDUCATION_ITEMS, ...ENTERTAINMENT_ITEMS, ...UTILITIES_ITEMS];
 
   useEffect(() => {
-    const savedIden = localStorage.getItem('zst_identity_v3');
+    const savedIden = safeStorage.get('zst_identity_v3');
     if (savedIden) setUser(JSON.parse(savedIden));
-    const storedSaved = localStorage.getItem('zst_saved_v2');
+    const storedSaved = safeStorage.get('zst_saved_v2');
     if (storedSaved) setSavedIds(JSON.parse(storedSaved));
-    const storedHistory = localStorage.getItem('zst_history_v2');
+    const storedHistory = safeStorage.get('zst_history_v2');
     if (storedHistory) setHistoryIds(JSON.parse(storedHistory));
   }, []);
 
   useEffect(() => {
     if (theme === 'dark') document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
-    localStorage.setItem('zst_theme', theme);
+    safeStorage.set('zst_theme', theme);
   }, [theme]);
 
   const handleRunAppById = (id: string) => {
@@ -329,11 +367,23 @@ const App: React.FC = () => {
                       </div>
                    </div>
 
-                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                      {filteredModules.map(item => (
-                        <AppCard key={item.id} item={item} onClick={setSelectedItem} />
-                      ))}
-                   </div>
+                   {filteredModules.length > 0 ? (
+                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                        {filteredModules.map(item => (
+                          <AppCard key={item.id} item={item} onClick={setSelectedItem} />
+                        ))}
+                     </div>
+                   ) : (
+                     <div className="w-full flex flex-col items-center justify-center py-20 bg-white/50 dark:bg-dark-card/50 rounded-3xl border border-morandi-border dark:border-white/5 border-dashed">
+                        <div className="w-16 h-16 bg-morandi-blue/10 rounded-full flex items-center justify-center mb-4 text-morandi-blue">
+                          <Search size={28} />
+                        </div>
+                        <Typography variant="h3" className="mb-2">未找到匹配模块</Typography>
+                        <Typography variant="body" className="text-morandi-taupe dark:text-slate-500">
+                          请尝试更换搜索词或探索其他有趣的应用
+                        </Typography>
+                     </div>
+                   )}
                 </section>
                 
                 <div className="h-20 md:hidden" />
