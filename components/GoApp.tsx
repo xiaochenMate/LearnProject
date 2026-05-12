@@ -13,7 +13,8 @@ import {
   Volume2,
   VolumeX,
   Maximize2,
-  BookOpen
+  BookOpen,
+  Music
 } from 'lucide-react';
 import { motion as motionBase, AnimatePresence } from 'framer-motion';
 const motion = motionBase as any;
@@ -23,6 +24,38 @@ type GameState = 'SELECTION' | 'PLAYING' | 'SETTLEMENT' | 'SCORING';
 type BoardSize = 9 | 13 | 19;
 
 const STONE_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3';
+const CAPTURE_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3';
+const BGM_URL = 'https://assets.mixkit.co/active_storage/sfx/138/138-preview.mp3';
+
+// Ambient Particles Component
+const ZenParticles = memo(() => {
+    return (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-[1]">
+            {Array.from({length: 40}).map((_, i) => (
+                <div
+                    key={i}
+                    className="absolute bg-amber-500/20 rounded-full blur-[2px] animate-float"
+                    style={{
+                        width: Math.random() * 4 + 2 + 'px',
+                        height: Math.random() * 4 + 2 + 'px',
+                        left: Math.random() * 100 + '%',
+                        bottom: '-20px',
+                        animationDuration: 10 + Math.random() * 20 + 's',
+                        animationDelay: Math.random() * 10 + 's'
+                    }}
+                />
+            ))}
+            <style>{`
+                @keyframes float {
+                    0% { transform: translateY(0) translateX(0); opacity: 0; }
+                    20% { opacity: 0.6; }
+                    80% { opacity: 0.6; }
+                    100% { transform: translateY(-100vh) translateX(${Math.random() > 0.5 ? '100px' : '-100px'}); opacity: 0; }
+                }
+            `}</style>
+        </div>
+    )
+});
 
 // --- Sub-components ---
 
@@ -70,10 +103,13 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [passCount, setPassCount] = useState(0);
   const [timer, setTimer] = useState(0);
   const [scores, setScores] = useState({ b: 0, w: 0 });
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [sfxEnabled, setSfxEnabled] = useState(true);
+  const [musicEnabled, setMusicEnabled] = useState(false);
   const [showCoords, setShowCoords] = useState(true);
   const [hoverPos, setHoverPos] = useState<{r: number, c: number} | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [ripples, setRipples] = useState<{id: number, r: number, c: number, color: number}[]>([]);
+  const [cameraShake, setCameraShake] = useState(false);
   
   // AI State
   const [isPvE, setIsPvE] = useState(true);
@@ -83,10 +119,33 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   
   const engineRef = useRef<GoEngine>(new GoEngine(19));
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const captureAudioRef = useRef<HTMLAudioElement | null>(null);
+  const bgmRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     audioRef.current = new Audio(STONE_SOUND_URL);
+    captureAudioRef.current = new Audio(CAPTURE_SOUND_URL);
+    bgmRef.current = new Audio(BGM_URL);
+    bgmRef.current.loop = true;
+    bgmRef.current.volume = 0.2;
+
+    return () => {
+        if (bgmRef.current) {
+            bgmRef.current.pause();
+            bgmRef.current.currentTime = 0;
+        }
+    }
   }, []);
+
+  useEffect(() => {
+      if (bgmRef.current) {
+          if (musicEnabled) {
+              bgmRef.current.play().catch(() => setMusicEnabled(false));
+          } else {
+              bgmRef.current.pause();
+          }
+      }
+  }, [musicEnabled]);
 
   const showToast = useCallback((msg: string) => {
       setToastMessage(msg);
@@ -131,10 +190,13 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const playSound = () => {
-    if (soundEnabled && audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(() => {});
+  const playSound = (type: 'stone' | 'capture' = 'stone') => {
+    if (sfxEnabled) {
+        const audio = type === 'stone' ? audioRef.current : captureAudioRef.current;
+        if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
+        }
     }
   };
 
@@ -173,12 +235,13 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
     if (!result) return;
 
-    playSound();
+    let isCapture = false;
     const nextBoard = board.map(row => [...row]);
     nextBoard[r][c] = currentPlayer;
     
     // Apply captures
     if (result.captured.length > 0) {
+        isCapture = true;
         for (const stone of result.captured) {
             nextBoard[stone.r][stone.c] = 0;
         }
@@ -186,7 +249,22 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             ...prev,
             [currentPlayer === 1 ? 'b' : 'w']: prev[currentPlayer === 1 ? 'b' : 'w'] + result.captured.length
         }));
+        
+        if (result.captured.length >= 3) {
+            setCameraShake(true);
+            setTimeout(() => setCameraShake(false), 400);
+            showToast(`${currentPlayer === 1 ? '黑方' : '白方'} 提子 ${result.captured.length} 颗!`);
+        }
     }
+
+    playSound(isCapture ? 'capture' : 'stone');
+    
+    // Add Ripple
+    const rippleId = Date.now();
+    setRipples(prev => [...prev, {id: rippleId, r, c, color: currentPlayer}]);
+    setTimeout(() => {
+        setRipples(prev => prev.filter(rip => rip.id !== rippleId));
+    }, 800);
 
     setHistory(prev => [...prev, JSON.stringify(board)]);
     setBoard(nextBoard);
@@ -241,9 +319,10 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-[#1a1a1a] flex flex-col items-center overflow-hidden font-sans">
+    <div className="fixed inset-0 z-[60] bg-[#0A0C10] flex flex-col items-center overflow-hidden font-sans">
+      <ZenParticles />
       {/* Header - Recipe 3 Hardware/Specialist Tool style labels */}
-      <header className="w-full flex items-center justify-between px-6 pt-10 pb-6 z-50 shrink-0">
+      <header className="w-full flex items-center justify-between px-6 pt-10 pb-6 z-50 shrink-0 relative">
         <button 
           onClick={onClose} 
           className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-400 rounded-full transition-all active:scale-95 border border-white/10"
@@ -257,21 +336,29 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <h1 className="text-xl font-bold tracking-[0.2em] text-white serif-font italic">棋语 · ECHOES</h1>
             </div>
             <div className="flex items-center gap-3">
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-amber-500/40 bg-amber-500/5 px-3 py-0.5 rounded-full border border-amber-500/10">
+                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-amber-500/40 bg-amber-500/5 px-3 py-0.5 rounded-full border border-amber-500/10 backdrop-blur-sm">
                     Board: {boardSize}x{boardSize}
                 </span>
             </div>
         </div>
 
-        <button 
-          className="w-10 h-10 flex items-center justify-center bg-white/5 text-white/40 rounded-full border border-white/10 transition-all hover:text-white"
-          onClick={() => setSoundEnabled(!soundEnabled)}
-        >
-          {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
-        </button>
+        <div className="flex items-center gap-2">
+            <button 
+              className={`w-10 h-10 flex items-center justify-center rounded-full border transition-all ${musicEnabled ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'bg-white/5 text-white/40 border-white/10 hover:text-white'}`}
+              onClick={() => setMusicEnabled(!musicEnabled)}
+            >
+              <Music size={18} />
+            </button>
+            <button 
+              className={`w-10 h-10 flex items-center justify-center rounded-full border transition-all ${sfxEnabled ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'bg-white/5 text-white/40 border-white/10 hover:text-white'}`}
+              onClick={() => setSfxEnabled(!sfxEnabled)}
+            >
+              {sfxEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            </button>
+        </div>
       </header>
 
-      <main className="flex-1 w-full flex flex-col items-center justify-center p-6 relative">
+      <main className="flex-1 w-full flex flex-col items-center justify-center p-6 relative z-10">
          <AnimatePresence mode="wait">
             {gameState === 'SELECTION' ? (
               <motion.div 
@@ -382,7 +469,11 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     </div>
 
                     {/* The Board - Center */}
-                    <div className="relative order-1 lg:order-2 shrink-0">
+                    <motion.div 
+                        className="relative order-1 lg:order-2 shrink-0"
+                        animate={cameraShake ? { x: [-3, 3, -3, 3, 0], y: [-2, 2, -2, 2, 0] } : {}}
+                        transition={{ duration: 0.4 }}
+                    >
                         {/* Toast Notification */}
                         <AnimatePresence>
                             {toastMessage && (
@@ -436,6 +527,17 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                                             <div className={`absolute w-[1.5px] h-full bg-slate-900/40 ${r === 0 ? 'top-1/2' : r === boardSize - 1 ? 'bottom-1/2' : 'h-full'}`}></div>
                                             <div className={`absolute h-[1.5px] w-full bg-slate-900/40 ${c === 0 ? 'left-1/2' : c === boardSize - 1 ? 'right-1/2' : 'w-full'}`}></div>
                                             
+                                            {/* Ripples */}
+                                            {ripples.map(rip => rip.r === r && rip.c === c && (
+                                                <motion.div 
+                                                    key={rip.id}
+                                                    initial={{ scale: 0.5, opacity: 0.6 }}
+                                                    animate={{ scale: 2.5, opacity: 0 }}
+                                                    transition={{ duration: 0.7, ease: "easeOut" }}
+                                                    className={`absolute w-[90%] h-[90%] rounded-full ${rip.color === 1 ? 'bg-black' : 'bg-white'} z-20 pointer-events-none drop-shadow-xl`}
+                                                />
+                                            ))}
+
                                             {/* Star points */}
                                             {isStarPoint(boardSize, r, c) && (
                                                 <div className="absolute w-2 h-2 bg-slate-900/80 rounded-full z-10"></div>
@@ -475,7 +577,7 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                                 </div>
                             </>
                         )}
-                    </div>
+                    </motion.div>
 
                     {/* Actions Drawer - Bottom on mobile/side on lg */}
                     <div className="flex flex-col gap-3 w-full lg:w-48 order-3">
