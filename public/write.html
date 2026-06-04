@@ -3,9 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>数字签名申请</title>
+    <title>数字签名申请 (关闭测试版)</title>
+    
+    <!-- 1. 引入 Tailwind 和 签名库 -->
     <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
     <script src="./signature_pad.umd.js"></script>
+    
+    <!-- 🌟 2. 引入外网微信官方 JS-SDK -->
+    <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+    
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
@@ -28,14 +34,15 @@
 <body class="flex flex-col text-gray-800">
 
     <header class="bg-white px-4 py-3 flex items-center justify-between shadow-sm z-10 w-full">
+        <!-- 左上角返回按钮 -->
         <button id="closeBtn" class="text-gray-500 hover:bg-gray-100 p-2 -ml-2 rounded-full transition cursor-pointer">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
         </button>
-        <span class="text-sm font-medium text-gray-700 truncate flex-1 text-center pr-8">申请数字签名 - 维达</span>
+        <span class="text-sm font-medium text-gray-700 truncate flex-1 text-center pr-8">申请数字签名 - 测试关页</span>
     </header>
 
     <div class="px-4 pt-3 flex justify-between items-center text-xs text-gray-500">
-        <span>*请用正楷在深色区域签署您的真实姓名</span>
+        <span>*测试：请直接点击左上角返回按钮查看弹窗日志</span>
     </div>
 
     <div class="canvas-wrapper">
@@ -53,6 +60,69 @@
     </footer>
 
     <script>
+        // =========================================
+        // 🌟 暴力的测试退出逻辑
+        // =========================================
+        function closeCurrentPage() {
+            try {
+                alert("1. 点击响应！成功进入 closeCurrentPage 函数");
+
+                var ua = navigator.userAgent.toLowerCase();
+                var isWechat = ua.indexOf('micromessenger') !== -1;
+                // 兼容不同版本的微信小程序特征
+                var isMiniProgram = ua.indexOf('miniprogram') !== -1 || window.__wxjs_environment === 'miniprogram';
+
+                alert("2. 环境识别完成:\n是微信吗？ " + isWechat + "\n是小程序吗？ " + isMiniProgram);
+
+                if (isWechat) {
+                    if (isMiniProgram) {
+                        alert("3. 检测为【微信小程序】，准备调用 wx.miniProgram.navigateBack");
+                        
+                        // 安全检查：看看 js-sdk 到底有没有加载成功
+                        if (typeof wx === "undefined") {
+                            alert("❌ 错误：全局 wx 对象不存在！说明 jweixin-1.6.0.js 没加载成功。");
+                            return;
+                        }
+                        if (!wx.miniProgram) {
+                            alert("❌ 错误：wx.miniProgram 不存在！可能版本不对或加载异常。");
+                            return;
+                        }
+
+                        alert("4. wx对象完全正常，正在触发 navigateBack");
+
+                        wx.miniProgram.navigateBack({
+                            delta: 1,
+                            success: function() {
+                                alert("✅ API返回 success！\n(如果点确定后页面还是没关掉，说明当前小程序已经没上一页了，需要改用 wx.miniProgram.reLaunch 跳回首页)");
+                            },
+                            fail: function(err) {
+                                alert("❌ API返回 fail: " + JSON.stringify(err));
+                            }
+                        });
+                    } else {
+                        alert("3. 检测为【普通微信H5(如聊天框直接打开)】，调用 WeixinJSBridge");
+                        if (typeof WeixinJSBridge !== "undefined") {
+                            WeixinJSBridge.call('closeWindow');
+                        } else {
+                            alert("❌ WeixinJSBridge 不存在，可能还没初始化完毕");
+                        }
+                    }
+                } else {
+                    alert("3. 检测为【普通外部浏览器】，直接触发 history.back()");
+                    window.history.back();
+                }
+            } catch (error) {
+                alert("🚨 JS执行抛出严重异常: " + error.message);
+            }
+        }
+
+        // 🌟 将退出测试逻辑绑定到左上角的返回按钮
+        document.getElementById('closeBtn').addEventListener('click', closeCurrentPage);
+
+
+        // =========================================
+        // 原来的签名画板逻辑 (保持不动)
+        // =========================================
         const canvas = document.getElementById('signatureCanvas');
         const placeholder = document.getElementById('placeholder');
         const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -65,7 +135,6 @@
         window.addEventListener("resize", resizeCanvas);
         resizeCanvas();
 
-        // 用户界面：透明底 + 白笔迹
         const signaturePad = new SignaturePad(canvas, {
             backgroundColor: 'rgba(0,0,0,0)', 
             penColor: 'rgb(255, 255, 255)',  
@@ -81,51 +150,32 @@
             placeholder.style.opacity = '1';
         });
 
-        document.getElementById('closeBtn').addEventListener('click', () => { window.history.back(); });
-
-        // --- 核心转换与提交逻辑 ---
         document.getElementById('saveBtn').addEventListener('click', () => {
             if (signaturePad.isEmpty()) return alert("请在框内签名后再提交！");
 
-            // 1. 获取原轨迹数据
             const pointData = signaturePad.toData();
-
-            // 2. 创建一个离屏 Canvas，用于画【白底黑字】
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = canvas.width;
             tempCanvas.height = canvas.height;
             tempCanvas.getContext('2d').scale(ratio, ratio);
 
             const tempPad = new SignaturePad(tempCanvas, {
-                backgroundColor: 'rgb(255, 255, 255)', // 强制白底
-                penColor: 'rgb(0, 0, 0)',             // 强制黑字
+                backgroundColor: 'rgb(255, 255, 255)', 
+                penColor: 'rgb(0, 0, 0)',             
                 minWidth: 1.5, maxWidth: 3.5 
             });
-            tempPad.fromData(pointData); // 把轨迹重绘在白底黑字画板上
+            tempPad.fromData(pointData); 
 
-            // 3. 创建最终 Canvas，用于【横屏转竖屏 (顺时针旋转90度)】
             const finalCanvas = document.createElement('canvas');
-            // 宽高互换
             finalCanvas.width = tempCanvas.height;
             finalCanvas.height = tempCanvas.width;
             const ctx = finalCanvas.getContext('2d');
-
-            // 执行旋转矩阵：平移到右上角，然后顺时针旋转 90 度
             ctx.translate(finalCanvas.width, 0);
             ctx.rotate(Math.PI / 2);
-            // 将白底黑字的图片画上去
             ctx.drawImage(tempCanvas, 0, 0);
-
-            // 4. 导出最终的 JPEG 图片（白底不需要透明度，用 JPEG 更小）
+            
             const finalBase64 = finalCanvas.toDataURL('image/jpeg', 0.9);
-
-            // 5. 模拟上传服务器并回调
-            // 实际业务： fetch('/api/upload', { body: finalBase64 }).then(res => ...)
-            
-            // 使用 sessionStorage 在 H5 跨页面传参
             sessionStorage.setItem('upload_sign_result', finalBase64);
-            
-            // 返回上一页触发回调
             window.history.back();
         });
     </script>
