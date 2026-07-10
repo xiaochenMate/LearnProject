@@ -151,24 +151,7 @@ const ThousandCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) =>
 
   const ReaderView = () => (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#FDFBF7]">
-      <header className="h-14 bg-white border-b border-[#e0d7c6] flex items-center justify-between px-4 z-50 shrink-0">
-         <button onClick={() => { setIsPlaying(false); setCurrentView('hub'); }} className="p-2 bg-[#F9F6F0] rounded-xl text-slate-400">
-           <ArrowLeft size={20} />
-         </button>
-         
-         <div className="flex items-center gap-2 bg-[#1A1A1A] p-1.5 rounded-full shadow-lg">
-            <button onClick={() => setCurrentIdx(prev => Math.max(0, prev - 1))} className="p-1.5 text-white/40"><SkipBack size={16} fill="currentColor"/></button>
-            <button onClick={() => setIsPlaying(!isPlaying)} className="w-9 h-9 bg-white rounded-full flex items-center justify-center active:scale-90">
-               {isPlaying ? <Pause size={18} className="text-[#1A1A1A]" fill="currentColor"/> : <Play size={18} className="text-[#1A1A1A] ml-0.5" fill="currentColor"/>}
-            </button>
-            <button onClick={() => setCurrentIdx(prev => Math.min(verses.length - 1, prev + 1))} className="p-1.5 text-white/40"><SkipForward size={16} fill="currentColor"/></button>
-         </div>
-
-         <div className="flex gap-2">
-            <button onClick={() => setShowPinyin(!showPinyin)} className={`p-2 rounded-xl border transition-all ${showPinyin ? 'bg-[#1A1A1A] text-white' : 'bg-white text-slate-300'}`}><Type size={16}/></button>
-            <button className="p-2 bg-[#2E4A62] text-white rounded-xl"><Menu size={16}/></button>
-         </div>
-      </header>
+      
 
       <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
         <section className="px-4 py-8 md:py-12 flex flex-col items-center gap-12">
@@ -274,7 +257,7 @@ const ThousandCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) =>
   );
 
   return (
-    <div className="fixed inset-0 z-[60] bg-[#FDFBF7] flex flex-col select-none overflow-hidden pb-[env(safe-area-inset-bottom)]">
+    <div className="w-full h-full relative  flex flex-col select-none overflow-hidden pb-[env(safe-area-inset-bottom)]     bg-white text-slate-900 bg-white text-slate-900">
       <div className="absolute inset-0 opacity-[0.06] pointer-events-none z-0 bg-[url('https://www.transparenttextures.com/patterns/rice-paper.png')]" />
       {isLoading ? (
         <div className="flex-1 flex flex-col items-center justify-center bg-[#FDFBF7]">

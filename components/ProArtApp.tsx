@@ -258,49 +258,10 @@ const ProArtApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#020617] flex flex-col font-sans text-slate-300 overflow-hidden select-none">
+    <div className="w-full h-full relative  flex flex-col font-sans  overflow-hidden select-none      ">
       
       {/* 顶部菜单栏 */}
-      <header className="h-14 bg-slate-900 border-b border-white/5 flex items-center justify-between px-6 shrink-0 shadow-xl z-30">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-              <Palette className="text-black w-6 h-6" />
-            </div>
-            <span className="text-lg font-black tech-font tracking-tighter uppercase italic text-white hidden sm:block">ProArt_Web</span>
-          </div>
-          
-          <div className="h-6 w-px bg-white/10 mx-2" />
-          
-          <div className="flex items-center gap-1.5">
-            <MenuButton icon={<Undo2 size={18} />} onClick={undo} title="撤销" />
-            <MenuButton icon={<Redo2 size={18} />} onClick={redo} title="重做" />
-          </div>
-          
-          <div className="h-6 w-px bg-white/10 mx-2 hidden md:block" />
-          
-          <div className="flex items-center gap-1.5">
-             <MenuButton icon={<Save size={18} />} onClick={() => {}} title="保存" />
-             <MenuButton icon={<Trash2 size={18} />} onClick={() => {}} title="彻底清空" className="text-rose-400" />
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-4">
-           <div className="flex items-center gap-2 bg-slate-950/80 px-4 py-1.5 rounded-lg border border-white/5 font-mono text-[10px] tracking-widest text-slate-500">
-             ZOOM: <span className="text-white">{(zoom * 100).toFixed(0)}%</span>
-           </div>
-           <button 
-             onClick={() => setShowRightPanel(!showRightPanel)}
-             className={`p-2 rounded-lg transition-colors ${showRightPanel ? 'bg-emerald-500 text-black' : 'bg-slate-800 text-slate-400'}`}
-             title="显示/隐藏属性面板"
-           >
-             <PanelRight size={20} />
-           </button>
-           <button onClick={onClose} className="p-2 bg-slate-800 hover:bg-rose-500 text-slate-400 hover:text-white rounded-lg transition-all">
-             <X size={20} />
-           </button>
-        </div>
-      </header>
+      
 
       <div className="flex-1 flex overflow-hidden relative">
         

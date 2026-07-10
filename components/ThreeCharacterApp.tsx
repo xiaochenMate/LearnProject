@@ -185,31 +185,7 @@ const ThreeCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     <div className="flex-1 flex flex-col overflow-hidden bg-[#FDFBF7]">
       
       {/* 顶部控制栏 - 缩小尺寸 */}
-      <header className="h-16 sm:h-20 bg-white/95 backdrop-blur-xl border-b border-[#e0d7c6] flex items-center justify-between px-6 sm:px-10 z-50 shrink-0">
-         <button onClick={() => { setIsPlaying(false); setCurrentView('hub'); }} className="p-2.5 bg-[#F9F6F0] border border-[#e0d7c6] rounded-xl text-slate-400 hover:text-[#B22222] shadow-sm transition-all active:scale-95">
-           <ArrowLeft size={20} />
-         </button>
-         
-         <div className="flex items-center gap-3 sm:gap-4 bg-[#1A1A1A] p-1.5 sm:p-2 rounded-full shadow-xl">
-            <button onClick={() => setCurrentIdx(prev => Math.max(0, prev - 1))} className="p-1.5 text-white/40 hover:text-white transition-colors">
-              <SkipBack size={20} fill="currentColor"/>
-            </button>
-            <button onClick={() => setIsPlaying(!isPlaying)} className="w-10 h-10 sm:w-13 sm:h-13 bg-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all">
-               {isPlaying ? <Pause size={24} className="text-[#1A1A1A]" fill="currentColor"/> : <Play size={24} className="text-[#1A1A1A] ml-0.5" fill="currentColor"/>}
-            </button>
-            <button onClick={() => setCurrentIdx(prev => Math.min(verses.length - 1, prev + 1))} className="p-1.5 text-white/40 hover:text-white transition-colors">
-              <SkipForward size={20} fill="currentColor"/>
-            </button>
-         </div>
-
-         <div className="flex gap-2">
-            <ReaderAction icon={<Type size={18}/>} active={showPinyin} onClick={() => setShowPinyin(!showPinyin)} />
-            <ReaderAction icon={<LayoutGrid size={18}/>} active={isVertical} onClick={() => setIsVertical(!isVertical)} />
-            <button className="p-2.5 sm:p-3 bg-[#B22222] text-white rounded-xl shadow-lg shadow-[#B22222]/10 active:scale-95">
-              <Menu size={18}/>
-            </button>
-         </div>
-      </header>
+      
 
       {/* 主阅读区 */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
@@ -391,7 +367,7 @@ const ThreeCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   );
 
   return (
-    <div className="fixed inset-0 z-[60] bg-[#FDFBF7] flex flex-col select-none overflow-hidden pb-[env(safe-area-inset-bottom)]">
+    <div className="w-full h-full relative  flex flex-col select-none overflow-hidden pb-[env(safe-area-inset-bottom)]     bg-white text-slate-900 bg-white text-slate-900">
       <div className="absolute inset-0 opacity-[0.06] pointer-events-none z-0 bg-[url('https://www.transparenttextures.com/patterns/rice-paper.png')]" />
       
       {isLoading ? (

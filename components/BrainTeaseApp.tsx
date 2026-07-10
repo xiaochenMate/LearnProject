@@ -73,7 +73,7 @@ const BrainTeaseApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 bg-[#020617] flex flex-col items-center justify-center font-sans">
+    <div className="w-full h-full relative  flex flex-col items-center justify-center font-sans     bg-white text-slate-900 bg-white text-slate-900">
         <div className="relative mb-6">
           <div className="w-20 h-20 bg-purple-500/20 rounded-full animate-ping opacity-20"></div>
           <Loader2 className="w-12 h-12 text-purple-500 animate-spin absolute inset-0 m-auto" />
@@ -86,7 +86,7 @@ const BrainTeaseApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   if (!currentTease) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#020617] flex flex-col font-sans overflow-hidden">
+    <div className="w-full h-full relative  flex flex-col font-sans overflow-hidden bg-white text-slate-900">
       {/* 赛博网格背景 */}
       <div className="absolute inset-0 opacity-10 pointer-events-none">
         <div className="absolute inset-0" style={{ 
@@ -96,25 +96,7 @@ const BrainTeaseApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       </div>
 
       {/* 顶部导航 - 移动端高度优化 */}
-      <header className="h-16 md:h-20 bg-slate-900/80 backdrop-blur-xl border-b border-purple-500/30 flex items-center justify-between px-4 md:px-8 z-20 shrink-0 pt-[env(safe-area-inset-top)]">
-        <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
-          <div className="w-10 h-10 md:w-12 md:h-12 bg-purple-600 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shrink-0">
-            <Brain className="text-white w-5 h-5 md:w-6 md:h-6 animate-pulse" />
-          </div>
-          <div className="truncate">
-            <h1 className="text-sm md:text-xl font-black tech-font text-white flex items-center gap-2 truncate">
-              NEURAL_DECODER <span className="hidden xs:inline-block text-[8px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full border border-purple-500/30">v4.5</span>
-            </h1>
-            <p className="text-[8px] text-slate-500 font-bold uppercase tracking-[0.2em] truncate">{dataSource === 'NEON' ? 'CLOUD' : 'CACHE'} / SYNC_STABLE</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 md:gap-6 shrink-0">
-          <button onClick={onClose} className="p-2 md:p-3 bg-slate-800 border border-slate-700 rounded-full transition-all text-slate-500 hover:text-red-500">
-            <X size={18}/>
-          </button>
-        </div>
-      </header>
+      
 
       <main className="flex-1 flex flex-col items-center justify-start md:justify-center p-4 md:p-12 relative z-10 overflow-y-auto no-scrollbar">
         <div className="w-full max-w-3xl flex flex-col gap-4 md:gap-8 py-4 md:py-0">

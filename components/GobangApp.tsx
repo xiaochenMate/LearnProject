@@ -170,26 +170,9 @@ const GobangApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-morandi-oatmeal dark:bg-dark-bg flex flex-col items-center overflow-hidden">
-      <header className="w-full flex items-center justify-between px-6 pt-12 pb-6 z-10 shrink-0 bg-morandi-oatmeal/80 dark:bg-dark-bg/80 backdrop-blur-md">
-        <button onClick={onClose} className="w-10 h-10 flex items-center justify-center bg-white dark:bg-dark-card rounded-full shadow-sm text-slate-400 transition-all hover:scale-105 active:scale-95">
-          <ChevronLeft size={24} />
-        </button>
-        <div className="flex flex-col items-center">
-          <h1 className="text-xl font-bold tracking-tight text-morandi-charcoal dark:text-slate-100 serif-font italic">博弈禅 · 五子棋</h1>
-          {gameState === 'PLAYING' && (
-            <span className="text-[8px] font-black uppercase bg-primary/10 text-primary px-3 py-0.5 rounded-full mt-1 tracking-widest border border-primary/20">
-              难度: {difficulty === 'EASY' ? '入门' : difficulty === 'MEDIUM' ? '中等' : '大师'}
-            </span>
-          )}
-        </div>
-        <button 
-          onClick={(e) => { e.stopPropagation(); setShowSettings(true); }} 
-          className="w-10 h-10 flex items-center justify-center bg-white dark:bg-dark-card rounded-full shadow-sm text-slate-300 transition-all hover:text-primary active:scale-90"
-        >
-          <Settings2 size={20} />
-        </button>
-      </header>
+    <div className="w-full h-full relative  dark: flex flex-col items-center overflow-hidden      ">
+      <button onClick={onClose} className="absolute top-6 left-6 z-50 flex items-center justify-center p-3 bg-white/5 border border-white/10 hover:bg-white/10 text-white/50 hover:text-white rounded-2xl transition-all"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg></button>
+      
 
       <main className="flex-1 w-full flex flex-col items-center justify-center p-6 relative overflow-y-auto no-scrollbar">
          {gameState === 'SELECTION' && (
@@ -236,7 +219,7 @@ const GobangApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <AnimatePresence>
         {showSettings && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowSettings(false)} className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[100]" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowSettings(false)} className="w-full h-full relative lack/30 backdrop-blur-sm z-[100] " />
             <SettingsDrawer 
               boardTheme={boardTheme} setBoardTheme={setBoardTheme}
               showCoords={showCoords} setShowCoords={setShowCoords}
@@ -348,7 +331,7 @@ const PlayingView = memo(({
 const SettlementView = memo(({ winner, difficulty, onRestart, onHome }: any) => (
   <motion.div 
     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-    className="fixed inset-0 z-[120] bg-morandi-charcoal/40 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-6"
+    className="w-full h-full relative bg-morandi-charcoal/40 dark:lack/80 backdrop-blur-md flex items-center justify-center p-6 "
   >
     <motion.div 
       initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}

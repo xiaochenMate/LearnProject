@@ -30,7 +30,7 @@ const BGM_URL = 'https://assets.mixkit.co/active_storage/sfx/138/138-preview.mp3
 // Ambient Particles Component
 const ZenParticles = memo(() => {
     return (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-[1]">
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-[1]     bg-transparent text-inherit">
             {Array.from({length: 40}).map((_, i) => (
                 <div
                     key={i}
@@ -163,26 +163,58 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     return () => clearInterval(interval);
   }, [gameState]);
 
-  // AI Turn Logic
-  useEffect(() => {
-    if (gameState === 'PLAYING' && isPvE && currentPlayer === aiColor) {
-      setIsAiThinking(true);
-      
-      // Dynamic thinking time based on board state (randomized 600ms - 1500ms)
-      const thinkingTime = 600 + Math.random() * 900;
-      
-      const timerId = setTimeout(() => {
-        const move = engineRef.current.getBestMove(board, aiColor, history[history.length - 1]);
-        if (move) {
-          handlePlaceStone(move.r, move.c, true);
+  const triggerAiMove = useCallback((currentBoard: BoardState, currentHistory: string[], currentAiColor: StoneColor) => {
+    setIsAiThinking(true);
+    const thinkingTime = 600 + Math.random() * 900;
+    
+    setTimeout(() => {
+      const move = engineRef.current.getBestMove(currentBoard, currentAiColor, currentHistory[currentHistory.length - 1]);
+      if (move) {
+        // Apply AI move directly instead of using handlePlaceStone to avoid stale closures
+        const result = engineRef.current.validateMove(currentBoard, move.r, move.c, currentAiColor, currentHistory[currentHistory.length - 1]);
+        if (result) {
+            let isCapture = false;
+            const nextBoard = currentBoard.map(row => [...row]);
+            nextBoard[move.r][move.c] = currentAiColor;
+            
+            if (result.captured.length > 0) {
+                isCapture = true;
+                for (const stone of result.captured) {
+                    nextBoard[stone.r][stone.c] = 0;
+                }
+                setCaptures(prev => ({
+                    ...prev,
+                    [currentAiColor === 1 ? 'b' : 'w']: prev[currentAiColor === 1 ? 'b' : 'w'] + result.captured.length
+                }));
+                if (result.captured.length >= 3) {
+                    setCameraShake(true);
+                    setTimeout(() => setCameraShake(false), 400);
+                    showToast(`${currentAiColor === 1 ? '黑方' : '白方'} 提子 ${result.captured.length} 颗!`);
+                }
+            }
+            
+            playSound(isCapture ? 'capture' : 'stone');
+            const rippleId = Date.now();
+            setRipples(prev => [...prev, {id: rippleId, r: move.r, c: move.c, color: currentAiColor}]);
+            setTimeout(() => {
+                setRipples(prev => prev.filter(rip => rip.id !== rippleId));
+            }, 800);
+            
+            setHistory(prev => [...prev, JSON.stringify(currentBoard)]);
+            setBoard(nextBoard);
+            setLastMove({ r: move.r, c: move.c });
+            setCurrentPlayer(currentAiColor === 1 ? 2 : 1);
+            setPassCount(0);
         } else {
-          handlePass(true);
+            // Fallback pass if something goes wrong
+            handlePassAction(currentAiColor);
         }
-        setIsAiThinking(false);
-      }, thinkingTime);
-      return () => clearTimeout(timerId);
-    }
-  }, [gameState, currentPlayer, isPvE, aiColor, board, history]);
+      } else {
+        handlePassAction(currentAiColor);
+      }
+      setIsAiThinking(false);
+    }, thinkingTime);
+  }, []);
 
   const formatTime = (s: number) => {
     const min = Math.floor(s / 60);
@@ -203,10 +235,13 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const startNewGame = (size: BoardSize) => {
     setBoardSize(size);
     engineRef.current = new GoEngine(size);
-    setBoard(GoEngine.createBoard(size));
+    const newBoard = GoEngine.createBoard(size);
+    setBoard(newBoard);
     
+    let newAiColor: StoneColor = 2;
     if (isPvE) {
-        setAiColor(playerPreferredColor === 1 ? 2 : 1);
+        newAiColor = playerPreferredColor === 1 ? 2 : 1;
+        setAiColor(newAiColor);
     }
     
     setHistory([]);
@@ -219,6 +254,10 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setIsAiThinking(false);
     setToastMessage(null);
     setGameState('PLAYING');
+
+    if (isPvE && newAiColor === 1) {
+        triggerAiMove(newBoard, [], newAiColor);
+    }
   };
 
   const handlePlaceStone = (r: number, c: number, isAiMove = false) => {
@@ -269,25 +308,41 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setHistory(prev => [...prev, JSON.stringify(board)]);
     setBoard(nextBoard);
     setLastMove({ r, c });
-    setCurrentPlayer(currentPlayer === 1 ? 2 : 1);
+    const nextPlayer = currentPlayer === 1 ? 2 : 1;
+    setCurrentPlayer(nextPlayer);
     setPassCount(0);
+    
+    if (isPvE && nextPlayer === aiColor) {
+        triggerAiMove(nextBoard, [...history, JSON.stringify(board)], aiColor);
+    }
+  };
+
+  const handlePassAction = (playerColor: StoneColor) => {
+    const colorName = playerColor === 1 ? '黑方' : '白方';
+    showToast(`${colorName} 停着 (Pass)`);
+    
+    setPassCount(prev => {
+        const newPassCount = prev + 1;
+        if (newPassCount >= 2) {
+          showToast('双方停着，对局结束');
+          setTimeout(finishGame, 1500);
+        }
+        return newPassCount;
+    });
+    const nextPlayer = playerColor === 1 ? 2 : 1;
+    setCurrentPlayer(nextPlayer);
+    setLastMove(null);
+    
+    return nextPlayer;
   };
 
   const handlePass = (isAiMove = false) => {
     if (gameState !== 'PLAYING') return;
     if (isPvE && !isAiMove && currentPlayer === aiColor) return;
     
-    const colorName = currentPlayer === 1 ? '黑方' : '白方';
-    showToast(`${colorName} 停着 (Pass)`);
-    
-    const newPassCount = passCount + 1;
-    setPassCount(newPassCount);
-    setCurrentPlayer(currentPlayer === 1 ? 2 : 1);
-    setLastMove(null);
-    
-    if (newPassCount >= 2) {
-      showToast('双方停着，对局结束');
-      setTimeout(finishGame, 1500);
+    const nextPlayer = handlePassAction(currentPlayer);
+    if (isPvE && !isAiMove && nextPlayer === aiColor) {
+        triggerAiMove(board, history, aiColor);
     }
   };
 
@@ -299,11 +354,11 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   const handleResign = () => {
-    if (confirm('确认认输吗？诚实即是围棋之道。')) {
-      const winner = currentPlayer === 1 ? 'White' : 'Black';
-      alert(`${winner === 'White' ? '白方' : '黑方'}不战而胜。`);
-      setGameState('SELECTION');
-    }
+    const winner = currentPlayer === 1 ? 'White' : 'Black';
+    setToastMessage(`${winner === 'White' ? '白方' : '黑方'}不战而胜。`);
+    setTimeout(() => {
+        setGameState('SELECTION');
+    }, 2000);
   };
 
   const undoMove = () => {
@@ -319,44 +374,10 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-[#0A0C10] flex flex-col items-center overflow-hidden font-sans">
+    <div className="w-full h-full relative bg-zinc-950 text-white flex flex-col items-center overflow-hidden font-sans">
       <ZenParticles />
       {/* Header - Recipe 3 Hardware/Specialist Tool style labels */}
-      <header className="w-full flex items-center justify-between px-6 pt-10 pb-6 z-50 shrink-0 relative">
-        <button 
-          onClick={onClose} 
-          className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-400 rounded-full transition-all active:scale-95 border border-white/10"
-        >
-          <ChevronLeft size={24} />
-        </button>
-        
-        <div className="flex flex-col items-center">
-            <div className="flex items-center gap-2 mb-1">
-                <BookOpen size={14} className="text-amber-500/60" />
-                <h1 className="text-xl font-bold tracking-[0.2em] text-white serif-font italic">棋语 · ECHOES</h1>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-amber-500/40 bg-amber-500/5 px-3 py-0.5 rounded-full border border-amber-500/10 backdrop-blur-sm">
-                    Board: {boardSize}x{boardSize}
-                </span>
-            </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-            <button 
-              className={`w-10 h-10 flex items-center justify-center rounded-full border transition-all ${musicEnabled ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'bg-white/5 text-white/40 border-white/10 hover:text-white'}`}
-              onClick={() => setMusicEnabled(!musicEnabled)}
-            >
-              <Music size={18} />
-            </button>
-            <button 
-              className={`w-10 h-10 flex items-center justify-center rounded-full border transition-all ${sfxEnabled ? 'bg-amber-500/20 text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'bg-white/5 text-white/40 border-white/10 hover:text-white'}`}
-              onClick={() => setSfxEnabled(!sfxEnabled)}
-            >
-              {sfxEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-            </button>
-        </div>
-      </header>
+      
 
       <main className="flex-1 w-full flex flex-col items-center justify-center p-6 relative z-10">
          <AnimatePresence mode="wait">
@@ -369,7 +390,10 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 className="w-full max-w-sm"
               >
                   <div className="text-center mb-8">
-                      <h2 className="text-3xl font-light text-white mb-3 serif-font italic">挑选棋局</h2>
+                      <button onClick={onClose} className="absolute top-6 left-6 z-50 flex items-center justify-center p-3 bg-white/5 border border-white/10 hover:bg-white/10 text-white/50 hover:text-white rounded-2xl transition-all group">
+        <ChevronLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
+      </button>
+      <h2 className="text-3xl font-light text-white mb-3 serif-font italic">挑选棋局</h2>
                       <p className="text-white/30 text-xs font-black uppercase tracking-widest mb-6">Select Match Type</p>
                       
                       <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 mb-6">
@@ -596,6 +620,15 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                                     desc="Undo (1)" 
                                     disabled={history.length === 0}
                                     onClick={undoMove}
+                                    color="white"
+                                />
+                                <GameAction 
+                                    icon={<X size={18}/>} 
+                                    title="退出" 
+                                    desc="Leave Match" 
+                                    onClick={() => {
+                                        setGameState('SELECTION');
+                                    }}
                                     color="white"
                                 />
                                 <GameAction 

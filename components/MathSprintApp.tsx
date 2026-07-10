@@ -54,14 +54,8 @@ const MathSprintApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0F172A] flex flex-col font-sans overflow-hidden">
-      <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-8 text-white">
-        <div className="flex items-center gap-4">
-          <Zap className="text-yellow-400 w-6 h-6" />
-          <h1 className="text-xl font-black tech-font uppercase italic tracking-tighter">Math_Sprint_x100</h1>
-        </div>
-        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={28} /></button>
-      </header>
+    <div className="w-full h-full relative  flex flex-col font-sans overflow-hidden      ">
+      
 
       <main className="flex-1 flex flex-col items-center justify-center p-6">
         {gameState === 'idle' && (

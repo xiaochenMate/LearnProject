@@ -163,8 +163,10 @@ export class GoEngine {
           // If an empty area is surrounded by only one color, it's that color's territory
           if (colorsSeen.size === 1) {
             const owner = colorsSeen.values().next().value;
-            for (const p of area) {
-              territory[p.r][p.c] = owner + 10; // Use 11 for Black territory, 12 for White
+            if (owner !== undefined) {
+              for (const p of area) {
+                territory[p.r][p.c] = owner + 10; // Use 11 for Black territory, 12 for White
+              }
             }
           }
         }

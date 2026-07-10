@@ -8,15 +8,26 @@ interface TypographyProps extends React.HTMLAttributes<HTMLElement> {
 }
 
 const Typography = React.forwardRef<HTMLElement, TypographyProps>(
-  ({ className, variant = 'body', as: Component = 'p', children, ...props }, ref) => {
+  ({ className, variant = 'body', as, children, ...props }, ref) => {
+    
+    // Determine default element if 'as' is not provided
+    let Component: React.ElementType = as || 'p';
+    if (!as) {
+      if (variant === 'h1') Component = 'h1';
+      else if (variant === 'h2') Component = 'h2';
+      else if (variant === 'h3') Component = 'h3';
+      else if (variant === 'h4') Component = 'h4';
+      else if (variant === 'caption' || variant === 'label') Component = 'span';
+    }
+
     const variants = {
-      h1: 'text-4xl md:text-6xl font-black serif-font italic tracking-tighter',
-      h2: 'text-2xl md:text-4xl font-black serif-font italic tracking-tight',
-      h3: 'text-xl md:text-2xl font-black serif-font italic',
-      h4: 'text-lg font-black serif-font italic',
-      body: 'text-sm leading-relaxed',
-      caption: 'text-[11px] font-black uppercase tracking-[0.3em] italic',
-      label: 'text-[10px] font-black uppercase tracking-widest',
+      h1: 'text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 dark:text-white',
+      h2: 'text-3xl md:text-4xl font-semibold tracking-tight text-gray-900 dark:text-white',
+      h3: 'text-2xl font-semibold tracking-tight text-gray-900 dark:text-white',
+      h4: 'text-xl font-semibold tracking-tight text-gray-900 dark:text-white',
+      body: 'text-base text-gray-600 dark:text-gray-300 leading-relaxed',
+      caption: 'text-sm text-gray-500 dark:text-gray-400',
+      label: 'text-xs font-medium uppercase tracking-wider text-gray-500',
     };
 
     return (

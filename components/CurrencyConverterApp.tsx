@@ -109,24 +109,9 @@ const CurrencyConverterApp: React.FC<{ onClose: () => void }> = ({ onClose }) =>
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-morandi-oatmeal dark:bg-dark-bg flex flex-col font-sans overflow-hidden">
+    <div className="w-full h-full relative  dark: flex flex-col font-sans overflow-hidden      ">
       {/* Header */}
-      <header className="h-16 md:h-20 bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl border-b border-morandi-border dark:border-white/5 flex items-center justify-between px-6 shrink-0 z-30">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-morandi-blue text-white rounded-2xl flex items-center justify-center shadow-lg">
-             <RefreshCw className={`w-5 h-5 ${isUpdating ? 'animate-spin' : ''}`} />
-          </div>
-          <div>
-            <h1 className="text-sm md:text-lg font-black text-morandi-charcoal dark:text-slate-100 serif-font italic tracking-tight">汇率管家</h1>
-            <p className="text-[8px] md:text-[10px] text-morandi-taupe dark:text-slate-500 font-bold uppercase tracking-widest flex items-center gap-1">
-              <Clock size={10} /> 最近更新: {lastUpdate}
-            </p>
-          </div>
-        </div>
-        <button onClick={onClose} className="p-2.5 bg-slate-100 dark:bg-white/5 hover:bg-rose-500 hover:text-white rounded-full transition-all text-slate-400">
-          <X size={20}/>
-        </button>
-      </header>
+      
 
       <main className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 max-w-2xl mx-auto w-full relative">
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#4b4b4b_1px,transparent_1px)] [background-size:24px_24px]"></div>
@@ -222,13 +207,8 @@ const CurrencyConverterApp: React.FC<{ onClose: () => void }> = ({ onClose }) =>
       {/* 币种选择器浮层 */}
       <AnimatePresence>
         {selectorTarget && (
-          <div className="fixed inset-0 z-[60] flex flex-col bg-morandi-oatmeal dark:bg-dark-bg animate-in fade-in duration-300">
-             <header className="h-16 md:h-20 px-6 flex items-center justify-between border-b border-morandi-border dark:border-white/5 shrink-0 bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl">
-                <h3 className="text-lg font-bold text-morandi-charcoal dark:text-white serif-font">选择货币</h3>
-                <button onClick={() => { setSelectorTarget(null); setSearchQuery(''); }} className="p-2.5 bg-slate-100 dark:bg-white/5 rounded-full text-slate-400">
-                  <X size={20}/>
-                </button>
-             </header>
+          <div className="w-full h-full relative flex flex-col bg-morandi-oatmeal dark:rk-bg animate-in fade-in duration-300 ">
+             
              
              <div className="p-6 shrink-0">
                 <div className="relative">

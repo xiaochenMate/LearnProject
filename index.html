@@ -4,9 +4,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, viewport-fit=cover" />
-    <title>知识通 - 启蒙教育门户</title>
+    <title>OptPad</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;700;900&family=ZCOOL+KuaiLe&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
@@ -16,37 +16,12 @@
             theme: {
                 extend: {
                     colors: {
-                        'brand-orange': '#F28C33',
-                        'brand-orange-light': '#FFF5EB',
-                        'morandi-oatmeal': '#F7F6F2',
-                        'morandi-taupe': '#94A3B8',
-                        'morandi-charcoal': '#4B4B4B',
-                        'morandi-border': '#EAE9E4',
-                        'morandi-blue': '#8BA696',
-                        'morandi-sage': '#A69B91',
-                        'dark-bg': '#0F172A',
-                        'dark-card': '#1E293B',
-                        'dark-border': 'rgba(255,255,255,0.05)',
+                        'brand-accent': '#171717',
+                        'dark-accent': '#EDEDED',
                     },
                     fontFamily: {
-                        sans: ["'Noto Sans SC'", "sans-serif"],
-                        serif: ["'Noto Serif SC'", "serif"],
-                        kids: ["'ZCOOL KuaiLe'", "cursive"],
+                        sans: ['"Inter"', 'system-ui', 'sans-serif'],
                     },
-                    borderRadius: {
-                      'ios': '2rem',
-                      'ios-lg': '2.5rem',
-                    },
-                    animation: {
-                      'spin-slow': 'spin 8s linear infinite',
-                      'float': 'float 6s ease-in-out infinite',
-                    },
-                    keyframes: {
-                      float: {
-                        '0%, 100%': { transform: 'translateY(0)' },
-                        '50%': { transform: 'translateY(-20px)' },
-                      }
-                    }
                 },
             },
         };
@@ -54,25 +29,14 @@
     <style type="text/tailwindcss">
       @layer base {
         body {
-          @apply bg-morandi-oatmeal text-morandi-charcoal antialiased transition-colors duration-300;
+          @apply bg-[#FAFAFA] text-gray-900 antialiased transition-colors duration-300;
         }
         .dark body {
-          @apply bg-dark-bg text-slate-200;
+          @apply bg-[#000000] text-gray-100;
         }
-        .serif-font {
-          font-family: 'Noto Serif SC', serif;
-        }
-      }
-      .soft-shadow {
-        box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.04);
       }
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      
-      /* Custom Glassmorphism */
-      .glass {
-        @apply bg-white/40 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/5;
-      }
     </style>
   <script type="importmap">
 {
@@ -94,7 +58,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
-    <!-- 关键：在此处引入微信 JS-SDK -->
-    <script type="text/javascript" src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
   </body>
 </html>

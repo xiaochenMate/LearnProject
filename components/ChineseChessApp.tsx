@@ -63,50 +63,63 @@ const ChineseChessApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setShowSettings(false);
   }, [playerColor]);
 
-  useEffect(() => {
-    if (mode === 'PvE' && turn !== playerColor && !gameOver && !isAiThinking) {
-      setIsAiThinking(true);
-      const timer = setTimeout(() => {
+  const executeMove = useCallback((from: number, to: number, currentBoard = board, currentTurn = turn) => {
+    const piece = currentBoard[from];
+    if (!piece) return;
+    if (currentBoard[to]) playSound('capture'); else playSound('move');
+    
+    const newBoard = [...currentBoard];
+    newBoard[to] = newBoard[from];
+    newBoard[from] = null;
+    
+    if (mode !== 'Sandbox' && isFacingKing(newBoard)) {
+      alert("注意：不能形成将帅照面！");
+      return;
+    }
+    
+    setHistoryStates(prev => [...prev, { board: [...currentBoard], turn: currentTurn, lastMove }]);
+    setBoard(newBoard);
+    setLastMove([from, to]);
+    
+    const nextTurn = currentTurn === 'red' ? 'black' : 'red';
+    setTurn(nextTurn);
+    setSelected(null);
+    setHint(null);
+    
+    const hasRedKing = newBoard.some(p => p?.type === 'king' && p.color === 'red');
+    const hasBlackKing = newBoard.some(p => p?.type === 'king' && p.color === 'black');
+    if (!hasRedKing) setGameOver('black');
+    if (!hasBlackKing) setGameOver('red');
+    
+    if (!hasRedKing || !hasBlackKing) return;
+    
+    if (mode === 'PvE' && nextTurn !== playerColor) {
+       triggerAiMove(newBoard, nextTurn);
+    }
+  }, [board, turn, mode, playSound, lastMove, playerColor]);
+
+  const triggerAiMove = useCallback((currentBoard: ChessBoard, currentTurn: ChessColor) => {
+    setIsAiThinking(true);
+    setTimeout(() => {
         try {
           const depth = difficulty === '入门' ? 1 : difficulty === '专业' ? 3 : 4;
-          const [from, to] = getBestMove(board, turn, depth);
-          if (from !== -1) executeMove(from, to);
+          const [from, to] = getBestMove(currentBoard, currentTurn, depth);
+          if (from !== -1) {
+             executeMove(from, to, currentBoard, currentTurn);
+          }
         } catch (e) {
           console.error("AI 决策中断:", e);
         } finally {
           setIsAiThinking(false);
         }
-      }, 600);
-      return () => clearTimeout(timer);
+    }, 600);
+  }, [difficulty, executeMove]);
+
+  useEffect(() => {
+    if (mode === 'PvE' && turn !== playerColor && !gameOver && historyStates.length === 0 && !isAiThinking) {
+        triggerAiMove(board, turn);
     }
-  }, [turn, mode, board, gameOver, difficulty, playerColor]);
-
-  const executeMove = useCallback((from: number, to: number) => {
-    const piece = board[from];
-    if (!piece) return;
-    if (board[to]) playSound('capture'); else playSound('move');
-
-    const newBoard = [...board];
-    newBoard[to] = newBoard[from];
-    newBoard[from] = null;
-
-    if (mode !== 'Sandbox' && isFacingKing(newBoard)) {
-      alert("注意：不能形成将帅照面！");
-      return;
-    }
-
-    setHistoryStates(prev => [...prev, { board: [...board], turn, lastMove }]);
-    setBoard(newBoard);
-    setLastMove([from, to]);
-    setTurn(turn === 'red' ? 'black' : 'red');
-    setSelected(null);
-    setHint(null);
-
-    const hasRedKing = newBoard.some(p => p?.type === 'king' && p.color === 'red');
-    const hasBlackKing = newBoard.some(p => p?.type === 'king' && p.color === 'black');
-    if (!hasRedKing) setGameOver('black');
-    if (!hasBlackKing) setGameOver('red');
-  }, [board, turn, mode, playSound, lastMove]);
+  }, [mode, turn, playerColor, gameOver, historyStates.length, isAiThinking, board, triggerAiMove]);
 
   const handleCellClick = (idx: number) => {
     if (gameOver || isAiThinking) return;
@@ -156,48 +169,13 @@ const ChineseChessApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-[#1a1c18] flex flex-col font-sans overflow-hidden select-none">
+    <div className="w-full h-full relative  flex flex-col font-sans overflow-hidden select-none      ">
+      <button onClick={onClose} className="absolute top-6 left-6 z-50 flex items-center justify-center p-3 bg-white/5 border border-white/10 hover:bg-white/10 text-slate-800 hover:text-slate-900 rounded-2xl transition-all"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
       <div className="absolute inset-0 z-0 opacity-15">
         <img src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=1600" className="w-full h-full object-cover blur-[4px]" alt="BG" />
       </div>
 
-      <header className="relative z-20 flex justify-between items-center px-6 pt-10 sm:pt-12 shrink-0">
-        <div className={`flex flex-col gap-0.5 transition-all ${turn === 'black' ? 'opacity-100 scale-105' : 'opacity-20 scale-90'}`}>
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${playerColor === 'black' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></div>
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">黑方</span>
-          </div>
-          <span className="text-sm sm:text-lg font-black text-white italic">
-            {mode === 'PvE' ? (playerColor === 'black' ? '我方' : 'AI 大师') : '乙落子'}
-          </span>
-        </div>
-
-        <div className="flex flex-col items-center gap-1.5">
-          <div className="bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
-            <Swords size={12} className="text-emerald-500" />
-            <span className="text-white/60 text-[8px] sm:text-[9px] font-black tracking-[0.2em] uppercase">
-              {mode === 'Sandbox' ? '沙盘模拟' : '对弈中'}
-            </span>
-          </div>
-          <button onClick={() => setSoundEnabled(!soundEnabled)} className="text-white/20 hover:text-white transition-colors">
-             {soundEnabled ? <Volume2 size={14}/> : <VolumeX size={14}/>}
-          </button>
-        </div>
-
-        <div className={`flex flex-col items-end gap-0.5 transition-all ${turn === 'red' ? 'opacity-100 scale-105' : 'opacity-20 scale-90'}`}>
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">红方</span>
-            <div className={`w-2 h-2 rounded-full ${playerColor === 'red' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500 shadow-[0_0_8px_#f43f5e]'}`}></div>
-          </div>
-          <span className="text-sm sm:text-lg font-black text-white italic">
-            {mode === 'PvE' ? (playerColor === 'red' ? '我方' : 'AI 大师') : '甲落子'}
-          </span>
-        </div>
-
-        <button onClick={onClose} className="fixed top-4 right-4 p-2.5 bg-black/40 hover:bg-rose-500/30 text-white/50 border border-white/10 rounded-full transition-all z-[70] backdrop-blur-md">
-          <Power size={18} />
-        </button>
-      </header>
+      
 
       <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 z-10 min-h-0">
         <div className="relative w-full max-w-[440px] max-h-[min(65vh,520px)] aspect-[9/10] bg-[#d6ccbc] rounded-sm shadow-[0_30px_80px_rgba(0,0,0,0.8)] border-[6px] sm:border-[10px] border-[#917b5e]">

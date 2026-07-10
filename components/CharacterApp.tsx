@@ -165,35 +165,11 @@ const CharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }, [searchQuery]);
 
   return (
-    <div className="fixed inset-0 z-[60] bg-[#F8FAFC] flex flex-col h-dvh overflow-hidden select-none font-sans">
+    <div className="w-full h-full relative  flex flex-col h-dvh overflow-hidden select-none font-sans      ">
+      <button onClick={onClose} className="absolute top-6 left-6 z-50 flex items-center justify-center p-3 bg-black/5 hover:bg-black/10 text-slate-500 hover:text-slate-900 rounded-2xl transition-all"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
       
       {/* 顶部导航 - 适配移动端高度 */}
-      <header className="h-14 sm:h-16 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0 shadow-sm z-50 pt-[env(safe-area-inset-top)]">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="p-1.5 sm:p-2 bg-emerald-600 rounded-lg sm:rounded-xl shadow-lg shadow-emerald-100 flex items-center justify-center shrink-0">
-            <Languages className="text-white w-4 h-4 sm:w-5 sm:h-5" />
-          </div>
-          <div className="overflow-hidden">
-            <h1 className="text-xs sm:text-base font-black text-slate-800 truncate">识字通 <span className="text-[9px] sm:text-[10px] text-emerald-500 ml-1">v3.5 PRO</span></h1>
-            <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
-               <div className="h-1 w-12 sm:w-24 bg-slate-100 rounded-full overflow-hidden shrink-0">
-                   <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${Math.min(100, (learnedCount/200)*100)}%` }} />
-               </div>
-               <span className="text-[8px] sm:text-[9px] font-black text-slate-400">{(learnedCount/2).toFixed(0)}%</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-4">
-           <div className="hidden xs:flex bg-emerald-50 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full border border-emerald-100 items-center gap-1.5">
-             <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600" />
-             <span className="text-[10px] sm:text-xs font-black text-emerald-800">{learnedCount} 字</span>
-           </div>
-           <button onClick={onClose} className="p-1.5 sm:p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
-             <X size={20} />
-           </button>
-        </div>
-      </header>
+      
 
       {/* 主体内容区 - 弹性布局自适应垂直空间 */}
       <main className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-[#F8FAFC]">
@@ -291,7 +267,7 @@ const CharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
       {/* 成功反馈浮层 - 响应式字号 */}
       {isSuccess && selection && (
-        <div className="fixed inset-0 z-[100] bg-white/95 backdrop-blur-2xl flex items-center justify-center p-4 sm:p-6 animate-in fade-in zoom-in duration-300">
+        <div className="w-full h-full relative bg-white/95 backdrop-blur-2xl flex items-center justify-center p-4 sm:p-6 animate-in fade-in zoom-in duration-300 ">
            <div className="w-full max-w-md text-center flex flex-col items-center">
               <div className="relative mb-4 sm:mb-8">
                  <div className="absolute -inset-10 bg-emerald-400/10 rounded-full blur-3xl animate-pulse"></div>
@@ -326,7 +302,7 @@ const CharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
       {/* 字库百科全屏浮层 */}
       {showLibrary && (
-        <div className="fixed inset-0 z-[110] bg-[#F8FAFC] flex flex-col animate-in slide-in-from-right duration-500 overflow-hidden pb-[env(safe-area-inset-bottom)]">
+        <div className="w-full h-full relative  flex flex-col animate-in slide-in-from-right duration-500 overflow-hidden pb-[env(safe-area-inset-bottom)] ">
            <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col p-4 sm:p-10">
              <div className="flex justify-between items-center mb-6 sm:mb-8 shrink-0 pt-[env(safe-area-inset-top)]">
                 <div className="flex items-center gap-3 sm:gap-4">

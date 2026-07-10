@@ -8,14 +8,14 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, hover = true, glass = false, children, ...props }, ref) => {
+  ({ className, hover = false, glass = false, children, ...props }, ref) => {
     return (
       <div
         ref={ref}
         className={cn(
-          'rounded-[2.5rem] border border-morandi-border dark:border-white/5 bg-white dark:bg-dark-card p-6 transition-all duration-300',
-          hover && 'hover:scale-[1.02] hover:shadow-xl',
-          glass && 'bg-white/40 dark:bg-dark-card/40 backdrop-blur-xl',
+          'rounded-2xl border border-black/5 dark:border-white/10 bg-white dark:bg-[#111] transition-all duration-300',
+          hover && 'hover:border-black/10 dark:hover:border-white/20',
+          glass && 'bg-white/40 dark:bg-black/40 backdrop-blur-xl',
           className
         )}
         {...props}

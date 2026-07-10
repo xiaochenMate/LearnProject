@@ -2,6 +2,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { EDUCATION_ITEMS, ENTERTAINMENT_ITEMS, UTILITIES_ITEMS } from './constants';
 import { AppItem } from './types';
+import { useTranslation } from './i18n';
 import AppCard from './components/AppCard';
 import Modal from './components/Modal';
 import KnowledgeBanner from './components/KnowledgeBanner';
@@ -11,7 +12,7 @@ import Card from './components/ui/Card';
 import Typography from './components/ui/Typography';
 import { AnimatePresence, motion as motionBase } from 'framer-motion';
 const motion = motionBase as any;
-import { Search, ChevronRight, Book, LayoutGrid, Compass, Bookmark, Settings, Moon, Sun, Sparkles, Crown, Zap, Loader2 } from 'lucide-react';
+import { Search, Compass, Bookmark, Settings, Moon, Sun, Loader2, Sparkles, LayoutGrid, Box } from 'lucide-react';
 
 // Resilient Lazy Loading for chunk errors
 const lazyWithRetry = (componentImport: () => Promise<any>) =>
@@ -23,11 +24,18 @@ const lazyWithRetry = (componentImport: () => Promise<any>) =>
     try {
       const component = await componentImport();
       sessionStorage.setItem('page-has-been-force-refreshed', 'false');
+      
+      if (!component || !component.default) {
+         console.error("Component failed to load or has no default export", component);
+         throw new Error("Module has no default export");
+      }
+      
       return component;
     } catch (error) {
       if (!pageHasAlreadyBeenForceRefreshed) {
         sessionStorage.setItem('page-has-been-force-refreshed', 'true');
-        return window.location.reload();
+        window.location.reload();
+        return new Promise(() => {}); // Wait for reload
       }
       throw error;
     }
@@ -68,16 +76,10 @@ export interface UserInfo {
 }
 
 const LoadingOverlay = () => (
-  <div className="fixed inset-0 z-[100] bg-morandi-oatmeal/80 dark:bg-dark-bg/80 backdrop-blur-md flex flex-col items-center justify-center">
+  <div className="fixed inset-0 z-[100] bg-white/80 dark:bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center">
     <div className="relative">
-      <div className="w-24 h-24 border-4 border-brand-orange/20 border-t-brand-orange rounded-full animate-spin"></div>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <Sparkles className="text-brand-orange animate-pulse" size={32} />
-      </div>
+      <Loader2 className="w-10 h-10 text-brand-accent animate-spin" />
     </div>
-    <p className="mt-8 text-sm font-black text-morandi-charcoal dark:text-white serif-font italic tracking-widest animate-pulse">
-      INITIALIZING_MODULE...
-    </p>
   </div>
 );
 
@@ -86,35 +88,22 @@ const NavBtn: React.FC<{
   label: string; 
   active: boolean; 
   onClick: () => void;
-  tooltip?: string;
-}> = ({ icon, label, active, onClick, tooltip }) => (
+}> = ({ icon, label, active, onClick }) => (
   <button 
     onClick={onClick}
-    className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 group relative ${
+    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group relative ${
       active 
-        ? 'bg-brand-orange text-white shadow-lg shadow-brand-orange/20' 
-        : 'text-morandi-taupe hover:text-brand-orange hover:bg-white/50 dark:hover:bg-white/5'
+        ? 'bg-black/5 dark:bg-white/10 text-black dark:text-white font-medium' 
+        : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
     }`}
   >
-    <span className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`}>
+    <span className={`transition-transform duration-200 ${active ? 'scale-105' : 'group-hover:scale-105'}`}>
       {icon}
     </span>
-    <span className="text-xs font-black uppercase tracking-widest">{label}</span>
-    {active && (
-      <motion.div 
-        layoutId="nav-active"
-        className="absolute right-4 w-1.5 h-1.5 bg-white rounded-full"
-      />
-    )}
-    {tooltip && !active && (
-      <div className="absolute left-full ml-4 px-3 py-1 bg-morandi-charcoal text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-        {tooltip}
-      </div>
-    )}
+    <span className="text-sm">{label}</span>
   </button>
 );
 
-// Utility for safe storage
 const safeStorage = {
   get: (key: string) => {
     try {
@@ -133,11 +122,11 @@ const safeStorage = {
 };
 
 const App: React.FC = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>('HOME');
   const [selectedItem, setSelectedItem] = useState<AppItem | null>(null);
   const [runningAppId, setRunningAppId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string>('ALL');
   
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [historyIds, setHistoryIds] = useState<string[]>([]);
@@ -175,13 +164,9 @@ const App: React.FC = () => {
 
   const filteredModules = allModules.filter(item => {
     const query = searchQuery.toLowerCase();
-    const matchesSearch = 
-      item.title.toLowerCase().includes(query) || 
+    return item.title.toLowerCase().includes(query) || 
       item.description.toLowerCase().includes(query) ||
       item.tags.some(tag => tag.toLowerCase().includes(query));
-    
-    const matchesCategory = activeCategory === 'ALL' || item.category.toUpperCase() === activeCategory;
-    return matchesSearch && matchesCategory;
   });
 
   const renderApp = () => {
@@ -219,185 +204,186 @@ const App: React.FC = () => {
     );
   };
 
-  if (runningAppId) return renderApp();
+  if (runningAppId) {
+    const item = allModules.find(m => m.id === runningAppId);
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-[#FAFAFA] dark:bg-[#000000] text-gray-900 dark:text-gray-100 animate-in fade-in duration-300">
+        <header className="h-14 md:h-16 px-4 md:px-6 flex items-center justify-between border-b border-black/5 dark:border-white/10 shrink-0 bg-white/80 dark:bg-[#111]/80 backdrop-blur-xl z-20">
+          <div className="flex items-center gap-3">
+            <h1 className="text-base md:text-lg font-semibold tracking-tight">{item?.name}</h1>
+          </div>
+          <button onClick={() => setRunningAppId(null)} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400 transition-colors">
+             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </header>
+        <main className="flex-1 relative overflow-hidden flex flex-col">
+          {renderApp()}
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen bg-morandi-oatmeal dark:bg-dark-bg text-morandi-charcoal transition-colors duration-300 overflow-hidden">
+    <div className="flex h-screen bg-[#FAFAFA] dark:bg-[#000000] text-[#171717] dark:text-[#EDEDED] transition-colors duration-300 overflow-hidden font-sans selection:bg-brand-accent selection:text-white">
       
-      {/* 侧边栏 */}
-      <aside className="w-80 bg-white/40 dark:bg-dark-card/40 backdrop-blur-xl border-r border-morandi-border dark:border-white/5 flex flex-col shrink-0 p-10 hidden md:flex">
-        <div className="flex flex-col gap-4 mb-12 px-2">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-brand-orange rounded-xl flex items-center justify-center text-white shadow-lg">
-               <Book size={24} />
+      {/* Sidebar - Desktop */}
+      <aside className="w-64 bg-white/50 dark:bg-[#111]/50 backdrop-blur-2xl border-r border-black/5 dark:border-white/10 flex-col shrink-0 p-6 hidden md:flex z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+        <div className="flex flex-col gap-1 mb-10 px-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-black">
+               <Box size={18} strokeWidth={2.5} />
             </div>
-            <Typography variant="h2" className="text-2xl">OptPad</Typography>
-          </div>
-          <div className="flex items-center gap-2 px-1">
-             <span className="h-px w-6 bg-brand-orange/40"></span>
-             <Typography variant="caption" className="text-morandi-taupe dark:text-slate-500">智在简，美在恒</Typography>
+            <Typography variant="h3" className="text-xl font-semibold tracking-tight">OptPad</Typography>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-4">
+        <nav className="flex-1 space-y-1">
           <NavBtn 
-            icon={<LayoutGrid size={20}/>} 
-            label="首页" 
-            tooltip="浏览精选模块与最新内容"
+            icon={<LayoutGrid size={18}/>} 
+            label={t('overview')} 
             active={activeTab === 'HOME'} 
             onClick={() => setActiveTab('HOME')} 
           />
           <NavBtn 
-            icon={<Compass size={20}/>} 
-            label="探索" 
-            tooltip="激发灵感，发现跨学科知识"
+            icon={<Compass size={18}/>} 
+            label={t('explore')} 
             active={activeTab === 'EXPLORE'} 
             onClick={() => setActiveTab('EXPLORE')} 
           />
           <NavBtn 
-            icon={<Bookmark size={20}/>} 
-            label="收藏" 
-            tooltip="管理您的个人知识库"
+            icon={<Bookmark size={18}/>} 
+            label={t('library')} 
             active={activeTab === 'LIBRARY'} 
             onClick={() => setActiveTab('LIBRARY')} 
           />
           <NavBtn 
-            icon={<Settings size={20}/>} 
-            label="设置" 
-            tooltip="个性化您的节点配置"
+            icon={<Settings size={18}/>} 
+            label={t('settings')} 
             active={activeTab === 'PROFILE'} 
             onClick={() => setActiveTab('PROFILE')} 
           />
         </nav>
 
-        {/* 会员卡片 */}
-        <div className="mt-auto mb-6">
-           <Card className="relative overflow-hidden bg-morandi-charcoal dark:bg-slate-200 p-6 group cursor-pointer shadow-xl transition-all hover:scale-[1.02]">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform"><Crown size={64} className="text-white dark:text-black" /></div>
-              <div className="relative z-10">
-                 <Typography variant="label" className="text-white dark:text-black mb-1 flex items-center gap-2">
-                   OptPad Plus <Crown size={12} className="text-amber-400" />
-                 </Typography>
-                 <Typography variant="caption" className="text-white/50 dark:text-black/50 mb-4 block">解锁 AI 无限催化 & 高级算力</Typography>
-                 <Button className="w-full py-2" size="sm">立即升级</Button>
-              </div>
-           </Card>
-        </div>
-
-        <div className="flex items-center justify-between px-2">
+        <div className="mt-auto px-2">
           <button 
             onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            className="flex items-center gap-3 py-4 rounded-ios text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-brand-orange transition-all"
+            className="flex items-center justify-between w-full p-3 rounded-lg border border-black/5 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
           >
-            {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
-            <span>Appearance</span>
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+               {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+               <span>{theme === 'light' ? t('darkMode') : t('lightMode')}</span>
+            </div>
           </button>
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-white/40 dark:bg-white/5 rounded-full border border-morandi-border dark:border-white/5">
-             <Zap size={10} className="text-amber-500" />
-             <span className="text-[8px] font-black text-slate-400">Tokens: 3k+</span>
-          </div>
         </div>
       </aside>
 
-      {/* 主内容区 */}
-      <main className="flex-1 overflow-y-auto no-scrollbar relative flex flex-col">
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto no-scrollbar relative flex flex-col items-center">
         
-        {/* 移动端 Header */}
-        <header className="md:hidden sticky top-0 bg-morandi-oatmeal/90 dark:bg-dark-bg/90 backdrop-blur-xl z-30 px-6 py-4 flex items-center justify-between pt-[env(safe-area-inset-top)] border-b border-morandi-border dark:border-white/5">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-brand-orange rounded-lg flex items-center justify-center text-white">
-              <Book size={18} />
+        {/* Mobile Header */}
+        <header className="md:hidden w-full sticky top-0 bg-[#FAFAFA]/80 dark:bg-black/80 backdrop-blur-xl z-30 px-6 py-4 flex items-center justify-between border-b border-black/5 dark:border-white/10">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-black">
+              <Box size={18} strokeWidth={2.5} />
             </div>
-            <Typography variant="h3" className="text-lg">OptPad</Typography>
+            <Typography variant="h3" className="text-lg font-semibold tracking-tight">OptPad</Typography>
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
-              {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-            </Button>
-            <div className="w-8 h-8 rounded-full bg-morandi-blue/20 flex items-center justify-center">
-              <Settings size={18} className="text-morandi-blue" />
-            </div>
-          </div>
+          <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="p-2 -mr-2">
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
         </header>
 
-        <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 md:px-12 py-6 md:py-10 flex flex-col">
+        <div className="w-full max-w-5xl px-6 md:px-12 py-8 md:py-12 flex flex-col flex-1">
           
-          <section className="mb-8 md:mb-12 flex justify-center">
-            <div className="relative w-full max-w-2xl group">
-              <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-morandi-taupe group-focus-within:text-brand-orange transition-colors" size={20} />
+          <section className="mb-10 w-full">
+            <div className="relative w-full group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-accent transition-colors" size={18} />
               <input 
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="键入检索词..."
-                className="w-full bg-white dark:bg-dark-card border border-morandi-border dark:border-white/5 rounded-full py-3.5 md:py-4 pl-14 md:pl-16 pr-8 text-sm font-medium soft-shadow focus:ring-4 focus:ring-brand-orange/10 focus:border-brand-orange transition-all dark:text-white"
+                placeholder={t('searchModules')}
+                className="w-full bg-white dark:bg-[#111] border border-black/5 dark:border-white/10 rounded-xl py-3 pl-11 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent focus:border-brand-accent transition-all dark:text-white placeholder:text-gray-400 shadow-sm"
               />
             </div>
           </section>
 
           <AnimatePresence mode="wait">
             {activeTab === 'HOME' ? (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8 md:space-y-12">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-10">
                 <KnowledgeBanner onRun={handleRunAppById} />
 
-                <Card 
-                  onClick={() => setIsCapybaraOpen(true)}
-                  className="relative overflow-hidden p-6 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 group cursor-pointer"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br md:bg-gradient-to-r from-brand-orange-light to-transparent dark:from-orange-900/5 pointer-events-none"></div>
-                  <div className="flex items-center gap-6 md:gap-10 relative z-10">
-                    <div className="w-16 h-16 md:w-24 md:h-24 bg-brand-orange/10 rounded-ios flex items-center justify-center text-brand-orange shrink-0">
-                       <Book size={32} className="md:w-12 md:h-12" />
-                    </div>
-                    <div>
-                      <Typography variant="h2" className="text-xl md:text-3xl">卡皮巴拉成长日记</Typography>
-                      <Typography variant="body" className="text-slate-400 mt-1">跟着柠檬与它的伙伴，开启一场温柔的自律进化...</Typography>
-                    </div>
-                  </div>
-                  <Button className="relative z-10 w-full md:w-auto">
-                    立即阅读 <ChevronRight size={16} className="ml-2" />
-                  </Button>
-                </Card>
-
                 <section>
-                   <div className="flex items-center justify-between mb-8">
-                      <div className="flex items-center gap-3">
-                         <Sparkles className="text-brand-orange" size={16} />
-                         <Typography variant="label" className="text-morandi-charcoal dark:text-slate-100">核心模块集</Typography>
-                      </div>
+                   <div className="flex items-center justify-between mb-6">
+                      <Typography variant="h3" className="text-xl font-semibold tracking-tight">{t('featured')}</Typography>
+                   </div>
+                   
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     {/* Promo Card */}
+                     <Card 
+                       onClick={() => setIsCapybaraOpen(true)}
+                       className="relative overflow-hidden p-6 flex flex-col justify-between group cursor-pointer bg-gradient-to-br from-[#0070F3]/5 to-transparent border-transparent hover:border-[#0070F3]/20 transition-all h-[180px]"
+                     >
+                       <div className="relative z-10">
+                         <div className="flex items-center gap-2 text-[#0070F3] mb-2">
+                           <Sparkles size={14} />
+                           <span className="text-xs font-medium uppercase tracking-wider">Spotlight</span>
+                         </div>
+                         <Typography variant="h2" className="text-2xl font-semibold mb-1 text-[#171717] dark:text-white">{t('capybaraTitle')}</Typography>
+                         <Typography variant="body" className="text-gray-500 dark:text-gray-400 text-sm">{t('capybaraDesc')}</Typography>
+                       </div>
+                       <div className="relative z-10 flex justify-end">
+                         <span className="text-sm font-medium text-[#0070F3] opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all">{t('readNow')} &rarr;</span>
+                       </div>
+                     </Card>
+                     
+                     <Card 
+                       onClick={() => handleRunAppById('ent6')}
+                       className="relative overflow-hidden p-6 flex flex-col justify-between group cursor-pointer hover:border-black/20 dark:hover:border-white/30 transition-all h-[180px]"
+                     >
+                       <div className="relative z-10">
+                         <Typography variant="h2" className="text-2xl font-semibold mb-1">{t('chessTitle')}</Typography>
+                         <Typography variant="body" className="text-gray-500 dark:text-gray-400 text-sm">{t('chessDesc')}</Typography>
+                       </div>
+                       <div className="relative z-10 flex justify-end">
+                         <span className="text-sm font-medium opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all">{t('play')} &rarr;</span>
+                       </div>
+                     </Card>
+                   </div>
+                </section>
+
+                 <section>
+                   <div className="flex items-center justify-between mb-6 mt-4">
+                      <Typography variant="h3" className="text-xl font-semibold tracking-tight">{t('modules')}</Typography>
                    </div>
 
                    {filteredModules.length > 0 ? (
-                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {filteredModules.map(item => (
                           <AppCard key={item.id} item={item} onClick={setSelectedItem} />
                         ))}
                      </div>
                    ) : (
-                     <div className="w-full flex flex-col items-center justify-center py-20 bg-white/50 dark:bg-dark-card/50 rounded-3xl border border-morandi-border dark:border-white/5 border-dashed">
-                        <div className="w-16 h-16 bg-morandi-blue/10 rounded-full flex items-center justify-center mb-4 text-morandi-blue">
-                          <Search size={28} />
-                        </div>
-                        <Typography variant="h3" className="mb-2">未找到匹配模块</Typography>
-                        <Typography variant="body" className="text-morandi-taupe dark:text-slate-500">
-                          请尝试更换搜索词或探索其他有趣的应用
+                     <div className="w-full flex flex-col items-center justify-center py-20 border border-black/5 dark:border-white/10 border-dashed rounded-2xl">
+                        <Typography variant="body" className="text-gray-500">
+                          {t('noModulesFound')}
                         </Typography>
                      </div>
                    )}
                 </section>
                 
-                <div className="h-20 md:hidden" />
+                <div className="h-24 md:hidden" />
               </motion.div>
             ) : activeTab === 'EXPLORE' ? (
-              <Suspense fallback={<Loader2 className="animate-spin" />}>
+              <Suspense fallback={<Loader2 className="animate-spin m-auto" />}>
                 <ExploreView allModules={allModules} onOpenItem={setSelectedItem} />
               </Suspense>
             ) : activeTab === 'LIBRARY' ? (
-              <Suspense fallback={<Loader2 className="animate-spin" />}>
+              <Suspense fallback={<Loader2 className="animate-spin m-auto" />}>
                 <LibraryView allModules={allModules} savedIds={savedIds} historyIds={historyIds} onOpenItem={setSelectedItem} />
               </Suspense>
             ) : (
-              <Suspense fallback={<Loader2 className="animate-spin" />}>
+              <Suspense fallback={<Loader2 className="animate-spin m-auto" />}>
                 <SettingsView theme={theme} onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')} user={user} onUpdateUser={setUser} />
               </Suspense>
             )}
@@ -405,12 +391,12 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* 移动端底部导航 */}
-      <footer className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-dark-card/90 backdrop-blur-2xl border-t border-morandi-border dark:border-white/5 py-3 px-8 flex justify-between safe-bottom z-50">
-        <MobNavBtn icon={<LayoutGrid size={22}/>} active={activeTab === 'HOME'} onClick={() => setActiveTab('HOME')} />
-        <MobNavBtn icon={<Compass size={22}/>} active={activeTab === 'EXPLORE'} onClick={() => setActiveTab('EXPLORE')} />
-        <MobNavBtn icon={<Bookmark size={22}/>} active={activeTab === 'LIBRARY'} onClick={() => setActiveTab('LIBRARY')} />
-        <MobNavBtn icon={<Settings size={22}/>} active={activeTab === 'PROFILE'} onClick={() => setActiveTab('PROFILE')} />
+      {/* Mobile Bottom Nav */}
+      <footer className="md:hidden fixed bottom-0 left-0 right-0 bg-[#FAFAFA]/90 dark:bg-black/90 backdrop-blur-xl border-t border-black/5 dark:border-white/10 py-2 px-6 flex justify-around items-center safe-bottom z-50">
+        <MobNavBtn icon={<LayoutGrid size={20}/>} label={t('home')} active={activeTab === 'HOME'} onClick={() => setActiveTab('HOME')} />
+        <MobNavBtn icon={<Compass size={20}/>} label={t('explore')} active={activeTab === 'EXPLORE'} onClick={() => setActiveTab('EXPLORE')} />
+        <MobNavBtn icon={<Bookmark size={20}/>} label={t('library')} active={activeTab === 'LIBRARY'} onClick={() => setActiveTab('LIBRARY')} />
+        <MobNavBtn icon={<Settings size={20}/>} label={t('settings')} active={activeTab === 'PROFILE'} onClick={() => setActiveTab('PROFILE')} />
       </footer>
 
       <Suspense fallback={null}>
@@ -430,9 +416,10 @@ const App: React.FC = () => {
   );
 };
 
-const MobNavBtn = ({ icon, active, onClick }: { icon: React.ReactNode, active?: boolean, onClick: () => void }) => (
-  <button onClick={onClick} className={`p-2 transition-all active:scale-90 ${active ? 'text-brand-orange' : 'text-slate-300 dark:text-slate-600'}`}>
+const MobNavBtn = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active?: boolean, onClick: () => void }) => (
+  <button onClick={onClick} className={`flex flex-col items-center gap-1 p-2 transition-all ${active ? 'text-brand-accent' : 'text-gray-400 dark:text-gray-500'}`}>
     {icon}
+    <span className="text-[10px] font-medium">{label}</span>
   </button>
 );
 

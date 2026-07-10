@@ -42,8 +42,11 @@ class DataService {
       const result = await sql(query, ...params);
       this.setCache(cacheKey, result);
       return result as unknown as T;
-    } catch (error) {
-      console.error('[DataService] Neon Query Error:', error);
+    } catch (error: any) {
+      if (error && error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
+          return [] as unknown as T;
+      }
+      // console.error('[DataService] Neon Query Error:', error);
       throw error;
     }
   }
@@ -62,8 +65,11 @@ class DataService {
       const result = await sql(queryString, params);
       this.setCache(cacheKey, result);
       return result as unknown as T;
-    } catch (error) {
-      console.error('[DataService] Neon Query Error:', error);
+    } catch (error: any) {
+      if (error && error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
+          return [] as unknown as T;
+      }
+      // console.error('[DataService] Neon Query Error:', error);
       throw error;
     }
   }

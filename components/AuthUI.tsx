@@ -8,7 +8,7 @@ interface AuthUIProps {
 
 const AuthUI: React.FC<AuthUIProps> = ({ user }) => {
   const handleRegenerate = () => {
-    if (confirm("重新初始化身份将清空当前设备的本地收藏记录，确定吗？")) {
+    if (true) {
       localStorage.removeItem('zst_identity');
       window.location.reload();
     }

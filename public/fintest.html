@@ -2,77 +2,112 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>业务办理页面</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>个人贷款申请</title>
     <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f4f5f7; }
-        .slide-up { animation: slideUp 0.3s ease-out forwards; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+            background: #F7F8FA; 
+            -webkit-font-smoothing: antialiased;
+        }
+        .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes slideUp {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(16px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        /* Hide scrollbar */
+        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="antialiased text-gray-800">
+<body class="text-gray-900 pb-safe">
 
-    <!-- 顶部状态栏及导航 -->
-    <header class="bg-white px-4 py-3 flex items-center justify-between shadow-sm sticky top-0 z-10">
-        <!-- 为了严谨，建议将左上角自带的返回也绑定关闭逻辑，以防万一 -->
-        <div class="flex items-center text-gray-800 font-medium text-lg cursor-pointer" onclick="handleTopBack()">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-            个人贷款申请
+    <!-- 顶部导航栏 (Glassmorphism) -->
+    <header class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center text-gray-800 font-medium cursor-pointer active:opacity-50 transition-opacity" onclick="handleTopBack()">
+            <svg class="w-6 h-6 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            <span class="text-[17px]">个人贷款申请</span>
         </div>
     </header>
 
-    <main class="p-4 safe-area-pb">
-        <!-- 核心业务卡片 -->
-        <div class="bg-white rounded-xl shadow-sm p-5 mb-5 slide-up" style="animation-delay: 0.1s;">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-gray-500 text-sm font-medium">申请金额 (元)</h2>
-                <span id="statusTag" class="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded">待签名</span>
+    <main class="px-4 py-6 max-w-lg mx-auto">
+        <!-- 核心金额卡片 -->
+        <div class="bg-white rounded-[20px] p-6 mb-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] slide-up" style="animation-delay: 0.05s;">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-gray-500 text-[15px]">申请金额</h2>
+                <div id="statusTag" class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 bg-amber-50 text-amber-600 rounded-full border border-amber-100 transition-colors duration-300">
+                    <span id="statusDot" class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span id="statusText">待签名</span>
+                </div>
             </div>
-            <div class="text-3xl font-semibold text-gray-900 mb-6 font-mono">¥ 890.00</div>
             
-            <div class="space-y-3 text-sm">
-                <div class="flex justify-between border-b border-gray-100 pb-3">
+            <div class="flex items-baseline gap-1 mb-8">
+                <span class="text-2xl font-semibold text-gray-900">¥</span>
+                <span class="text-[40px] font-bold text-gray-900 tracking-tight leading-none">890.00</span>
+            </div>
+            
+            <div class="bg-gray-50 rounded-2xl p-4 space-y-4 text-[14px]">
+                <div class="flex justify-between items-center">
                     <span class="text-gray-500">业务编号</span>
-                    <span class="text-gray-800 font-medium tracking-wide">FIN_ORD_20260311</span>
+                    <span class="text-gray-900 font-medium font-mono">FIN_ORD_20260311</span>
                 </div>
-                <div class="flex justify-between border-b border-gray-100 pb-3">
+                <div class="flex justify-between items-center">
                     <span class="text-gray-500">贷款期限</span>
-                    <span class="text-gray-800 font-medium">12个月</span>
+                    <span class="text-gray-900 font-medium">12个月</span>
                 </div>
-                <div class="flex justify-between pb-1">
+                <div class="flex justify-between items-center">
                     <span class="text-gray-500">收款账户</span>
-                    <span class="text-gray-800 font-medium">工商银行 (尾号8888)</span>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-red-100 text-red-600 rounded-full flex items-center justify-center text-[10px] font-bold">工</div>
+                        <span class="text-gray-900 font-medium">工商银行 (8888)</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- 动作按钮区（成功后会被隐藏） -->
-        <div id="actionBtnGroup" class="text-center slide-up" style="animation-delay: 0.2s;">
-            <!-- 增加onclick事件，用于在跳走前保存页面数据(如有必要) -->
-            <a href="write.html" onclick="saveDataBeforeLeave()" class="block w-full py-3.5 bg-blue-600 text-white rounded-lg text-base font-medium shadow-md shadow-blue-200 active:bg-blue-700 transition">
+        <!-- 协议提示 -->
+        <div id="agreementBox" class="flex items-start gap-2 mb-8 px-1 slide-up" style="animation-delay: 0.15s;">
+            <div class="mt-0.5 w-4 h-4 rounded-full bg-[#0A56F6] flex items-center justify-center shrink-0">
+                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <p class="text-[13px] text-gray-500 leading-relaxed">
+                我已阅读并同意
+                <a href="#" class="text-[#0A56F6] font-medium">《个人贷款借款合同》</a>
+                及
+                <a href="#" class="text-[#0A56F6] font-medium">《相关授权协议》</a>，点击下方按钮即表示本人自愿签署。
+            </p>
+        </div>
+
+        <!-- 动作按钮区 -->
+        <div id="actionBtnGroup" class="slide-up" style="animation-delay: 0.2s;">
+            <a href="write.html" onclick="saveDataBeforeLeave()" class="flex items-center justify-center w-full py-4 bg-[#0A56F6] hover:bg-blue-700 active:scale-[0.98] text-white rounded-[16px] text-[17px] font-medium shadow-[0_8px_20px_rgb(10,86,246,0.25)] transition-all">
+                <svg class="w-5 h-5 mr-2 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                 前往手写签名
             </a>
-            <p class="mt-3 text-xs text-gray-400">点击进入签名页，提交后自动返回此页</p>
+            <div class="flex items-center justify-center gap-1 mt-4 text-[12px] text-gray-400">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                <span>银行级加密传输保障您的信息安全</span>
+            </div>
         </div>
         
-        <!-- 用于展示回调返回的竖屏白底黑字签名 -->
-        <div id="resultBox" class="bg-white rounded-xl shadow-sm p-5 mt-6 hidden slide-up" style="animation-delay: 0.1s;">
-            <div class="flex items-center text-green-600 mb-3">
-                <svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                <span class="font-medium text-base">签名验证成功</span>
+        <!-- 签名结果展示区 -->
+        <div id="resultBox" class="bg-white rounded-[20px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 mt-2 hidden slide-up" style="animation-delay: 0.1s;">
+            <div class="flex flex-col items-center justify-center mb-6">
+                <div class="w-14 h-14 bg-green-50 text-green-500 rounded-full flex items-center justify-center mb-3">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <h3 class="font-semibold text-lg text-gray-900">签署完成</h3>
+                <p class="text-[13px] text-gray-500 mt-1">合同已生效，款项将发放至指定账户</p>
             </div>
-            <p class="text-xs text-gray-500 mb-4">(已自动转换为白底黑字 + 竖屏显示)</p>
-            <div class="border border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center p-2 mb-5">
-                <!-- 预留占位符，如果没图片测试，可以放个裂图或默认图 -->
-                <img id="signImage" src="" alt="签名结果" class="max-h-64 object-contain drop-shadow-md bg-white text-xs text-gray-400">
+            
+            <div class="relative border border-gray-100 rounded-[16px] overflow-hidden bg-[#FAFAFA] flex items-center justify-center p-4 mb-6 group">
+                <div class="absolute top-3 left-3 text-[11px] font-medium text-gray-400 uppercase tracking-wider">电子签名留存</div>
+                <img id="signImage" src="" alt="签名结果" class="max-h-48 w-full object-contain mix-blend-multiply opacity-90 transition-transform duration-500 group-hover:scale-105">
             </div>
 
-            <!-- 新增：页面底部的关闭按钮 -->
-            <button onclick="closeCurrentPage()" class="w-full py-3 bg-gray-100 text-gray-700 rounded-lg text-base font-medium active:bg-gray-200 transition border border-gray-200">
+            <button onclick="closeCurrentPage()" class="w-full py-4 bg-gray-900 text-white rounded-[16px] text-[17px] font-medium active:scale-[0.98] transition-all shadow-[0_8px_20px_rgb(0,0,0,0.15)]">
                 完成并退出
             </button>
         </div>
@@ -174,9 +209,18 @@
                 
                 // 隐藏原先的去签名按钮，并改变顶部状态文字
                 document.getElementById('actionBtnGroup').classList.add('hidden');
+                
+                const agreementBox = document.getElementById('agreementBox');
+                if (agreementBox) agreementBox.classList.add('hidden');
+
                 let tag = document.getElementById('statusTag');
-                tag.innerText = "已完成";
-                tag.className = "text-xs px-2 py-1 bg-green-50 text-green-600 rounded";
+                if (tag) tag.className = "flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 bg-green-50 text-green-600 rounded-full border border-green-100 transition-colors duration-300";
+                
+                let dot = document.getElementById('statusDot');
+                if (dot) dot.className = "w-1.5 h-1.5 rounded-full bg-green-500";
+                
+                let text = document.getElementById('statusText');
+                if (text) text.innerText = "已完成";
                 
                 // 2. 清除数据，防止刷新重复触发
                 sessionStorage.removeItem('upload_sign_result');

@@ -130,21 +130,9 @@ const FoodChainApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#051a1a] flex flex-col font-sans text-slate-200 overflow-hidden">
+    <div className="w-full h-full relative  flex flex-col font-sans  overflow-hidden     bg-white text-slate-900 bg-white text-slate-900">
       {/* 顶部导航 - 移动端高度优化 */}
-      <header className="h-14 sm:h-16 bg-[#0a2e2e] border-b border-[#155e5e] flex items-center justify-between px-4 sm:px-6 shadow-lg z-20 shrink-0">
-        <div className="flex items-center gap-2 sm:gap-3 overflow-hidden">
-            <div className="p-1.5 bg-emerald-500/20 rounded-lg border border-emerald-500/50 shrink-0">
-                <Leaf className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
-            </div>
-            <h1 className="text-sm sm:text-xl font-bold tracking-wider text-emerald-100 font-orbitron truncate uppercase">
-              Eco-Logic <span className="hidden sm:inline text-emerald-500 text-xs ml-2 tracking-widest opacity-60">Terminal</span>
-            </h1>
-        </div>
-        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">
-          <X className="w-5 h-5 sm:w-6 sm:h-6" />
-        </button>
-      </header>
+      
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         <div className="absolute inset-0 opacity-[0.07] pointer-events-none" 

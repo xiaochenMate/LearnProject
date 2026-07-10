@@ -172,27 +172,9 @@ const WaveApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#F8FAFC] flex flex-col overflow-y-auto no-scrollbar pb-safe">
+    <div className="w-full h-full relative  flex flex-col overflow-y-auto no-scrollbar pb-safe     bg-white text-slate-900 bg-white text-slate-900">
       {/* 头部导航 - 响应式高度 */}
-      <header className="sticky top-0 bg-white/80 backdrop-blur-xl border-b border-slate-200 px-4 md:px-6 py-4 md:py-6 z-30">
-        <div className="max-w-[1120px] mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3 md:gap-4">
-            <div className="p-2 md:p-3 bg-blue-600 rounded-xl md:rounded-2xl shadow-lg shadow-blue-200">
-              <Radio className="text-white w-5 h-5 md:w-6 md:h-6" />
-            </div>
-            <div>
-              <h1 className="text-lg md:text-2xl font-black text-slate-900 tracking-tight">波的叠加和干涉仿真</h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-slate-400">Physics Lab v3.0</span>
-                <span className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              </div>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-400 hover:text-slate-900">
-            <X size={20} className="md:w-6 md:h-6" />
-          </button>
-        </div>
-      </header>
+      
 
       <main className="flex-1 max-w-[1120px] mx-auto w-full px-4 md:px-6 py-4 md:py-8 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-8">
         

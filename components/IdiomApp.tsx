@@ -119,41 +119,10 @@ const IdiomApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#FDFBF7] flex flex-col font-serif text-[#2c3e50] overflow-hidden select-none">
+    <div className="w-full h-full relative  flex flex-col font-serif text-[#2c3e50] overflow-hidden select-none      ">
       <div className="absolute inset-0 opacity-[0.04] pointer-events-none z-0 bg-[url('https://www.transparenttextures.com/patterns/rice-paper.png')]"></div>
 
-      <header className="h-16 md:h-20 bg-white/90 backdrop-blur-md border-b border-[#e0d7c6] flex items-center justify-between px-4 md:px-8 z-20 shrink-0 pt-[env(safe-area-inset-top)]">
-        <div className="flex items-center gap-3 md:gap-5 overflow-hidden">
-          <div className="w-10 h-10 md:w-12 md:h-12 bg-[#c0392b] text-white rounded-xl flex items-center justify-center shadow-lg shrink-0">
-            <ScrollText className="w-5 h-5 md:w-7 md:h-7" />
-          </div>
-          <div className="truncate">
-            <h1 className="text-base md:text-2xl font-black tracking-tight text-[#2c3e50] truncate">成语大辞典 <span className="text-[9px] bg-[#c0392b]/10 text-[#c0392b] px-2 py-0.5 rounded-full ml-2">PRO</span></h1>
-            <p className="text-[8px] md:text-[9px] text-slate-400 font-bold uppercase tracking-[0.3em] flex items-center gap-1">
-              <Database size={10} /> {dbMode === 'NEON' ? 'NEURAL_CLOUD_LINK' : 'OFFLINE_CACHE'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 md:gap-6 shrink-0">
-           <div className="hidden sm:relative sm:group sm:w-64">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="键入检索词..." 
-                value={query} 
-                onChange={(e) => setQuery(e.target.value)}
-                className="w-full pl-12 pr-6 py-2 bg-[#f3efe6] border border-[#e0d7c6] rounded-full text-sm focus:outline-none focus:border-[#c0392b] transition-all"
-              />
-           </div>
-           <button onClick={startChallenge} className="hidden xs:flex items-center gap-2 px-4 py-2 bg-[#2c3e50] text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[#c0392b] transition-all active:scale-95 shadow-md">
-             <Target size={14} /> 挑战
-           </button>
-           <button onClick={onClose} className="p-2 md:p-3 bg-[#f3efe6] hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full transition-all">
-             <X size={18}/>
-           </button>
-        </div>
-      </header>
+      
 
       {/* Mobile Actions Container */}
       <div className="sm:hidden px-4 py-3 bg-white/50 border-b border-[#e0d7c6] flex gap-2 z-10 shrink-0 overflow-x-auto no-scrollbar">
@@ -355,7 +324,7 @@ const IdiomApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
       {/* 详情弹窗 */}
       {selectedIdiom && (
-        <div className="fixed inset-0 z-[100] bg-[#2c3e50]/60 backdrop-blur-md flex items-end md:items-center justify-center p-0 md:p-6 animate-in fade-in duration-300" onClick={() => setSelectedIdiom(null)}>
+        <div className="w-full h-full relative /60 backdrop-blur-md flex items-end md:items-center justify-center p-0 md:p-6 animate-in fade-in duration-300 " onClick={() => setSelectedIdiom(null)}>
            <div 
             className="bg-[#FDFBF7] w-full max-w-4xl h-[92dvh] md:h-auto md:max-h-[85vh] rounded-t-[3rem] md:rounded-[4rem] shadow-2xl relative overflow-hidden border-t md:border border-[#e0d7c6] flex flex-col"
             onClick={e => e.stopPropagation()}

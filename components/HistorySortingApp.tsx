@@ -108,7 +108,7 @@ const HistorySortingApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }, [score]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#f8fafc] flex flex-col font-sans text-slate-900 overflow-hidden">
+    <div className="w-full h-full relative  flex flex-col font-sans  overflow-hidden      ">
       {/* 背景纹理层 */}
       <div className="absolute inset-0 opacity-10 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')]"></div>
@@ -116,29 +116,7 @@ const HistorySortingApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       </div>
 
       {/* 顶部 HUD - 移动端高度优化 */}
-      <header className="h-16 md:h-20 bg-white/80 backdrop-blur-xl border-b border-slate-200 flex items-center justify-between px-4 md:px-8 z-20 shadow-sm shrink-0 pt-[env(safe-area-inset-top)]">
-        <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
-          <div className="w-10 h-10 md:w-12 md:h-12 bg-cyan-900 text-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-900/20 rotate-3 shrink-0">
-            <Compass className="w-5 h-5 md:w-6 md:h-6 animate-spin-slow" />
-          </div>
-          <div className="truncate">
-            <h1 className="text-base md:text-xl font-black tracking-tight text-cyan-950 flex items-center gap-2 truncate">
-              华夏时空轴 <span className="hidden sm:inline text-[9px] md:text-[10px] bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded-full font-bold">史官模式</span>
-            </h1>
-            <p className="text-[8px] md:text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] md:tracking-[0.3em] truncate">SYNC / {currentEra.toUpperCase()}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 md:gap-6 shrink-0">
-          <div className="flex flex-col items-end">
-            <span className="text-[7px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">RANK_STATUS</span>
-            <span className="text-sm md:text-xl font-black text-cyan-800 italic leading-none">{rankTitle}</span>
-          </div>
-          <button onClick={onClose} className="p-2 md:p-3 bg-slate-100 hover:bg-slate-200 rounded-full transition-all text-slate-500">
-            <X size={18}/>
-          </button>
-        </div>
-      </header>
+      
 
       {/* 断代切换器 - 横向滑动适配 */}
       <nav className="h-12 md:h-14 bg-white/50 border-b border-slate-200 flex justify-start sm:justify-center items-center gap-2 md:gap-4 px-4 overflow-x-auto no-scrollbar z-10 shrink-0 touch-pan-x">
@@ -269,7 +247,7 @@ const HistorySortingApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
       {/* 详情弹窗 - 响应式尺寸 */}
       {showDetail && (
-        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-center justify-center p-4 md:p-6" onClick={() => setShowDetail(null)}>
+        <div className="w-full h-full relative lack/60 backdrop-blur-md flex items-center justify-center p-4 md:p-6 " onClick={() => setShowDetail(null)}>
            <div className="bg-white w-full max-w-lg rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 shadow-2xl relative overflow-hidden animate-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
               <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
                  <div className="px-3 md:px-4 py-1 bg-cyan-100 text-cyan-800 rounded-full text-[8px] md:text-[10px] font-black">{formatYear(showDetail.year)}</div>
@@ -297,7 +275,7 @@ const HistorySortingApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
       {/* 成功过关结算 - 响应式字体 */}
       {isSuccess && (
-        <div className="fixed inset-0 z-[110] bg-cyan-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 md:p-12 animate-in fade-in duration-500 overflow-y-auto">
+        <div className="w-full h-full relative yan-950/95 backdrop-blur-2xl flex flex-col items-center justify-center p-6 md:p-12 animate-in fade-in duration-500 overflow-y-auto ">
            <div className="max-w-4xl w-full text-center">
               <Trophy className="w-20 h-20 md:w-[120px] md:h-[120px] text-cyan-400 mx-auto mb-6 md:mb-8 animate-bounce" />
               <h2 className="text-3xl md:text-6xl font-black text-white italic tracking-tighter mb-2 md:mb-4 uppercase">Chronicle_Restored</h2>

@@ -140,21 +140,8 @@ const VocabularyApp: React.FC<{ onClose: () => void, userEmail?: string }> = ({ 
   const currentWord = words[currentIndex];
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0f172a] flex flex-col font-sans text-slate-200 overflow-hidden">
-      <header className="h-16 bg-slate-900/95 border-b border-blue-500/20 flex items-center justify-between px-6 z-20">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg">
-            <GraduationCap className="text-white w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-black tech-font text-white italic tracking-tighter">LINGO_FLOW v1.0</h1>
-            <p className="text-[9px] text-blue-400 font-bold uppercase tracking-[0.3em] flex items-center gap-2">
-              <Database size={10} /> 系统源: {dbMode} {userEmail ? `| 已同步: ${userEmail}` : '| 游客模式'}
-            </p>
-          </div>
-        </div>
-        <button onClick={onClose} className="p-2 hover:bg-red-500/20 rounded-full text-slate-500 hover:text-red-500 transition-all"><X size={24}/></button>
-      </header>
+    <div className="w-full h-full relative  flex flex-col font-sans  overflow-hidden      ">
+      
 
       <main className="flex-1 flex flex-col items-center justify-center p-6 relative">
         <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:32px_32px]"></div>

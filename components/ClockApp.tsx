@@ -135,34 +135,10 @@ const ClockApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col overflow-y-auto no-scrollbar transition-all duration-1000 bg-gradient-to-br ${sceneConfig.theme}`}>
+    <div className={`w-full h-full relative flex flex-col overflow-y-auto no-scrollbar transition-all duration-1000 bg-gradient-to-br ${sceneConfig.theme}`}>
       
       {/* 顶部 HUD - 响应式优化 */}
-      <header className="sticky top-0 h-16 md:h-20 flex items-center justify-between px-4 md:px-8 bg-white/10 backdrop-blur-md border-b border-white/20 z-40 shrink-0">
-        <div className="flex items-center gap-2 md:gap-4">
-          <button onClick={() => setShowSidebar(!showSidebar)} className="lg:hidden p-2 text-white bg-white/10 rounded-lg">
-            <Menu size={20} />
-          </button>
-          <div className="p-2 md:p-3 bg-white/20 rounded-xl md:rounded-2xl shadow-inner">
-            {sceneConfig.icon}
-          </div>
-          <div className="hidden sm:block">
-            <h1 className={`text-sm md:text-xl font-black tech-font uppercase ${isNight ? 'text-white' : 'text-slate-800'}`}>Time_Master_v2</h1>
-            <p className={`text-[8px] md:text-[10px] font-bold opacity-60 ${isNight ? 'text-blue-200' : 'text-slate-500'}`}>{sceneConfig.label}</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3 md:gap-6">
-          {mode === 'quiz' && (
-            <div className="px-4 py-1.5 bg-emerald-500 text-white rounded-full font-black text-xs md:text-sm shadow-lg">
-              SCORE: {score}
-            </div>
-          )}
-          <button onClick={onClose} className={`p-2 rounded-full hover:bg-black/5 transition-colors ${isNight ? 'text-white' : 'text-slate-800'}`}>
-            <X size={24}/>
-          </button>
-        </div>
-      </header>
+      
 
       <main className="flex-1 flex flex-col lg:flex-row p-4 md:p-8 lg:p-12 gap-6 lg:gap-8 max-w-7xl mx-auto w-full items-center lg:items-start">
         

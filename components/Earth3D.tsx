@@ -274,7 +274,7 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
   const current = Object.values(PLANETS_DATA).find(p => p.name === selectedName);
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-black z-50 overflow-hidden cursor-grab active:cursor-grabbing font-orbitron text-white">
+    <div ref={containerRef} className="w-full h-full relative lack z-50 overflow-hidden cursor-grab active:cursor-grabbing font-orbitron text-white ">
       {/* Top Header - Responsive */}
       <div className="absolute top-0 left-0 w-full p-4 md:p-8 flex justify-between items-start pointer-events-none z-[60] pt-[calc(env(safe-area-inset-top)+1rem)]">
         <div className="bg-black/40 backdrop-blur-xl px-4 py-2 md:px-8 md:py-4 border border-white/10 rounded-2xl md:rounded-3xl pointer-events-auto shadow-2xl">

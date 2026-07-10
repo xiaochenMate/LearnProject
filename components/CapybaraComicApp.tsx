@@ -154,41 +154,12 @@ const CapybaraComicApp: React.FC<{ isOpen: boolean; onClose: () => void; onRunAp
         <motion.div 
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           id="comic-scroll-root"
-          className="fixed inset-0 z-[100] bg-[#e6e2d3] flex flex-col items-center overflow-y-auto no-scrollbar"
+          className="w-full h-full relative  flex flex-col items-center overflow-y-auto no-scrollbar bg-white text-slate-900"
         >
-          <div className="fixed inset-0 bg-[url('https://www.transparenttextures.com/patterns/wood-pattern-with-fine-lines.png')] opacity-15 pointer-events-none"></div>
+          <div className="w-full h-full relative  opacity-15 pointer-events-none bg-white text-slate-900"></div>
 
           {/* 头部面板：增强版直接跳转导航 */}
-          <header className="sticky top-0 w-full max-w-7xl px-6 py-3 md:py-5 flex flex-col gap-3 z-[110] bg-[#e6e2d3]/90 backdrop-blur-md">
-             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-amber-900/10">
-                      <BookIcon size={20} className="text-amber-700" />
-                    </div>
-                    <div className="hidden sm:block">
-                      <h1 className="text-sm md:text-xl font-black text-amber-900 font-kids leading-none">卡皮巴拉成长日记</h1>
-                      <span className="text-[7px] md:text-[8px] font-black uppercase text-amber-700/30 tracking-[0.2em] mt-1 block">Visual Memoir v5.5 (Nav Ready)</span>
-                    </div>
-                </div>
-
-                {/* 精简章节导航栏 */}
-                <nav className="flex-1 max-w-lg mx-4 flex items-center justify-center gap-1 overflow-x-auto no-scrollbar py-1">
-                   {chapters.map((_, i) => (
-                     <button 
-                       key={i} 
-                       onClick={() => jumpToChapter(i)}
-                       className={`shrink-0 w-7 h-7 md:w-8 md:h-8 rounded-lg text-[10px] md:text-xs font-black transition-all border flex items-center justify-center ${currentIdx === i ? 'bg-amber-900 border-amber-900 text-white shadow-lg scale-110' : 'bg-white/50 border-amber-900/10 text-amber-900/40 hover:bg-white hover:text-amber-900'}`}
-                     >
-                       {i + 1}
-                     </button>
-                   ))}
-                </nav>
-
-                <button onClick={onClose} className="p-2.5 bg-white/90 hover:bg-red-500 hover:text-white rounded-full shadow-lg text-amber-900/40 transition-all active:scale-90">
-                  <X size={20}/>
-                </button>
-             </div>
-          </header>
+          
 
            <div className="relative w-full max-w-7xl flex flex-col items-center px-4 md:px-12 pb-24">
             <div className="my-6 w-48">

@@ -1,10 +1,8 @@
 
 import React from 'react';
 import { AppItem } from '../types';
-import { motion as motionBase } from 'framer-motion';
 import Card from './ui/Card';
 import Typography from './ui/Typography';
-const motion = motionBase as any;
 
 interface AppCardProps {
   item: AppItem;
@@ -12,35 +10,24 @@ interface AppCardProps {
 }
 
 const AppCard: React.FC<AppCardProps> = ({ item, onClick }) => {
-  // 根据图标类型自动分配莫兰迪配色
-  const getThemeColor = () => {
-    const icon = item.icon || '';
-    if (['public', 'waves', 'currency_exchange'].includes(icon)) return 'bg-[#DEE7E9] text-[#78909C]';
-    if (['menu_book', 'auto_stories', 'history_edu'].includes(icon)) return 'bg-[#E9EDDE] text-[#829C78]';
-    if (['calculate', 'lightbulb', 'schedule'].includes(icon)) return 'bg-[#F2F1EC] text-[#9EA3A0]';
-    return 'bg-[#EAE9E4] text-[#8C8B87]';
-  };
-
-  const theme = getThemeColor();
-
   return (
     <Card 
       onClick={() => onClick(item)}
-      className="p-5 flex flex-col group"
+      className="p-5 flex flex-col group cursor-pointer border border-transparent hover:border-black/5 dark:hover:border-white/10 transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgb(255,255,255,0.02)] h-[180px] justify-between"
     >
-      <div className={`aspect-[4/3] rounded-ios flex items-center justify-center mb-6 relative overflow-hidden transition-colors ${theme}`}>
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(circle_at_30%_30%,white_0%,transparent_70%)]"></div>
-        <span className="material-icons-outlined text-5xl group-hover:scale-110 transition-transform duration-500">
-          {item.icon || 'apps'}
-        </span>
-        <div className="absolute top-3 right-3 w-1.5 h-1.5 rounded-full bg-black/5"></div>
+      <div className="flex items-center gap-4 mb-2">
+        <div className="w-12 h-12 rounded-xl bg-black/5 dark:bg-white/10 flex items-center justify-center text-gray-700 dark:text-gray-300 group-hover:scale-105 transition-transform duration-300">
+          <span className="material-icons-outlined text-2xl">
+            {item.icon || 'apps'}
+          </span>
+        </div>
       </div>
 
-      <div className="px-1">
-        <Typography variant="h4" className="mb-2 truncate">
+      <div className="mt-auto">
+        <Typography variant="h4" className="mb-1 truncate font-medium">
           {item.title}
         </Typography>
-        <Typography variant="body" className="text-slate-400 dark:text-slate-500 line-clamp-3 font-medium italic">
+        <Typography variant="body" className="text-gray-500 line-clamp-2 text-sm leading-relaxed">
           {item.description}
         </Typography>
       </div>

@@ -226,7 +226,7 @@ const ChessApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   if (!isLibReady) {
       return (
-          <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center">
+    <div className="w-full h-full relative  flex flex-col items-center justify-center      ">
               <Loader2 className="w-12 h-12 text-emerald-500 animate-spin mb-4" />
               <p className="text-white tech-font tracking-widest animate-pulse">BOOTING_LOGIC_CORE</p>
           </div>
@@ -234,7 +234,7 @@ const ChessApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#020617] flex flex-col font-sans overflow-hidden">
+    <div className="w-full h-full relative  flex flex-col font-sans overflow-hidden ">
       
       <div className="fixed top-0 left-0 w-full h-[3px] bg-slate-900 z-[100]">
           <div 
@@ -243,20 +243,7 @@ const ChessApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           />
       </div>
 
-      <header className="shrink-0 flex items-center justify-between px-4 pt-[calc(env(safe-area-inset-top)+12px)] pb-3 bg-slate-900/60 backdrop-blur-xl border-b border-white/5 z-20">
-        <div className="bg-slate-950/80 px-4 py-2 rounded-full border border-white/10 flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]"></div>
-          <span className="text-[10px] sm:text-xs font-black tech-font text-white uppercase italic tracking-tighter">{status}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setSoundEnabled(!soundEnabled)} className="p-2.5 bg-slate-800/80 text-white/60 hover:text-emerald-400 rounded-full border border-white/10 transition-all">
-            {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-          </button>
-          <button onClick={onClose} className="p-2.5 bg-slate-800/80 text-white/60 hover:text-red-500 rounded-full border border-white/10 transition-all">
-            <X size={18}/>
-          </button>
-        </div>
-      </header>
+      
 
       <main className="flex-1 flex flex-col xl:flex-row items-center justify-center p-3 sm:p-6 lg:p-10 gap-4 xl:gap-12 relative overflow-y-auto no-scrollbar">
         
@@ -397,7 +384,7 @@ const ChessApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       </main>
 
       {gameOver && (
-          <div className="fixed inset-0 z-[200] bg-slate-950/98 backdrop-blur-2xl flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-500 text-center">
+          <div className="w-full h-full relative /98 backdrop-blur-2xl flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-500 text-center ">
               <div className="relative mb-8">
                 <div className="absolute -inset-10 bg-emerald-500/20 rounded-full blur-3xl animate-pulse"></div>
                 <Trophy size={100} className="text-emerald-400 relative z-10 drop-shadow-[0_0_40px_rgba(16,185,129,0.6)]" />

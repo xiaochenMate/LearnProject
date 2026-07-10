@@ -144,7 +144,7 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[70] bg-[#FDFBF7] flex flex-col items-center justify-center">
+    <div className="w-full h-full relative  flex flex-col items-center justify-center      ">
         <div className="relative mb-8">
            <div className="w-20 h-20 bg-rose-50 rounded-full animate-ping opacity-20"></div>
            <Loader2 className="w-12 h-12 text-rose-600 animate-spin absolute inset-0 m-auto" />
@@ -155,7 +155,7 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] bg-[#FDFBF7] flex flex-col h-full overflow-hidden select-none font-serif">
+    <div className="w-full h-full relative  flex flex-col h-full overflow-hidden select-none font-serif ">
       {/* 顶部警告 */}
       {dbError && (
         <div className="bg-amber-50 border-b border-amber-100 px-6 py-2 flex items-center justify-between text-[10px] font-black animate-in slide-in-from-top duration-500">
@@ -170,33 +170,7 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       )}
 
       {/* 导航栏 */}
-      <header className="h-16 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md border-b border-stone-200 shrink-0 z-50 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="p-2.5 bg-stone-900 rounded-2xl shadow-lg flex items-center justify-center">
-            <Feather className="text-white w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-base font-black text-slate-800 tracking-tight">中华诗词馆</h1>
-            <div className="flex items-center gap-1.5 mt-0.5">
-               <span className={`text-[9px] font-bold uppercase tracking-widest italic ${dataSource === 'NEON' ? 'text-blue-500' : 'text-stone-400'}`}>
-                 {dataSource === 'NEON' ? 'NEON CLOUD' : 'LOCAL CACHE'} / {poems.length} Items
-               </span>
-               <div className="w-1 h-1 rounded-full bg-stone-300"></div>
-               <span className="text-[9px] font-bold text-stone-400">READY_STATE: SYNCED</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 px-4 py-2 bg-stone-50 rounded-2xl border border-stone-100 shadow-sm">
-            <Trophy size={16} className="text-amber-500" />
-            <span className="text-xs font-black text-stone-800 tracking-tighter">{score} 分</span>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-stone-100 rounded-full text-stone-400 transition-colors">
-            <X size={24}/>
-          </button>
-        </div>
-      </header>
+      
 
       <main className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
         {/* 背景虚化层：随诗词而动 */}
@@ -316,7 +290,7 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
           {/* 成功结算页 */}
           {isSuccess && poem && (
-            <div className="fixed inset-0 z-[100] bg-white/95 backdrop-blur-3xl flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-700">
+            <div className="w-full h-full relative bg-white/95 backdrop-blur-3xl flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-700 ">
                <div className="w-full max-w-4xl flex flex-col items-center">
                  <div className="relative w-full aspect-video rounded-[3.5rem] overflow-hidden mb-10 shadow-2xl border-8 border-white group">
                    <img src={poem.image_url || poem.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[10s]" alt="意境" onError={(e) => (e.currentTarget.src = 'https://picsum.photos/1200/800?nature')} />
@@ -352,7 +326,7 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
       {/* 增强版百科库 */}
       {showLibrary && (
-        <div className="fixed inset-0 z-[110] bg-[#FDFBF7] flex flex-col animate-in slide-in-from-right duration-500 overflow-hidden">
+        <div className="w-full h-full relative  flex flex-col animate-in slide-in-from-right duration-500 overflow-hidden ">
            <div className="h-20 border-b border-stone-100 bg-white flex items-center justify-between px-8 shrink-0">
                 <div className="flex items-center gap-4">
                    <div className="p-3 bg-stone-900 rounded-2xl text-white"><BookOpen size={24}/></div>
