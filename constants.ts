@@ -111,7 +111,7 @@ export const ENTERTAINMENT_ITEMS: AppItem[] = [
     author: '@GrandMaster',
     category: 'entertainment',
     imageUrl: 'https://images.unsplash.com/photo-1528819622765-d6bca13d297a?auto=format&fit=crop&q=80&w=800',
-    description: '专业的 8x8 国际象棋对弈系统，支持标准规则判定与智能 AI 对手。',
+    description: '专业的 8x8 国际象棋对弈系统，支持标准规则判定与分级电脑对手。',
     tags: ['博弈', '国际', '深度策略'],
     icon: 'grid_view'
   },
@@ -122,7 +122,7 @@ export const ENTERTAINMENT_ITEMS: AppItem[] = [
     category: 'entertainment',
     imageUrl: 'https://images.unsplash.com/photo-1529699211952-734e80c4d42b?auto=format&fit=crop&q=80&w=800',
     description: '经典中国象棋对弈，支持人机挑战与博弈分析。',
-    tags: ['传统', '博弈', 'AI'],
+    tags: ['传统', '博弈', '人机'],
     icon: 'casino'
   },
   {
@@ -131,8 +131,8 @@ export const ENTERTAINMENT_ITEMS: AppItem[] = [
     author: '@ZenMaster',
     category: 'entertainment',
     imageUrl: 'https://images.unsplash.com/photo-1586165368502-1bad197a6461?auto=format&fit=crop&q=80&w=800',
-    description: '拟物化五子棋对弈，内置 Alpha-Beta 剪枝 AI 引擎。',
-    tags: ['博弈', '策略', 'AI'],
+    description: '拟物化五子棋对弈，内置多难度策略对手。',
+    tags: ['博弈', '策略', '人机'],
     icon: 'blur_on'
   },
   {
@@ -152,7 +152,7 @@ export const ENTERTAINMENT_ITEMS: AppItem[] = [
     category: 'entertainment',
     imageUrl: 'https://images.unsplash.com/photo-1549413204-63cb5303c621?auto=format&fit=crop&q=80&w=800',
     description: '纵横十九路，落子定乾坤。体验中国传统围棋之美，支持 9/13/19 路棋盘。',
-    tags: ['博弈', '传统', 'AI'],
+    tags: ['博弈', '传统', '人机'],
     icon: 'api'
   }
 ];

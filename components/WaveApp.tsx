@@ -208,9 +208,9 @@ const WaveApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               themeColor="blue"
              >
                 <div className="space-y-4 md:space-y-5 p-4 md:p-5 pt-1 md:pt-2">
-                  <ControlSlider label="振幅 A" value={wave1.amplitude} min={0} max={2} step={0.1} onChange={v => setWave1({...wave1, amplitude: v})} />
-                  <ControlSlider label="频率 f" value={wave1.frequency} min={0.2} max={5} step={0.1} unit="Hz" onChange={v => setWave1({...wave1, frequency: v})} />
-                  <ControlSlider label="相位 φ" value={wave1.phase} min={0} max={360} step={1} unit="°" onChange={v => setWave1({...wave1, phase: v})} />
+                  <ControlSlider label="振幅 A" value={wave1.amplitude} min={0} max={2} step={0.1} onChange={(v: number) => setWave1({...wave1, amplitude: v})} />
+                  <ControlSlider label="频率 f" value={wave1.frequency} min={0.2} max={5} step={0.1} unit="Hz" onChange={(v: number) => setWave1({...wave1, frequency: v})} />
+                  <ControlSlider label="相位 φ" value={wave1.phase} min={0} max={360} step={1} unit="°" onChange={(v: number) => setWave1({...wave1, phase: v})} />
                 </div>
              </CollapsibleCard>
 
@@ -225,9 +225,9 @@ const WaveApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               themeColor="orange"
              >
                 <div className="space-y-4 md:space-y-5 p-4 md:p-5 pt-1 md:pt-2">
-                  <ControlSlider label="振幅 A" value={wave2.amplitude} min={0} max={2} step={0.1} onChange={v => setWave2({...wave2, amplitude: v})} />
-                  <ControlSlider label="频率 f" value={wave2.frequency} min={0.2} max={5} step={0.1} unit="Hz" onChange={v => setWave2({...wave2, frequency: v})} />
-                  <ControlSlider label="相位 φ" value={wave2.phase} min={0} max={360} step={1} unit="°" onChange={v => setWave2({...wave2, phase: v})} />
+                  <ControlSlider label="振幅 A" value={wave2.amplitude} min={0} max={2} step={0.1} onChange={(v: number) => setWave2({...wave2, amplitude: v})} />
+                  <ControlSlider label="频率 f" value={wave2.frequency} min={0.2} max={5} step={0.1} unit="Hz" onChange={(v: number) => setWave2({...wave2, frequency: v})} />
+                  <ControlSlider label="相位 φ" value={wave2.phase} min={0} max={360} step={1} unit="°" onChange={(v: number) => setWave2({...wave2, phase: v})} />
                 </div>
              </CollapsibleCard>
           </div>

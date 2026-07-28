@@ -32,7 +32,7 @@ class DataService {
    * Neon (PostgreSQL) Query with Caching
    */
   async queryNeon<T>(query: TemplateStringsArray, ...params: any[]): Promise<T> {
-    if (!sql) throw new Error('Neon SQL client not initialized');
+    if (!sql) return [] as unknown as T;
     
     const cacheKey = this.getCacheKey(query.join('?'), params);
     const cached = this.getFromCache<T>(cacheKey);
@@ -55,7 +55,7 @@ class DataService {
    * Neon (PostgreSQL) Query with string and params
    */
   async query<T>(queryString: string, params: any[] = []): Promise<T> {
-    if (!sql) throw new Error('Neon SQL client not initialized');
+    if (!sql) return [] as unknown as T;
     
     const cacheKey = this.getCacheKey(queryString, params);
     const cached = this.getFromCache<T>(cacheKey);
@@ -78,7 +78,7 @@ class DataService {
    * Supabase Query (Example)
    */
   async querySupabase(table: string, select = '*') {
-    if (!supabase) throw new Error('Supabase client not initialized');
+    if (!supabase) return [];
     
     const cacheKey = `supabase_${table}_${select}`;
     const cached = this.getFromCache(cacheKey);

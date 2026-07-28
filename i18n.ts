@@ -21,8 +21,8 @@ const translations = {
     capybaraTitle: '卡皮巴拉日记',
     capybaraDesc: '一场温柔的自律之旅。',
     readNow: '立即阅读',
-    chessTitle: 'AI 对弈',
-    chessDesc: '挑战高级神经网络。',
+    chessTitle: '国际象棋',
+    chessDesc: '与分级电脑对手进行一局策略练习。',
     play: '开始游玩',
     
     // Explore
@@ -73,12 +73,12 @@ const translations = {
     studyRemindersDesc: '保持学习节奏的每日提醒',
     gameInvites: '游戏邀请',
     gameInvitesDesc: '当好友向你发起挑战时',
-    optPadDesc: '用于学习、探索和游玩的极简工具箱。',
+    exBeamDesc: '把学习、练习与实用工具组织成可持续的个人节奏。',
     versionHistory: '版本历史',
     v285: 'v2.8.5 UI 更新',
     v285Desc: '全面重新设计，带来现代流畅体验。',
-    v20: 'v2.0 AI 接入',
-    v20Desc: '由 Google Gemini 提供支持。',
+    v20: 'v2.0 学习记录',
+    v20Desc: '加入收藏、历史与本地学习记录。',
     v10: 'v1.0 创世纪',
     v10Desc: '最初的发布版本。',
     faq: '常见问题',
@@ -111,8 +111,8 @@ const translations = {
     capybaraTitle: 'Capybara Diaries',
     capybaraDesc: 'A gentle journey of self-discipline.',
     readNow: 'Read Now',
-    chessTitle: 'AI Chess Engine',
-    chessDesc: 'Challenge advanced neural networks.',
+    chessTitle: 'Chess',
+    chessDesc: 'Practice strategy against a levelled computer opponent.',
     play: 'Play',
     
     // Explore
@@ -163,12 +163,12 @@ const translations = {
     studyRemindersDesc: 'Daily nudges to keep up the pace',
     gameInvites: 'Game Invites',
     gameInvitesDesc: 'When friends challenge you',
-    optPadDesc: 'Your minimalist toolkit for learning, exploring, and playing.',
+    exBeamDesc: 'A personal rhythm for learning, practice, and useful tools.',
     versionHistory: 'Version History',
     v285: 'v2.8.5 UI Refresh',
     v285Desc: 'Complete redesign for a sleek, modern experience.',
-    v20: 'v2.0 AI Integration',
-    v20Desc: 'Powered by Google Gemini.',
+    v20: 'v2.0 Learning Records',
+    v20Desc: 'Added saved items, history, and local learning records.',
     v10: 'v1.0 Genesis',
     v10Desc: 'The original launch.',
     faq: 'FAQ',
@@ -185,11 +185,25 @@ const translations = {
   }
 };
 
-let currentLang: Lang = 'zh';
+const getInitialLang = (): Lang => {
+  try {
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('exbeam.lang.v1') : null;
+    return stored === 'en' || stored === 'zh' ? stored : 'zh';
+  } catch {
+    return 'zh';
+  }
+};
+
+let currentLang: Lang = getInitialLang();
 let listeners: Array<() => void> = [];
 
 export const setLanguage = (lang: Lang) => {
   currentLang = lang;
+  try {
+    localStorage.setItem('exbeam.lang.v1', lang);
+  } catch {
+    // Ignore unavailable storage, the in-memory language still updates.
+  }
   listeners.forEach(l => l());
 };
 

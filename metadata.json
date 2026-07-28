@@ -1,7 +1,0 @@
-{
-  "name": "LearnProject",
-  "description": "LearnProject",
-  "requestFramePermissions": [
-    "microphone"
-  ]
-}

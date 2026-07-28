@@ -108,7 +108,7 @@ const ChineseChessApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
              executeMove(from, to, currentBoard, currentTurn);
           }
         } catch (e) {
-          console.error("AI 决策中断:", e);
+          console.error("电脑对手决策中断:", e);
         } finally {
           setIsAiThinking(false);
         }
@@ -277,7 +277,7 @@ const ChineseChessApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div className="px-5 py-1.5 bg-black/40 backdrop-blur-xl rounded-full border border-white/5 flex items-center gap-2 mb-[env(safe-area-inset-bottom)]">
            <div className={`w-1 h-1 rounded-full ${isAiThinking ? 'bg-yellow-500 animate-pulse' : 'bg-emerald-500 shadow-[0_0_5px_#10b981]'}`}></div>
            <span className="text-[8px] text-white/40 font-black uppercase tracking-[0.1em]">
-             {isAiThinking ? 'AI 大师正在布阵...' : `${mode === 'PvE' ? '人机对战' : '沙盘模拟'} / ${difficulty} 难度`}
+             {isAiThinking ? '电脑对手正在思考...' : `${mode === 'PvE' ? '人机对战' : '沙盘模拟'} / ${difficulty} 难度`}
            </span>
         </div>
       </footer>
@@ -313,7 +313,7 @@ const ChineseChessApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 </section>
                 {mode === 'PvE' && (
                   <section>
-                    <p className="text-[9px] text-white/30 font-black uppercase mb-3 tracking-widest">AI 算力强度</p>
+                    <p className="text-[9px] text-white/30 font-black uppercase mb-3 tracking-widest">电脑对手难度</p>
                     <div className="grid grid-cols-3 gap-2">
                        {(['入门', '专业', '大师'] as Difficulty[]).map(d => (
                          <button key={d} onClick={() => { setDifficulty(d); resetGame(); }} className={`py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${difficulty === d ? 'bg-emerald-600 text-white' : 'bg-white/5 text-white/30 hover:text-white'}`}>

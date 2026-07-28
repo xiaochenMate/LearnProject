@@ -1,0 +1,62 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  darkMode: 'class',
+  content: [
+    './index.html',
+    './index.tsx',
+    './App.tsx',
+    './components/**/*.{ts,tsx}',
+    './lib/**/*.{ts,tsx}',
+    './src/**/*.{ts,tsx}',
+  ],
+  theme: {
+    extend: {
+      colors: {
+        'brand-accent': '#2563EB',
+        'dark-accent': '#E7EEFF',
+        'brand-orange': '#F25F3A',
+        'exbeam-ink': '#111318',
+        'exbeam-forest': '#2563EB',
+        'exbeam-green': '#2563EB',
+        'exbeam-coral': '#F25F3A',
+        'exbeam-sky': '#C7D7FE',
+        'exbeam-gold': '#F7C948',
+        'exbeam-paper': '#F7F8FC',
+        'morandi-oatmeal': '#F4F1EA',
+        'morandi-charcoal': '#2F3437',
+        'morandi-taupe': '#8A8178',
+        'morandi-border': '#DDD6CE',
+        'morandi-sage': '#7F9A86',
+        'morandi-blue': '#6F8FAF',
+        'morandi-rose': '#C98E8E',
+        'dark-bg': '#0B0D0F',
+        'dark-card': '#14171A',
+        primary: '#171717',
+        'stone-black': '#171717',
+        'stone-white': '#F8FAFC',
+      },
+      boxShadow: {
+        stone: '0 6px 14px rgba(15, 23, 42, 0.18)',
+        'stone-black-inner': 'inset -4px -5px 10px rgba(255,255,255,0.08), inset 3px 4px 8px rgba(0,0,0,0.55)',
+        'stone-white-inner': 'inset -4px -5px 10px rgba(15,23,42,0.1), inset 3px 4px 8px rgba(255,255,255,0.9)',
+      },
+      fontFamily: {
+        sans: ['Manrope', '"Noto Sans SC"', 'system-ui', 'sans-serif'],
+      },
+      screens: {
+        xs: '420px',
+      },
+    },
+  },
+  safelist: [
+    'bg-blue-50',
+    'text-blue-500',
+    'bg-emerald-50',
+    'text-emerald-500',
+    'bg-amber-50',
+    'text-amber-500',
+    'bg-rose-50',
+    'text-rose-500',
+  ],
+  plugins: [],
+};

@@ -1,47 +1,55 @@
-
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ArrowRight,
+  Bookmark,
+  Clock3,
+  Compass,
+  Flame,
+  Gamepad2,
+  GraduationCap,
+  LayoutGrid,
+  Loader2,
+  Moon,
+  Play,
+  Search,
+  Settings,
+  Sun,
+  Wrench,
+  X,
+} from 'lucide-react';
 import { EDUCATION_ITEMS, ENTERTAINMENT_ITEMS, UTILITIES_ITEMS } from './constants';
-import { AppItem } from './types';
-import { useTranslation } from './i18n';
+import { AppItem, Category } from './types';
 import AppCard from './components/AppCard';
-import Modal from './components/Modal';
-import KnowledgeBanner from './components/KnowledgeBanner';
+import BrandLogo, { BrandMark } from './components/BrandLogo';
 import ErrorBoundary from './components/ErrorBoundary';
-import Button from './components/ui/Button';
-import Card from './components/ui/Card';
-import Typography from './components/ui/Typography';
-import { AnimatePresence, motion as motionBase } from 'framer-motion';
-const motion = motionBase as any;
-import { Search, Compass, Bookmark, Settings, Moon, Sun, Loader2, Sparkles, LayoutGrid, Box } from 'lucide-react';
+import Modal from './components/Modal';
+import ModuleIcon from './components/ModuleIcon';
+import {
+  CATEGORY_META,
+  formatFocusTime,
+  getModuleMeta,
+  getStreak,
+  getWeekSeconds,
+  UsageMap,
+} from './lib/product';
 
-// Resilient Lazy Loading for chunk errors
 const lazyWithRetry = (componentImport: () => Promise<any>) =>
   lazy(async () => {
-    const pageHasAlreadyBeenForceRefreshed = JSON.parse(
-      sessionStorage.getItem('page-has-been-force-refreshed') || 'false'
-    );
-
+    const refreshed = sessionStorage.getItem('exbeam-chunk-refresh') === 'true';
     try {
       const component = await componentImport();
-      sessionStorage.setItem('page-has-been-force-refreshed', 'false');
-      
-      if (!component || !component.default) {
-         console.error("Component failed to load or has no default export", component);
-         throw new Error("Module has no default export");
-      }
-      
+      sessionStorage.setItem('exbeam-chunk-refresh', 'false');
       return component;
     } catch (error) {
-      if (!pageHasAlreadyBeenForceRefreshed) {
-        sessionStorage.setItem('page-has-been-force-refreshed', 'true');
+      if (!refreshed) {
+        sessionStorage.setItem('exbeam-chunk-refresh', 'true');
         window.location.reload();
-        return new Promise(() => {}); // Wait for reload
+        return new Promise(() => {});
       }
       throw error;
     }
   });
 
-// Lazy load sub-apps
 const Earth3D = lazyWithRetry(() => import('./components/Earth3D'));
 const FoodChainApp = lazyWithRetry(() => import('./components/FoodChainApp'));
 const WaveApp = lazyWithRetry(() => import('./components/WaveApp'));
@@ -61,366 +69,559 @@ const ProArtApp = lazyWithRetry(() => import('./components/ProArtApp'));
 const VocabularyApp = lazyWithRetry(() => import('./components/VocabularyApp'));
 const IdiomApp = lazyWithRetry(() => import('./components/IdiomApp'));
 const CurrencyConverterApp = lazyWithRetry(() => import('./components/CurrencyConverterApp'));
-const CapybaraComicApp = lazyWithRetry(() => import('./components/CapybaraComicApp'));
 const LibraryView = lazyWithRetry(() => import('./components/LibraryView'));
 const SettingsView = lazyWithRetry(() => import('./components/SettingsView'));
 const ExploreView = lazyWithRetry(() => import('./components/ExploreView'));
 
-type Tab = 'HOME' | 'EXPLORE' | 'LIBRARY' | 'PROFILE';
+type Tab = 'HOME' | 'EXPLORE' | 'LIBRARY' | 'SETTINGS';
 type Theme = 'light' | 'dark';
+type CategoryFilter = 'all' | Category;
 
-export interface UserInfo {
-  email: string;
-  avatarUrl: string;
-  isPro?: boolean;
-}
-
-const LoadingOverlay = () => (
-  <div className="fixed inset-0 z-[100] bg-white/80 dark:bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center">
-    <div className="relative">
-      <Loader2 className="w-10 h-10 text-brand-accent animate-spin" />
-    </div>
-  </div>
-);
-
-const NavBtn: React.FC<{ 
-  icon: React.ReactNode; 
-  label: string; 
-  active: boolean; 
-  onClick: () => void;
-}> = ({ icon, label, active, onClick }) => (
-  <button 
-    onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group relative ${
-      active 
-        ? 'bg-black/5 dark:bg-white/10 text-black dark:text-white font-medium' 
-        : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
-    }`}
-  >
-    <span className={`transition-transform duration-200 ${active ? 'scale-105' : 'group-hover:scale-105'}`}>
-      {icon}
-    </span>
-    <span className="text-sm">{label}</span>
-  </button>
-);
+const STORAGE = {
+  theme: 'exbeam.theme.v1',
+  saved: 'exbeam.saved.v1',
+  history: 'exbeam.history.v1',
+  usage: 'exbeam.usage.v1',
+};
 
 const safeStorage = {
-  get: (key: string) => {
+  get(key: string) {
     try {
       return localStorage.getItem(key);
     } catch {
       return null;
     }
   },
-  set: (key: string, value: string) => {
+  set(key: string, value: string) {
     try {
       localStorage.setItem(key, value);
-    } catch (e) {
-      console.warn('Storage quota exceeded or unavailable', e);
+    } catch {
+      // The product remains usable when storage is unavailable.
     }
+  },
+  remove(key: string) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Ignore unavailable storage.
+    }
+  },
+};
+
+const readJson = <T,>(key: string, fallback: T): T => {
+  const value = safeStorage.get(key);
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
   }
 };
 
+const NAV_ITEMS: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
+  { id: 'HOME', label: '今日', icon: <LayoutGrid size={18} /> },
+  { id: 'EXPLORE', label: '探索', icon: <Compass size={18} /> },
+  { id: 'LIBRARY', label: '资源库', icon: <Bookmark size={18} /> },
+  { id: 'SETTINGS', label: '设置', icon: <Settings size={18} /> },
+];
+
+const FILTERS: Array<{ id: CategoryFilter; label: string; icon: React.ReactNode }> = [
+  { id: 'all', label: '全部', icon: <LayoutGrid size={15} /> },
+  { id: 'education', label: '学习', icon: <GraduationCap size={15} /> },
+  { id: 'entertainment', label: '对弈', icon: <Gamepad2 size={15} /> },
+  { id: 'utilities', label: '工具', icon: <Wrench size={15} /> },
+];
+
+const LoadingOverlay = () => (
+  <div className="flex h-full w-full items-center justify-center bg-[#F7F8FC] dark:bg-[#0B0D12]">
+    <div className="flex items-center gap-3 text-sm font-medium text-[#69707D] dark:text-white/55">
+      <Loader2 className="h-5 w-5 animate-spin text-[#2563EB]" />
+      正在打开模块
+    </div>
+  </div>
+);
+
 const App: React.FC = () => {
-  const { t } = useTranslation();
+  const allModules = useMemo(() => [...EDUCATION_ITEMS, ...ENTERTAINMENT_ITEMS, ...UTILITIES_ITEMS], []);
   const [activeTab, setActiveTab] = useState<Tab>('HOME');
   const [selectedItem, setSelectedItem] = useState<AppItem | null>(null);
   const [runningAppId, setRunningAppId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const [savedIds, setSavedIds] = useState<string[]>([]);
-  const [historyIds, setHistoryIds] = useState<string[]>([]);
-  const [user, setUser] = useState<UserInfo | null>(null);
-  const [theme, setTheme] = useState<Theme>(() => (safeStorage.get('zst_theme') as Theme) || 'light');
-  const [isCapybaraOpen, setIsCapybaraOpen] = useState(false);
-
-  const allModules = [...EDUCATION_ITEMS, ...ENTERTAINMENT_ITEMS, ...UTILITIES_ITEMS];
-
-  useEffect(() => {
-    const savedIden = safeStorage.get('zst_identity_v3');
-    if (savedIden) setUser(JSON.parse(savedIden));
-    const storedSaved = safeStorage.get('zst_saved_v2');
-    if (storedSaved) setSavedIds(JSON.parse(storedSaved));
-    const storedHistory = safeStorage.get('zst_history_v2');
-    if (storedHistory) setHistoryIds(JSON.parse(storedHistory));
-  }, []);
+  const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
+  const [sessionElapsed, setSessionElapsed] = useState(0);
+  const [theme, setTheme] = useState<Theme>(() => {
+    return (safeStorage.get(STORAGE.theme) || safeStorage.get('zst_theme') || 'light') as Theme;
+  });
+  const [savedIds, setSavedIds] = useState<string[]>(() =>
+    readJson(STORAGE.saved, readJson<string[]>('zst_saved_v2', []))
+  );
+  const [historyIds, setHistoryIds] = useState<string[]>(() =>
+    readJson(STORAGE.history, readJson<string[]>('zst_history_v2', []))
+  );
+  const [usage, setUsage] = useState<UsageMap>(() => readJson<UsageMap>(STORAGE.usage, {}));
+  const sessionRef = useRef<{ id: string; startedAt: number; iso: string } | null>(null);
 
   useEffect(() => {
-    if (theme === 'dark') document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-    safeStorage.set('zst_theme', theme);
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    safeStorage.set(STORAGE.theme, theme);
   }, [theme]);
 
-  const handleRunAppById = (id: string) => {
-    const item = allModules.find(m => m.id === id);
-    if (item) handleRunApp(item);
+  useEffect(() => safeStorage.set(STORAGE.saved, JSON.stringify(savedIds)), [savedIds]);
+  useEffect(() => safeStorage.set(STORAGE.history, JSON.stringify(historyIds)), [historyIds]);
+  useEffect(() => safeStorage.set(STORAGE.usage, JSON.stringify(usage)), [usage]);
+
+  useEffect(() => {
+    const requestedId = new URLSearchParams(window.location.search).get('module');
+    const requested = allModules.find(item => item.id === requestedId);
+    if (requested) setSelectedItem(requested);
+  }, [allModules]);
+
+  useEffect(() => {
+    if (!runningAppId) return;
+    setSessionElapsed(0);
+    const timer = window.setInterval(() => {
+      const active = sessionRef.current;
+      if (active) setSessionElapsed(Math.max(0, Math.floor((Date.now() - active.startedAt) / 1000)));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [runningAppId]);
+
+  const handleToggleSave = (id: string) => {
+    setSavedIds(current => (current.includes(id) ? current.filter(itemId => itemId !== id) : [id, ...current]));
   };
 
   const handleRunApp = (item: AppItem) => {
-    setSelectedItem(null); 
-    setHistoryIds(prev => [item.id, ...prev.filter(id => id !== item.id)].slice(0, 15));
+    const now = new Date();
+    setSelectedItem(null);
+    setHistoryIds(current => [item.id, ...current.filter(id => id !== item.id)].slice(0, 30));
+    setUsage(current => {
+      const previous = current[item.id];
+      return {
+        ...current,
+        [item.id]: {
+          launches: (previous?.launches || 0) + 1,
+          totalSeconds: previous?.totalSeconds || 0,
+          lastOpened: now.toISOString(),
+          sessions: previous?.sessions || [],
+        },
+      };
+    });
+    sessionRef.current = { id: item.id, startedAt: Date.now(), iso: now.toISOString() };
     setRunningAppId(item.id);
   };
 
-  const filteredModules = allModules.filter(item => {
-    const query = searchQuery.toLowerCase();
-    return item.title.toLowerCase().includes(query) || 
-      item.description.toLowerCase().includes(query) ||
-      item.tags.some(tag => tag.toLowerCase().includes(query));
-  });
+  const closeRunningApp = useCallback(() => {
+    const active = sessionRef.current;
+    if (active) {
+      const seconds = Math.max(1, Math.floor((Date.now() - active.startedAt) / 1000));
+      setUsage(current => {
+        const previous = current[active.id] || {
+          launches: 1,
+          totalSeconds: 0,
+          lastOpened: active.iso,
+          sessions: [],
+        };
+        return {
+          ...current,
+          [active.id]: {
+            ...previous,
+            totalSeconds: previous.totalSeconds + seconds,
+            sessions: [{ startedAt: active.iso, seconds }, ...previous.sessions].slice(0, 100),
+          },
+        };
+      });
+    }
+    sessionRef.current = null;
+    setRunningAppId(null);
+    setSessionElapsed(0);
+  }, []);
 
-  const renderApp = () => {
-    const closeApp = () => setRunningAppId(null);
-    
-    return (
-      <ErrorBoundary onReset={closeApp}>
-        <Suspense fallback={<LoadingOverlay />}>
-          {(() => {
-            switch (runningAppId) {
-              case 'e1': return <Earth3D onClose={closeApp} />;
-              case 'e2': return <FoodChainApp onClose={closeApp} />;
-              case 'e3': return <WaveApp onClose={closeApp} />;
-              case 'e4': return <CharacterApp onClose={closeApp} />;
-              case 'e5': return <PoetryApp onClose={closeApp} />;
-              case 'e6': return <HistorySortingApp onClose={closeApp} />;
-              case 'e7': return <ClockApp onClose={closeApp} />;
-              case 'e18': return <MathSprintApp onClose={closeApp} />;
-              case 'e20': return <ThreeCharacterApp onClose={closeApp} />;
-              case 'e21': return <ThousandCharacterApp onClose={closeApp} />;
-              case 'ent3': return <BrainTeaseApp onClose={closeApp} />;
-              case 'ent4': return <GobangApp onClose={closeApp} />;
-              case 'ent5': return <ChineseChessApp onClose={closeApp} />;
-              case 'ent6': return <ChessApp onClose={closeApp} />;
-              case 'ent7': return <GoApp onClose={closeApp} />;
-              case 'u1': return <ProArtApp onClose={closeApp} />;
-              case 'u2': return <VocabularyApp onClose={closeApp} userEmail={user?.email} />;
-              case 'u3': return <IdiomApp onClose={closeApp} />;
-              case 'u4': return <CurrencyConverterApp onClose={closeApp} />;
-              default: return null;
-            }
-          })()}
-        </Suspense>
-      </ErrorBoundary>
-    );
+  const resetProductData = () => {
+    Object.values(STORAGE).forEach(key => safeStorage.remove(key));
+    setSavedIds([]);
+    setHistoryIds([]);
+    setUsage({});
   };
 
+  const filteredModules = allModules.filter(item => {
+    const query = searchQuery.trim().toLowerCase();
+    const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+    const matchesQuery =
+      !query ||
+      item.title.toLowerCase().includes(query) ||
+      item.description.toLowerCase().includes(query) ||
+      item.tags.some(tag => tag.toLowerCase().includes(query));
+    return matchesCategory && matchesQuery;
+  });
+
+  const recentItems = historyIds
+    .map(id => allModules.find(item => item.id === id))
+    .filter(Boolean) as AppItem[];
+  const continueItem = recentItems[0] || allModules.find(item => item.id === 'e20') || allModules[0];
+  const planItems = [
+    continueItem,
+    allModules.find(item => item.id === 'u2'),
+    allModules.find(item => item.id === 'e18'),
+  ].filter((item, index, list): item is AppItem => Boolean(item) && list.findIndex(other => other?.id === item?.id) === index);
+
+  const touchedCount = Object.values(usage).filter(item => item.launches > 0).length;
+  const weekSeconds = getWeekSeconds(usage);
+  const streak = getStreak(usage);
+
+  const renderModule = () => (
+    <ErrorBoundary onReset={closeRunningApp}>
+      <Suspense fallback={<LoadingOverlay />}>
+        {(() => {
+          switch (runningAppId) {
+            case 'e1': return <Earth3D onClose={closeRunningApp} />;
+            case 'e2': return <FoodChainApp onClose={closeRunningApp} />;
+            case 'e3': return <WaveApp onClose={closeRunningApp} />;
+            case 'e4': return <CharacterApp onClose={closeRunningApp} />;
+            case 'e5': return <PoetryApp onClose={closeRunningApp} />;
+            case 'e6': return <HistorySortingApp onClose={closeRunningApp} />;
+            case 'e7': return <ClockApp onClose={closeRunningApp} />;
+            case 'e18': return <MathSprintApp onClose={closeRunningApp} />;
+            case 'e20': return <ThreeCharacterApp onClose={closeRunningApp} />;
+            case 'e21': return <ThousandCharacterApp onClose={closeRunningApp} />;
+            case 'ent3': return <BrainTeaseApp onClose={closeRunningApp} />;
+            case 'ent4': return <GobangApp onClose={closeRunningApp} />;
+            case 'ent5': return <ChineseChessApp onClose={closeRunningApp} />;
+            case 'ent6': return <ChessApp onClose={closeRunningApp} />;
+            case 'ent7': return <GoApp onClose={closeRunningApp} />;
+            case 'u1': return <ProArtApp onClose={closeRunningApp} />;
+            case 'u2': return <VocabularyApp onClose={closeRunningApp} />;
+            case 'u3': return <IdiomApp onClose={closeRunningApp} />;
+            case 'u4': return <CurrencyConverterApp onClose={closeRunningApp} />;
+            default: return null;
+          }
+        })()}
+      </Suspense>
+    </ErrorBoundary>
+  );
+
   if (runningAppId) {
-    const item = allModules.find(m => m.id === runningAppId);
+    const item = allModules.find(module => module.id === runningAppId);
+    if (!item) return null;
+    const minutes = Math.floor(sessionElapsed / 60).toString().padStart(2, '0');
+    const seconds = (sessionElapsed % 60).toString().padStart(2, '0');
+
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-[#FAFAFA] dark:bg-[#000000] text-gray-900 dark:text-gray-100 animate-in fade-in duration-300">
-        <header className="h-14 md:h-16 px-4 md:px-6 flex items-center justify-between border-b border-black/5 dark:border-white/10 shrink-0 bg-white/80 dark:bg-[#111]/80 backdrop-blur-xl z-20">
-          <div className="flex items-center gap-3">
-            <h1 className="text-base md:text-lg font-semibold tracking-tight">{item?.name}</h1>
+      <div className="fixed inset-0 z-50 flex flex-col bg-[#F7F8FC] text-[#111318] dark:bg-[#0B0D12] dark:text-white">
+        <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-[#E5E7EB] bg-white px-3 dark:border-white/10 dark:bg-[#111318] md:h-16 md:px-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <BrandMark className="h-8 w-8 shrink-0" />
+            <div className="min-w-0">
+                <div className="hidden text-[10px] font-medium text-[#7A8190] dark:text-white/40 sm:block">
+                ExBeam / {CATEGORY_META[item.category].label}
+              </div>
+              <h1 className="truncate text-sm font-semibold md:text-base">{item.title}</h1>
+            </div>
           </div>
-          <button onClick={() => setRunningAppId(null)} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400 transition-colors">
-             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <div className="mr-1 hidden items-center gap-1.5 text-xs text-[#6C7973] dark:text-white/45 sm:flex">
+              <Clock3 size={14} />
+              <span>{minutes}:{seconds}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleToggleSave(item.id)}
+              className={`flex h-9 w-9 items-center justify-center rounded-md ${
+                savedIds.includes(item.id)
+                  ? 'bg-[#EEF2FF] text-[#2563EB] dark:bg-[#2563EB]/20'
+                  : 'text-[#69707D] hover:bg-black/5 dark:text-white/50 dark:hover:bg-white/10'
+              }`}
+              aria-label={savedIds.includes(item.id) ? '取消收藏' : '收藏'}
+              title={savedIds.includes(item.id) ? '取消收藏' : '收藏'}
+            >
+              <Bookmark size={17} fill={savedIds.includes(item.id) ? 'currentColor' : 'none'} />
+            </button>
+            <button
+              type="button"
+              onClick={closeRunningApp}
+              className="flex h-9 w-9 items-center justify-center rounded-md text-[#69707D] hover:bg-black/5 dark:text-white/50 dark:hover:bg-white/10"
+              aria-label="退出模块"
+              title="退出模块"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </header>
-        <main className="flex-1 relative overflow-hidden flex flex-col">
-          {renderApp()}
-        </main>
+        <main className="module-stage relative flex min-h-0 flex-1 flex-col overflow-hidden">{renderModule()}</main>
       </div>
     );
   }
 
-  return (
-    <div className="flex h-screen bg-[#FAFAFA] dark:bg-[#000000] text-[#171717] dark:text-[#EDEDED] transition-colors duration-300 overflow-hidden font-sans selection:bg-brand-accent selection:text-white">
-      
-      {/* Sidebar - Desktop */}
-      <aside className="w-64 bg-white/50 dark:bg-[#111]/50 backdrop-blur-2xl border-r border-black/5 dark:border-white/10 flex-col shrink-0 p-6 hidden md:flex z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-        <div className="flex flex-col gap-1 mb-10 px-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-black">
-               <Box size={18} strokeWidth={2.5} />
+  const renderHome = () => (
+    <div className="w-full pb-24">
+      <header className="mb-7">
+        <div className="text-xs font-semibold text-[#2563EB] dark:text-[#8EACFF]">今天 · 个人学习工作台</div>
+        <div className="mt-3 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <h1 className="text-3xl font-semibold leading-tight text-[#111318] dark:text-white md:text-4xl">今天想专注什么？</h1>
+            <p className="mt-3 text-sm text-[#69707D] dark:text-white/55">选一件事开始，ExBeam 会替你记录投入。</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleRunApp(continueItem)}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#2563EB] px-5 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(37,99,235,0.22)] hover:bg-[#1D4ED8] md:w-auto"
+          >
+            <Play size={16} fill="currentColor" />
+            {recentItems.length ? '继续上次练习' : '开始第一个模块'}
+          </button>
+        </div>
+      </header>
+
+      <section className="mb-8 grid gap-4 lg:grid-cols-[1.45fr_1fr]">
+        <div className="rounded-lg border border-[#E2E5EA] bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-[#15171C] md:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-xs font-semibold text-[#2563EB] dark:text-[#8EACFF]">{recentItems.length ? '继续进行' : '推荐开始'}</div>
+              <h2 className="mt-2 text-xl font-semibold text-[#111318] dark:text-white">{continueItem.title}</h2>
+              <p className="mt-2 line-clamp-2 max-w-xl text-sm leading-6 text-[#69707D] dark:text-white/55">{getModuleMeta(continueItem).outcome}</p>
             </div>
-            <Typography variant="h3" className="text-xl font-semibold tracking-tight">OptPad</Typography>
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#EEF2FF] text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#8EACFF]">
+              <ModuleIcon name={continueItem.icon} size={24} />
+            </div>
+          </div>
+          <div className="mt-6 flex items-center justify-between gap-4 border-t border-[#ECEEF2] pt-4 dark:border-white/10">
+            <div className="flex items-center gap-2 text-xs text-[#7A8190] dark:text-white/45">
+              <Clock3 size={14} />
+              建议 {getModuleMeta(continueItem).minutes} 分钟
+            </div>
+            <button type="button" onClick={() => handleRunApp(continueItem)} className="flex items-center gap-2 text-sm font-semibold text-[#2563EB] hover:text-[#1D4ED8]">
+              开始
+              <ArrowRight size={15} />
+            </button>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1">
-          <NavBtn 
-            icon={<LayoutGrid size={18}/>} 
-            label={t('overview')} 
-            active={activeTab === 'HOME'} 
-            onClick={() => setActiveTab('HOME')} 
-          />
-          <NavBtn 
-            icon={<Compass size={18}/>} 
-            label={t('explore')} 
-            active={activeTab === 'EXPLORE'} 
-            onClick={() => setActiveTab('EXPLORE')} 
-          />
-          <NavBtn 
-            icon={<Bookmark size={18}/>} 
-            label={t('library')} 
-            active={activeTab === 'LIBRARY'} 
-            onClick={() => setActiveTab('LIBRARY')} 
-          />
-          <NavBtn 
-            icon={<Settings size={18}/>} 
-            label={t('settings')} 
-            active={activeTab === 'PROFILE'} 
-            onClick={() => setActiveTab('PROFILE')} 
-          />
-        </nav>
-
-        <div className="mt-auto px-2">
-          <button 
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            className="flex items-center justify-between w-full p-3 rounded-lg border border-black/5 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-          >
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-               {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
-               <span>{theme === 'light' ? t('darkMode') : t('lightMode')}</span>
+        <div className="grid grid-cols-3 rounded-lg border border-[#E2E5EA] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)] dark:border-white/10 dark:bg-[#15171C]">
+          {[
+            { label: '连续天数', value: streak, unit: '天', icon: <Flame size={17} /> },
+            { label: '本周专注', value: formatFocusTime(weekSeconds), unit: '', icon: <Clock3 size={17} /> },
+            { label: '已探索', value: touchedCount, unit: '个', icon: <Compass size={17} /> },
+          ].map((stat, index) => (
+            <div key={stat.label} className={`flex min-w-0 flex-col justify-center p-4 ${index ? 'border-l border-[#ECEEF2] dark:border-white/10' : ''}`}>
+              <div className="text-[#2563EB] dark:text-[#8EACFF]">{stat.icon}</div>
+              <div className="mt-4 truncate text-lg font-semibold text-[#111318] dark:text-white">
+                {stat.value}{stat.unit}
+              </div>
+              <div className="mt-1 text-[11px] text-[#7A8190] dark:text-white/40">{stat.label}</div>
             </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-9">
+        <div className="mb-4 flex items-end justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-[#111318] dark:text-white">今日计划</h2>
+            <p className="mt-1 text-sm text-[#7A8190] dark:text-white/45">一个主任务，加两个轻量补充。</p>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {planItems.map((item, index) => (
+            <button
+              type="button"
+              key={item.id}
+              onClick={() => handleRunApp(item)}
+              className="flex min-w-0 items-center gap-3 rounded-lg border border-[#E2E5EA] bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#BEC5D0] hover:shadow-[0_8px_22px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-[#15171C] dark:hover:border-white/20"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F0F3F9] text-[#566074] dark:bg-white/[0.07] dark:text-white/60">
+                <ModuleIcon name={item.icon} size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-medium text-[#7A8190] dark:text-white/40">任务 {index + 1}</div>
+                <div className="mt-1 truncate text-sm font-semibold text-[#111318] dark:text-white">{item.title}</div>
+              </div>
+              <ArrowRight size={15} className="shrink-0 text-[#9AA1AE]" />
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-4">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-[#111318] dark:text-white">所有模块</h2>
+              <p className="mt-1 text-sm text-[#7A8190] dark:text-white/45">选择一个明确目标，直接开始。</p>
+            </div>
+            <span className="text-xs text-[#7A8190] dark:text-white/40">{filteredModules.length} 个结果</span>
+          </div>
+        </div>
+
+        <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_auto]">
+          <label className="relative block">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8B92A0]" size={17} />
+            <input
+              value={searchQuery}
+              onChange={event => setSearchQuery(event.target.value)}
+              placeholder="搜索模块、主题或能力"
+              className="h-11 w-full rounded-lg border border-[#DDE1E8] bg-white pl-10 pr-4 text-sm text-[#111318] outline-none transition-colors focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10 dark:border-white/10 dark:bg-[#15171C] dark:text-white"
+            />
+          </label>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            {FILTERS.map(option => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setActiveCategory(option.id)}
+                className={`flex h-11 shrink-0 items-center gap-2 rounded-lg border px-3.5 text-sm font-medium ${
+                  activeCategory === option.id
+                    ? 'border-[#2563EB] bg-[#2563EB] text-white shadow-[0_4px_12px_rgba(37,99,235,0.18)]'
+                    : 'border-[#DDE1E8] bg-white text-[#69707D] hover:border-[#BEC5D0] dark:border-white/10 dark:bg-[#15171C] dark:text-white/60'
+                }`}
+              >
+                {option.icon}
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {filteredModules.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {filteredModules.map(item => (
+              <AppCard
+                key={item.id}
+                item={item}
+                usage={usage[item.id]}
+                isSaved={savedIds.includes(item.id)}
+                onOpen={setSelectedItem}
+                onRun={handleRunApp}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-[#C8D4CD] px-6 py-16 text-center text-sm text-[#71807A] dark:border-white/15">
+            没有找到匹配模块，换个关键词试试。
+          </div>
+        )}
+      </section>
+    </div>
+  );
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[#F7F8FC] text-[#111318] transition-colors dark:bg-[#0B0D12] dark:text-white">
+      <aside className="hidden w-[232px] shrink-0 flex-col border-r border-[#E6E8EC] bg-white p-4 dark:border-white/10 dark:bg-[#101217] md:flex">
+        <div className="px-2 py-2">
+          <BrandLogo />
+        </div>
+        <nav className="mt-8 space-y-1">
+          {NAV_ITEMS.map(item => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setActiveTab(item.id)}
+              className={`flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${
+                activeTab === item.id
+                  ? 'bg-[#EEF2FF] text-[#2563EB]'
+                  : 'text-[#69707D] hover:bg-[#F4F6FA] hover:text-[#111318] dark:text-white/50 dark:hover:bg-white/[0.06] dark:hover:text-white'
+              }`}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        <div className="mt-auto space-y-3">
+          <div className="rounded-lg border border-[#E5E7EB] bg-[#F8F9FC] p-3 dark:border-white/10 dark:bg-white/[0.03]">
+            <div className="flex items-center gap-2 text-xs font-medium text-[#4B5565] dark:text-white/65">
+              <span className="h-2 w-2 rounded-full bg-[#22C55E]" />
+              本地记录已开启
+            </div>
+            <p className="mt-2 text-[11px] leading-5 text-[#8B92A0] dark:text-white/35">收藏和专注时间保存在当前设备。</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTheme(current => (current === 'light' ? 'dark' : 'light'))}
+            className="flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-[#69707D] hover:bg-[#F4F6FA] dark:text-white/50 dark:hover:bg-white/[0.06]"
+          >
+            {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
+            {theme === 'light' ? '暗色模式' : '亮色模式'}
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto no-scrollbar relative flex flex-col items-center">
-        
-        {/* Mobile Header */}
-        <header className="md:hidden w-full sticky top-0 bg-[#FAFAFA]/80 dark:bg-black/80 backdrop-blur-xl z-30 px-6 py-4 flex items-center justify-between border-b border-black/5 dark:border-white/10">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-black">
-              <Box size={18} strokeWidth={2.5} />
-            </div>
-            <Typography variant="h3" className="text-lg font-semibold tracking-tight">OptPad</Typography>
-          </div>
-          <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="p-2 -mr-2">
+      <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[#E6E8EC] bg-white/95 px-4 backdrop-blur-md dark:border-white/10 dark:bg-[#0B0D12]/95 md:hidden">
+          <BrandLogo />
+          <button
+            type="button"
+            onClick={() => setTheme(current => (current === 'light' ? 'dark' : 'light'))}
+            className="flex h-9 w-9 items-center justify-center rounded-md text-[#69707D] dark:text-white/55"
+            aria-label="切换主题"
+          >
             {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </button>
         </header>
 
-        <div className="w-full max-w-5xl px-6 md:px-12 py-8 md:py-12 flex flex-col flex-1">
-          
-          <section className="mb-10 w-full">
-            <div className="relative w-full group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-accent transition-colors" size={18} />
-              <input 
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t('searchModules')}
-                className="w-full bg-white dark:bg-[#111] border border-black/5 dark:border-white/10 rounded-xl py-3 pl-11 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-brand-accent focus:border-brand-accent transition-all dark:text-white placeholder:text-gray-400 shadow-sm"
+        <div className="mx-auto flex min-h-full w-full max-w-[1180px] flex-col px-4 py-7 sm:px-6 md:px-8 md:py-10 lg:px-10">
+          <Suspense fallback={<LoadingOverlay />}>
+            {activeTab === 'HOME' && renderHome()}
+            {activeTab === 'EXPLORE' && (
+              <ExploreView
+                allModules={allModules}
+                usage={usage}
+                onOpenItem={setSelectedItem}
+                onRunItem={handleRunApp}
               />
-            </div>
-          </section>
-
-          <AnimatePresence mode="wait">
-            {activeTab === 'HOME' ? (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-10">
-                <KnowledgeBanner onRun={handleRunAppById} />
-
-                <section>
-                   <div className="flex items-center justify-between mb-6">
-                      <Typography variant="h3" className="text-xl font-semibold tracking-tight">{t('featured')}</Typography>
-                   </div>
-                   
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     {/* Promo Card */}
-                     <Card 
-                       onClick={() => setIsCapybaraOpen(true)}
-                       className="relative overflow-hidden p-6 flex flex-col justify-between group cursor-pointer bg-gradient-to-br from-[#0070F3]/5 to-transparent border-transparent hover:border-[#0070F3]/20 transition-all h-[180px]"
-                     >
-                       <div className="relative z-10">
-                         <div className="flex items-center gap-2 text-[#0070F3] mb-2">
-                           <Sparkles size={14} />
-                           <span className="text-xs font-medium uppercase tracking-wider">Spotlight</span>
-                         </div>
-                         <Typography variant="h2" className="text-2xl font-semibold mb-1 text-[#171717] dark:text-white">{t('capybaraTitle')}</Typography>
-                         <Typography variant="body" className="text-gray-500 dark:text-gray-400 text-sm">{t('capybaraDesc')}</Typography>
-                       </div>
-                       <div className="relative z-10 flex justify-end">
-                         <span className="text-sm font-medium text-[#0070F3] opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all">{t('readNow')} &rarr;</span>
-                       </div>
-                     </Card>
-                     
-                     <Card 
-                       onClick={() => handleRunAppById('ent6')}
-                       className="relative overflow-hidden p-6 flex flex-col justify-between group cursor-pointer hover:border-black/20 dark:hover:border-white/30 transition-all h-[180px]"
-                     >
-                       <div className="relative z-10">
-                         <Typography variant="h2" className="text-2xl font-semibold mb-1">{t('chessTitle')}</Typography>
-                         <Typography variant="body" className="text-gray-500 dark:text-gray-400 text-sm">{t('chessDesc')}</Typography>
-                       </div>
-                       <div className="relative z-10 flex justify-end">
-                         <span className="text-sm font-medium opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all">{t('play')} &rarr;</span>
-                       </div>
-                     </Card>
-                   </div>
-                </section>
-
-                 <section>
-                   <div className="flex items-center justify-between mb-6 mt-4">
-                      <Typography variant="h3" className="text-xl font-semibold tracking-tight">{t('modules')}</Typography>
-                   </div>
-
-                   {filteredModules.length > 0 ? (
-                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {filteredModules.map(item => (
-                          <AppCard key={item.id} item={item} onClick={setSelectedItem} />
-                        ))}
-                     </div>
-                   ) : (
-                     <div className="w-full flex flex-col items-center justify-center py-20 border border-black/5 dark:border-white/10 border-dashed rounded-2xl">
-                        <Typography variant="body" className="text-gray-500">
-                          {t('noModulesFound')}
-                        </Typography>
-                     </div>
-                   )}
-                </section>
-                
-                <div className="h-24 md:hidden" />
-              </motion.div>
-            ) : activeTab === 'EXPLORE' ? (
-              <Suspense fallback={<Loader2 className="animate-spin m-auto" />}>
-                <ExploreView allModules={allModules} onOpenItem={setSelectedItem} />
-              </Suspense>
-            ) : activeTab === 'LIBRARY' ? (
-              <Suspense fallback={<Loader2 className="animate-spin m-auto" />}>
-                <LibraryView allModules={allModules} savedIds={savedIds} historyIds={historyIds} onOpenItem={setSelectedItem} />
-              </Suspense>
-            ) : (
-              <Suspense fallback={<Loader2 className="animate-spin m-auto" />}>
-                <SettingsView theme={theme} onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')} user={user} onUpdateUser={setUser} />
-              </Suspense>
             )}
-          </AnimatePresence>
+            {activeTab === 'LIBRARY' && (
+              <LibraryView
+                allModules={allModules}
+                savedIds={savedIds}
+                historyIds={historyIds}
+                usage={usage}
+                onOpenItem={setSelectedItem}
+                onRunItem={handleRunApp}
+                onToggleSave={handleToggleSave}
+                onClearHistory={() => setHistoryIds([])}
+              />
+            )}
+            {activeTab === 'SETTINGS' && (
+              <SettingsView
+                theme={theme}
+                usage={usage}
+                savedCount={savedIds.length}
+                historyCount={historyIds.length}
+                onToggleTheme={() => setTheme(current => (current === 'light' ? 'dark' : 'light'))}
+                onResetData={resetProductData}
+              />
+            )}
+          </Suspense>
         </div>
       </main>
 
-      {/* Mobile Bottom Nav */}
-      <footer className="md:hidden fixed bottom-0 left-0 right-0 bg-[#FAFAFA]/90 dark:bg-black/90 backdrop-blur-xl border-t border-black/5 dark:border-white/10 py-2 px-6 flex justify-around items-center safe-bottom z-50">
-        <MobNavBtn icon={<LayoutGrid size={20}/>} label={t('home')} active={activeTab === 'HOME'} onClick={() => setActiveTab('HOME')} />
-        <MobNavBtn icon={<Compass size={20}/>} label={t('explore')} active={activeTab === 'EXPLORE'} onClick={() => setActiveTab('EXPLORE')} />
-        <MobNavBtn icon={<Bookmark size={20}/>} label={t('library')} active={activeTab === 'LIBRARY'} onClick={() => setActiveTab('LIBRARY')} />
-        <MobNavBtn icon={<Settings size={20}/>} label={t('settings')} active={activeTab === 'PROFILE'} onClick={() => setActiveTab('PROFILE')} />
-      </footer>
+      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-[#E6E8EC] bg-white/95 px-2 pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.04)] backdrop-blur-md dark:border-white/10 dark:bg-[#101217]/95 md:hidden">
+        {NAV_ITEMS.map(item => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setActiveTab(item.id)}
+            className={`flex min-w-0 flex-col items-center gap-1 py-1.5 text-[10px] font-medium ${
+              activeTab === item.id ? 'text-[#2563EB] dark:text-[#8EACFF]' : 'text-[#8B92A0] dark:text-white/35'
+            }`}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
 
-      <Suspense fallback={null}>
-        <CapybaraComicApp isOpen={isCapybaraOpen} onClose={() => setIsCapybaraOpen(false)} onRunApp={handleRunAppById} />
-      </Suspense>
       {selectedItem && (
-        <Modal 
-          item={selectedItem} 
+        <Modal
+          item={selectedItem}
           isSaved={savedIds.includes(selectedItem.id)}
-          onToggleSave={(id) => setSavedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])}
-          onClose={() => setSelectedItem(null)} 
-          onRun={handleRunApp} 
-          user={user} 
+          usage={usage[selectedItem.id]}
+          onToggleSave={handleToggleSave}
+          onClose={() => setSelectedItem(null)}
+          onRun={handleRunApp}
         />
       )}
     </div>
   );
 };
-
-const MobNavBtn = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active?: boolean, onClick: () => void }) => (
-  <button onClick={onClick} className={`flex flex-col items-center gap-1 p-2 transition-all ${active ? 'text-brand-accent' : 'text-gray-400 dark:text-gray-500'}`}>
-    {icon}
-    <span className="text-[10px] font-medium">{label}</span>
-  </button>
-);
 
 export default App;

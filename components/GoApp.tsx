@@ -468,7 +468,7 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     {/* Game Stats Panel - Left Side on Desktop */}
                     <div className="flex flex-row lg:flex-col gap-4 w-full lg:w-48 order-2 lg:order-1">
                         <PlayerStats 
-                            name={isPvE && aiColor === 1 ? "AI大师·黑" : "执黑·Black"} 
+                            name={isPvE && aiColor === 1 ? "电脑对手·黑" : "执黑·Black"}
                             captures={captures.b} 
                             active={currentPlayer === 1} 
                             stoneColor="bg-slate-950" 
@@ -476,7 +476,7 @@ const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                             isThinking={isPvE && aiColor === 1 && isAiThinking}
                         />
                         <PlayerStats 
-                            name={isPvE && aiColor === 2 ? "AI大师·白" : "执白·White"} 
+                            name={isPvE && aiColor === 2 ? "电脑对手·白" : "执白·White"}
                             captures={captures.w} 
                             active={currentPlayer === 2} 
                             stoneColor="bg-slate-100" 

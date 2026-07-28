@@ -1,12 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { X, RotateCw, Globe, ChevronRight, ChevronLeft, Move, Sun as SunIcon, Database, Crosshair, BarChart3, Radio, Scan, ChevronDown, ChevronUp, Cpu } from 'lucide-react';
-
-declare global {
-  interface Window {
-    THREE: any;
-  }
-}
+import * as THREE from 'three';
 
 interface Earth3DProps {
   onClose: () => void;
@@ -69,7 +64,7 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
     ctx.shadowBlur = 0;
     ctx.fillStyle = '#ffffff';
     ctx.fillText(name.toUpperCase(), 256, 64);
-    const tex = new window.THREE.CanvasTexture(canvas);
+    const tex = new THREE.CanvasTexture(canvas);
     tex.anisotropy = engine.current.maxAnisotropy;
     return tex;
   };
@@ -87,13 +82,12 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
     ctx.fillStyle = grad;
     ctx.globalAlpha = opacity;
     ctx.fillRect(0, 0, 512, 512);
-    return new window.THREE.CanvasTexture(canvas);
+    return new THREE.CanvasTexture(canvas);
   };
 
   useEffect(() => {
-    if (initialized.current || !window.THREE || !containerRef.current) return;
+    if (initialized.current || !containerRef.current) return;
     initialized.current = true;
-    const THREE = window.THREE;
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100000000);
@@ -101,7 +95,7 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
     engine.current.maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     containerRef.current.appendChild(renderer.domElement);
     engine.current.scene = scene;
     engine.current.camera = camera;
@@ -141,7 +135,7 @@ const Earth3D: React.FC<Earth3DProps> = ({ onClose }) => {
       mesh.userData = { name: data.name };
       pivot.add(mesh);
       textureLoader.load(`https://threejs.org/examples/textures/planets/${data.tex}.jpg`, (t: any) => {
-        t.encoding = THREE.sRGBEncoding;
+        t.colorSpace = THREE.SRGBColorSpace;
         t.anisotropy = engine.current.maxAnisotropy;
         mat.map = t;
         mat.needsUpdate = true;

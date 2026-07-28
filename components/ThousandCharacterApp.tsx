@@ -2,15 +2,14 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   X, Play, Pause, ChevronRight, Sparkles, 
-  RefreshCw, BookOpen, SkipBack, SkipForward, 
+  BookOpen, SkipBack, SkipForward,
   ArrowLeft, Search, History, LayoutGrid, 
-  Trophy, Target, Type, Mic2, Compass, Menu, Loader2, Info, Languages
+  Trophy, Target, Type, Compass, Menu, Loader2, Info, Languages
 } from 'lucide-react';
 // Fix: Bypassing broken framer-motion types in this environment
 import { motion as motionBase, AnimatePresence } from 'framer-motion';
 const motion = motionBase as any;
 import { QianZiWenVerse, QIAN_ZI_WEN_LOCAL } from '../lib/qianziwenData';
-import { GoogleGenAI } from "@google/genai";
 import { dataService } from '../lib/dataService';
 
 const ThousandCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
@@ -19,11 +18,10 @@ const ThousandCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) =>
   const [currentCharIdx, setCurrentCharIdx] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentView, setCurrentView] = useState<'hub' | 'reader'>('hub');
-  const [activeTab, setActiveTab] = useState<'study' | 'lexicon' | 'ai'>('study');
+  const [activeTab, setActiveTab] = useState<'study' | 'lexicon' | 'practice'>('study');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedChar, setSelectedChar] = useState<string | null>(null);
-  const [aiInsight, setAiInsight] = useState<string>('');
-  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [reflectionDone, setReflectionDone] = useState(false);
   const [showPinyin, setShowPinyin] = useState(true);
 
   const verseRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -33,7 +31,7 @@ const ThousandCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) =>
     try {
       const data = await dataService.query<any>('SELECT * FROM qianziwen_verses ORDER BY verse_index ASC');
       if (data && data.length > 0) {
-        const formatted = data.map(d => ({
+        const formatted = data.map((d: any) => ({
           ...d,
           content_chars: Array.isArray(d.content_chars) ? d.content_chars : [],
           content_pinyin: Array.isArray(d.content_pinyin) ? d.content_pinyin : [],
@@ -58,30 +56,6 @@ const ThousandCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) =>
     utterance.rate = rate;
     window.speechSynthesis.speak(utterance);
   };
-
-  const fetchAiInsight = async (verse: QianZiWenVerse) => {
-    if (isAiLoading || !verse) return;
-    setIsAiLoading(true);
-    setAiInsight('');
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `你是一位国学大师。请针对《千字文》中的这句：“${verse.content_raw}”，写一段简短、富有哲学含意的解读，引导孩子思考宇宙与生命。100字以内。`,
-      });
-      setAiInsight(response.text || '智慧生成中...');
-    } catch (e) {
-      setAiInsight('AI 老师休息中。');
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === 'ai' && !aiInsight && verses[currentIdx]) {
-      fetchAiInsight(verses[currentIdx]);
-    }
-  }, [activeTab, currentIdx, verses]);
 
   const playVerseSequence = useCallback((idx: number) => {
     if (!window.speechSynthesis || !verses[idx]) return;
@@ -184,7 +158,7 @@ const ThousandCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) =>
             {[
               { id: 'study', icon: <BookOpen size={16}/>, label: '义理' },
               { id: 'lexicon', icon: <Search size={16}/>, label: '字解' },
-              { id: 'ai', icon: <Sparkles size={16}/>, label: 'AI' }
+              { id: 'practice', icon: <Target size={16}/>, label: '练习' }
             ].map((tab: any) => (
               <button
                 key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -231,17 +205,28 @@ const ThousandCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) =>
                 </motion.div>
               )}
 
-              {activeTab === 'ai' && (
-                 <motion.div key="ai" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                    <div className="p-8 bg-blue-50/50 border border-blue-100 rounded-3xl">
-                       <div className="flex items-center justify-between mb-6 text-blue-600">
-                         <div className="flex items-center gap-2"><Mic2 size={16} /> <h4 className="text-[9px] font-black uppercase tracking-widest">AI 智慧解读</h4></div>
-                         {isAiLoading && <Loader2 size={14} className="animate-spin" />}
+              {activeTab === 'practice' && (
+                 <motion.div key="practice" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                    <div className="p-7 bg-blue-50/60 border border-blue-100 rounded-3xl">
+                       <div className="flex items-center gap-2 text-blue-700">
+                         <Target size={16} />
+                         <h4 className="text-[9px] font-black tracking-widest">理解检查</h4>
                        </div>
-                       <p className="text-base font-bold text-blue-900 leading-relaxed italic serif-font">“{aiInsight || '正在沉思...' }”</p>
+                       <p className="mt-5 text-base font-bold text-blue-950 leading-relaxed serif-font">
+                         不看原文，尝试说出这一句描绘的场景和核心意思。
+                       </p>
+                       <p className="mt-4 text-xs leading-6 text-blue-900/65">
+                         再从本句选一个字，解释它在句中的作用。完成复述后再查看译文核对。
+                       </p>
                     </div>
-                    <button onClick={() => activeVerse && fetchAiInsight(activeVerse)} className="w-full py-4 bg-white border border-blue-100 text-blue-600 rounded-2xl font-black text-[10px] flex items-center justify-center gap-2">
-                      <RefreshCw size={14} /> 换一个感悟
+                    <button
+                      onClick={() => setReflectionDone(value => !value)}
+                      className={`w-full py-4 border rounded-2xl font-black text-[10px] flex items-center justify-center gap-2 ${
+                        reflectionDone ? 'border-blue-700 bg-blue-700 text-white' : 'border-blue-100 bg-white text-blue-700'
+                      }`}
+                    >
+                      <Target size={14} />
+                      {reflectionDone ? '本句练习已完成' : '标记为已理解'}
                     </button>
                  </motion.div>
               )}

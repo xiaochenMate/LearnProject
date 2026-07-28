@@ -36,7 +36,7 @@ const PoetryApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         : await dataService.query<any>('SELECT * FROM poems WHERE category = $1 ORDER BY id ASC LIMIT 500', [categoryFilter]);
       
       if (data && data.length > 0) {
-        const formattedData = data.map(p => ({
+        const formattedData = data.map((p: any) => ({
           ...p,
           lines: Array.isArray(p.lines) ? p.lines : (typeof p.lines === 'string' ? JSON.parse(p.lines) : []),
           image: p.image_url || p.image || `https://picsum.photos/800/600?nature,${p.id}`

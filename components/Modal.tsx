@@ -1,103 +1,140 @@
-
 import React, { useEffect, useState } from 'react';
-import { X, Heart, Share2, Info, PlayCircle, CheckCircle2 } from 'lucide-react';
+import { Bookmark, Check, Clock3, History, Play, Share2, Target, X } from 'lucide-react';
 import { AppItem } from '../types';
-import { motion as motionBase } from 'framer-motion';
-const motion = motionBase as any;
-import { useTranslation } from '../i18n';
+import { CATEGORY_META, formatFocusTime, getModuleMeta, ModuleUsage } from '../lib/product';
+import ModuleIcon from './ModuleIcon';
 
 interface ModalProps {
   item: AppItem;
   isSaved: boolean;
+  usage?: ModuleUsage;
   onToggleSave: (id: string) => void;
   onClose: () => void;
   onRun: (item: AppItem) => void;
-  user: { email: string } | null;
 }
 
-const Modal: React.FC<ModalProps> = ({ item, isSaved, onToggleSave, onClose, onRun, user }) => {
-  const { t } = useTranslation();
-  const [isVisible, setIsVisible] = useState(false);
-  const [copyFeedback, setCopyFeedback] = useState(false);
+const Modal: React.FC<ModalProps> = ({ item, isSaved, usage, onToggleSave, onClose, onRun }) => {
+  const [copied, setCopied] = useState(false);
+  const meta = getModuleMeta(item);
 
   useEffect(() => {
-    setIsVisible(true);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = 'auto';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
     };
-  }, []);
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
-  const handleClose = () => {
-    setIsVisible(false);
-    setTimeout(onClose, 300);
+  const shareModule = async () => {
+    const link = `https://exbeam.com/?module=${encodeURIComponent(item.id)}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
   };
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-end md:items-center justify-center transition-all duration-300 ${isVisible ? 'bg-black/20 dark:bg-black/80 backdrop-blur-sm' : 'bg-transparent pointer-events-none'}`} onClick={handleClose}>
-      <div 
-        className={`relative w-full md:max-w-2xl h-[85dvh] md:h-auto bg-white dark:bg-[#111] md:rounded-3xl overflow-hidden transform transition-all duration-300 border border-transparent dark:border-white/10 shadow-2xl ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}
-        onClick={(e) => e.stopPropagation()}
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-[#0F172A]/45 p-0 backdrop-blur-sm md:items-center md:p-6" onClick={onClose}>
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="module-title"
+        className="max-h-[90dvh] w-full overflow-y-auto rounded-t-lg border border-white/10 bg-[#FAFBFD] shadow-[0_24px_80px_rgba(15,23,42,0.22)] md:max-w-2xl md:rounded-lg dark:bg-[#111318]"
+        onClick={event => event.stopPropagation()}
       >
-        <div className="absolute top-4 right-4 z-10">
-          <button onClick={handleClose} className="p-2 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 rounded-full transition-colors text-gray-500 dark:text-gray-400">
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="h-48 md:h-64 overflow-hidden relative">
-          <img src={item.imageUrl} className="w-full h-full object-cover" alt={item.title} />
-          <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-[#111] via-white/50 dark:via-[#111]/50 to-transparent"></div>
-          <div className="absolute bottom-6 left-8 flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white dark:bg-[#222] flex items-center justify-center shadow-lg border border-black/5 dark:border-white/5">
-              <span className="material-icons-outlined text-3xl text-gray-700 dark:text-gray-300">{item.icon || 'apps'}</span>
+        <header className="flex items-start justify-between gap-6 border-b border-[#E5E7EB] p-5 dark:border-white/10 md:p-7">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-[#EEF2FF] text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#8EACFF]">
+              <ModuleIcon name={item.icon} size={28} />
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">{item.title}</h2>
+            <div className="min-w-0">
+              <div className="text-xs font-medium text-[#7A8190] dark:text-white/45">
+                {CATEGORY_META[item.category].label} · {meta.level}
+              </div>
+              <h2 id="module-title" className="mt-1 text-xl font-semibold text-[#111318] dark:text-white md:text-2xl">
+                {item.title}
+              </h2>
+            </div>
           </div>
-        </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[#69707D] hover:bg-black/5 dark:text-white/55 dark:hover:bg-white/10"
+            aria-label="关闭"
+          >
+            <X size={19} />
+          </button>
+        </header>
 
-        <div className="p-8 space-y-8 overflow-y-auto max-h-[calc(85dvh-16rem)] no-scrollbar">
-          <section>
-            <div className="flex items-center gap-2 mb-3 text-gray-400">
-              <Info size={16} />
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider">{t('aboutModule')}</h3>
+        <div className="p-5 md:p-7">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-[#E5E7EB] bg-white p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <Clock3 size={17} className="text-[#2563EB]" />
+              <div className="mt-3 text-sm font-semibold dark:text-white">{meta.minutes} 分钟</div>
+              <div className="mt-1 text-xs text-[#7A8190] dark:text-white/45">建议单次时长</div>
             </div>
-            <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed font-normal">
-              {item.description}
-            </p>
+            <div className="rounded-lg border border-[#E5E7EB] bg-white p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <History size={17} className="text-[#F25F3A]" />
+              <div className="mt-3 text-sm font-semibold dark:text-white">{usage?.launches || 0} 次</div>
+              <div className="mt-1 text-xs text-[#7A8190] dark:text-white/45">累计练习</div>
+            </div>
+            <div className="rounded-lg border border-[#E5E7EB] bg-white p-4 dark:border-white/10 dark:bg-white/[0.04]">
+              <Target size={17} className="text-[#0891B2]" />
+              <div className="mt-3 text-sm font-semibold dark:text-white">{formatFocusTime(usage?.totalSeconds || 0)}</div>
+              <div className="mt-1 text-xs text-[#7A8190] dark:text-white/45">累计专注</div>
+            </div>
+          </div>
+
+          <section className="mt-7">
+            <h3 className="text-xs font-semibold text-[#69707D] dark:text-white/50">你将获得</h3>
+            <p className="mt-2 text-lg font-medium leading-8 text-[#1F2937] dark:text-white/85">{meta.outcome}</p>
+            <p className="mt-3 text-sm leading-7 text-[#69707D] dark:text-white/55">{item.description}</p>
           </section>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="mt-6 flex flex-wrap gap-2">
             {item.tags.map(tag => (
-              <span key={tag} className="px-3 py-1 bg-black/5 dark:bg-white/10 text-gray-600 dark:text-gray-400 text-[11px] font-medium rounded-full">
+              <span key={tag} className="rounded-md bg-[#F0F3F8] px-2.5 py-1.5 text-xs font-medium text-[#606979] dark:bg-white/[0.07] dark:text-white/55">
                 {tag}
               </span>
             ))}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 pt-4 pb-8">
-            <button 
+          <footer className="mt-8 flex flex-col gap-3 border-t border-[#E5E7EB] pt-5 dark:border-white/10 sm:flex-row">
+            <button
+              type="button"
               onClick={() => onRun(item)}
-              className="flex-1 py-3.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-medium flex items-center justify-center gap-2 transition-all hover:bg-gray-800 dark:hover:bg-gray-200 active:scale-[0.98]"
+              className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-[#2563EB] text-sm font-semibold text-white shadow-[0_6px_16px_rgba(37,99,235,0.2)] hover:bg-[#1D4ED8]"
             >
-              <PlayCircle size={20} />
-              <span>{t('launch')}</span>
+              <Play size={16} fill="currentColor" />
+              开始本次练习
             </button>
-            <div className="flex gap-4">
-              <motion.button 
-                whileTap={{ scale: 1.1 }}
-                onClick={() => onToggleSave(item.id)}
-                className={`w-14 h-14 rounded-xl flex items-center justify-center transition-all ${isSaved ? 'bg-red-50 text-red-500 dark:bg-red-500/20' : 'bg-black/5 dark:bg-white/5 text-gray-500 hover:bg-black/10 dark:hover:bg-white/10'}`}
-              >
-                <Heart size={20} fill={isSaved ? "currentColor" : "none"} />
-              </motion.button>
-              <button onClick={() => { setCopyFeedback(true); setTimeout(()=>setCopyFeedback(false), 2000); }} className="w-14 h-14 bg-black/5 dark:bg-white/5 text-gray-500 rounded-xl flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-all">
-                {copyFeedback ? <CheckCircle2 size={20} className="text-green-500" /> : <Share2 size={20} />}
-              </button>
-            </div>
-          </div>
+            <button
+              type="button"
+              onClick={() => onToggleSave(item.id)}
+              className={`flex h-11 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-medium ${
+                isSaved
+                  ? 'border-[#2563EB] bg-[#EEF2FF] text-[#1D4ED8] dark:bg-[#2563EB]/20 dark:text-[#AFC4FF]'
+                  : 'border-[#D7DAE0] text-[#5F6673] hover:bg-white dark:border-white/15 dark:text-white/65 dark:hover:bg-white/[0.05]'
+              }`}
+            >
+              <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
+              {isSaved ? '已收藏' : '收藏'}
+            </button>
+            <button
+              type="button"
+              onClick={shareModule}
+              className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#D7DAE0] text-[#5F6673] hover:bg-white dark:border-white/15 dark:text-white/65 dark:hover:bg-white/[0.05]"
+              aria-label="复制模块链接"
+              title="复制链接"
+            >
+              {copied ? <Check size={17} className="text-[#2563EB]" /> : <Share2 size={17} />}
+            </button>
+          </footer>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

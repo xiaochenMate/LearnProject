@@ -4,9 +4,7 @@ import {
   X, RotateCcw, Undo2, Swords, Trophy, 
   Volume2, VolumeX, Cpu, History, User, Loader2
 } from 'lucide-react';
-
-// 声明全局 Chess 对象
-declare var Chess: any;
+import { Chess } from 'chess.js';
 
 // 使用更稳定的棋子资源库，避免 SVG 在某些平板浏览器上的加载问题
 const PIECE_IMAGES: Record<string, string> = {
@@ -262,7 +260,7 @@ const ChessApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         <Cpu size={18} className={game?.turn() === 'b' ? 'text-emerald-400' : ''} />
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-slate-500 uppercase leading-none mb-1 tracking-widest">AI_LOGIC_V4</span>
+                        <span className="text-[9px] font-black text-slate-500 uppercase leading-none mb-1 tracking-widest">COMPUTER_LEVEL_4</span>
                         <div className="flex -space-x-1.5 opacity-60">
                             {captured.w.slice(-6).map((p, i) => (
                                 <img key={i} src={PIECE_IMAGES[`w${p.toUpperCase()}`]} className="h-4 drop-shadow-sm" alt="cap" />

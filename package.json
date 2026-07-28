@@ -1,5 +1,5 @@
 {
-  "name": "zhishitong-app",
+  "name": "exbeam-learning-workspace",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -9,21 +9,26 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.37.0",
     "@neondatabase/serverless": "^0.9.0",
     "@supabase/supabase-js": "^2.45.4",
+    "chess.js": "^0.10.3",
     "clsx": "^2.1.1",
     "framer-motion": "^12.4.3",
     "lucide-react": "^0.475.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/three": "^0.185.1",
     "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.5.23",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.4.2",
     "vite": "^5.1.4"
   }

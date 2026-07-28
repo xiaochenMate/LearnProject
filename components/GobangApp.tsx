@@ -5,6 +5,7 @@ import { X, RotateCcw, Undo2, Trophy, Settings2, ChevronLeft, ChevronRight, Ligh
 import { motion as motionBase, AnimatePresence } from 'framer-motion';
 const motion = motionBase as any;
 import { Player, Board, checkWin, getBestMove } from '../lib/gobangAI';
+import ModuleIcon from './ModuleIcon';
 
 type GameState = 'SELECTION' | 'PLAYING' | 'SETTLEMENT';
 type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
@@ -269,7 +270,7 @@ const PlayingView = memo(({
     <div className="w-full max-w-md flex flex-col items-center px-4">
       <div className="w-full flex justify-between gap-3 mb-6 shrink-0">
         <PlayerCard name="你" time={formatTime(timers.p1)} active={currentPlayer === 1} stone="black" round={historyLength + 1} />
-        <PlayerCard name="AI对手" time={formatTime(timers.p2)} active={currentPlayer === 2} stone="white" status={isAiThinking ? "思考中..." : "等待中..."} />
+        <PlayerCard name="电脑对手" time={formatTime(timers.p2)} active={currentPlayer === 2} stone="white" status={isAiThinking ? "思考中..." : "等待中..."} />
       </div>
 
       <div className="w-full max-w-[400px] mb-12 shrink-0">
@@ -348,7 +349,7 @@ const SettlementView = memo(({ winner, difficulty, onRestart, onHome }: any) => 
             {winner === 1 ? '旗开得胜' : winner === 2 ? '棋差一招' : '不分伯仲'}
           </p>
           <p className="text-xs text-slate-400 font-medium italic">
-            {winner === 1 ? '你在这场博弈中展现了卓越的智慧。' : winner === 2 ? 'AI 算力惊人，再接再厉。' : '精彩的对局，双方势均力敌。'}
+            {winner === 1 ? '你在这场博弈中展现了卓越的判断。' : winner === 2 ? '电脑对手赢下本局，再接再厉。' : '精彩的对局，双方势均力敌。'}
           </p>
         </div>
       </div>
@@ -411,8 +412,8 @@ const ToggleItem = memo(({ icon, label, checked, onClick }: any) => (
 
 const DifficultyCard = memo(({ title, desc, icon, color, onClick }: any) => (
   <button onClick={onClick} className="w-full p-6 bg-white dark:bg-dark-card border border-morandi-border dark:border-white/5 rounded-3xl flex items-center gap-6 transition-all shadow-sm hover:scale-[1.02] active:scale-95 group">
-    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-${color}-50 text-${color}-500 group-hover:bg-morandi-charcoal dark:group-hover:bg-slate-200 group-hover:text-white dark:group-hover:text-dark-bg transition-colors`}>
-      <span className="material-icons-outlined text-2xl">{icon}</span>
+    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${color === 'emerald' ? 'bg-emerald-50 text-emerald-500' : color === 'rose' ? 'bg-rose-50 text-rose-500' : color === 'amber' ? 'bg-amber-50 text-amber-500' : 'bg-blue-50 text-blue-500'} group-hover:bg-morandi-charcoal dark:group-hover:bg-slate-200 group-hover:text-white dark:group-hover:text-dark-bg transition-colors`}>
+      <ModuleIcon name={icon} size={24} />
     </div>
     <div className="text-left flex-1">
       <h4 className="text-lg font-bold text-slate-800 dark:text-white serif-font">{title}</h4>

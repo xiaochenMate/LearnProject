@@ -2,32 +2,30 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   X, Play, Pause, ScrollText, ChevronRight, Sparkles, 
-  RefreshCw, BookOpen, Volume2, SkipBack, SkipForward, 
+  BookOpen, Volume2, SkipBack, SkipForward,
   ArrowLeft, Search, Bookmark, History, LayoutGrid, 
   Library, Trophy, Target, Type, Mic2, FileText, 
-  Compass, Feather, User, Menu, Sliders, Loader2, Star,
+  Compass, Feather, User, Menu, Sliders, Star,
   Info, ChevronDown, ChevronUp, Languages
 } from 'lucide-react';
 // Fix: Bypassing broken framer-motion types in this environment
 import { motion as motionBase, AnimatePresence } from 'framer-motion';
 const motion = motionBase as any;
-import { SanZiJingVerse, CharAnalysis } from '../lib/sanzijingData';
-import { GoogleGenAI } from "@google/genai";
+import { SanZiJingVerse, CharAnalysis, SAN_ZI_JING_FALLBACK_DATA } from '../lib/sanzijingData';
 import { dataService } from '../lib/dataService';
 
 type ViewType = 'hub' | 'reader' | 'stories' | 'profile';
 
 const ThreeCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const [verses, setVerses] = useState<SanZiJingVerse[]>([]);
+  const [verses, setVerses] = useState<SanZiJingVerse[]>(SAN_ZI_JING_FALLBACK_DATA);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [currentCharIdx, setCurrentCharIdx] = useState(-1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentView, setCurrentView] = useState<ViewType>('hub');
-  const [activeTab, setActiveTab] = useState<'study' | 'source' | 'lexicon' | 'ai'>('study');
+  const [activeTab, setActiveTab] = useState<'study' | 'source' | 'lexicon' | 'practice'>('study');
   const [isLoading, setIsLoading] = useState(true);
   const [selectedChar, setSelectedChar] = useState<string | null>(null);
-  const [aiInsight, setAiInsight] = useState<string>('');
-  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [reflectionDone, setReflectionDone] = useState(false);
   const [showPinyin, setShowPinyin] = useState(true);
   const [isVertical, setIsVertical] = useState(true);
   const [stats, setStats] = useState({ learned: 124, streak: 5, points: 850 });
@@ -49,7 +47,7 @@ const ThreeCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     try {
       const data = await dataService.query<any>('SELECT * FROM sanzijing_verses ORDER BY verse_index ASC');
       if (data && data.length > 0) {
-        const formatted = data.map(d => ({
+        const formatted = data.map((d: any) => ({
           ...d,
           content_chars: Array.isArray(d.content_chars) ? d.content_chars : [],
           content_pinyin: Array.isArray(d.content_pinyin) ? d.content_pinyin : [],
@@ -67,30 +65,6 @@ const ThreeCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-
-  const fetchAiInsight = async (verse: SanZiJingVerse) => {
-    if (isAiLoading || !verse) return;
-    setIsAiLoading(true);
-    setAiInsight('');
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `你是一位温和的国学老师。请针对这段经文：“${verse.content_raw}”，给孩子写一段简短、有趣的生活建议。100字以内。`,
-      });
-      setAiInsight(response.text || '智慧正在生成中...');
-    } catch (e) {
-      setAiInsight('AI 老师去休息啦，待会再试吧。');
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === 'ai' && !aiInsight && verses[currentIdx]) {
-      fetchAiInsight(verses[currentIdx]);
-    }
-  }, [activeTab, currentIdx, verses]);
 
   const playVerseSequence = useCallback((idx: number) => {
     if (!window.speechSynthesis || !verses[idx]) return;
@@ -175,7 +149,7 @@ const ThreeCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
            <HubCard icon={<BookOpen size={20}/>} label="全息长卷" sub="Full Content" onClick={() => setCurrentView('reader')} />
            <HubCard icon={<Compass size={20}/>} label="典故寻踪" sub="Story Finder" onClick={() => setCurrentView('reader')} />
            <HubCard icon={<History size={20}/>} label="复习巩固" sub="Recent Review" onClick={() => setCurrentView('reader')} />
-           <HubCard icon={<Sparkles size={20}/>} label="AI 陪读" sub="AI Companion" onClick={() => { setCurrentView('reader'); setActiveTab('ai'); }} />
+           <HubCard icon={<Target size={20}/>} label="理解练习" sub="Quick Reflection" onClick={() => { setCurrentView('reader'); setActiveTab('practice'); }} />
         </div>
       </motion.div>
     );
@@ -232,7 +206,7 @@ const ThreeCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               { id: 'study', icon: <BookOpen size={14}/>, label: '义理' },
               { id: 'source', icon: <History size={14}/>, label: '典故' },
               { id: 'lexicon', icon: <Search size={14}/>, label: '字解' },
-              { id: 'ai', icon: <Sparkles size={14}/>, label: 'AI' }
+              { id: 'practice', icon: <Target size={14}/>, label: '练习' }
             ].map((tab: any) => (
               <button
                 key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -318,33 +292,29 @@ const ThreeCharacterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                  </motion.div>
                )}
 
-               {activeTab === 'ai' && (
-                  <motion.div key="ai" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-                     <div className="p-8 bg-emerald-50/50 border border-emerald-100 rounded-[2rem] relative overflow-hidden">
-                        <div className="flex items-center justify-between mb-8 text-emerald-600">
-                          <div className="flex items-center gap-2.5"><Mic2 size={18} /> <h4 className="text-[9px] font-black uppercase tracking-[0.2em]">AI 伴读智慧</h4></div>
-                          {isAiLoading && <Loader2 size={16} className="animate-spin" />}
+               {activeTab === 'practice' && (
+                  <motion.div key="practice" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                     <div className="p-7 bg-emerald-50/60 border border-emerald-100 rounded-[1.5rem]">
+                        <div className="flex items-center gap-2.5 text-emerald-700">
+                          <Target size={18} />
+                          <h4 className="text-[10px] font-black tracking-[0.15em]">理解检查</h4>
                         </div>
-                        
-                        {isAiLoading ? (
-                          <div className="py-12 flex flex-col items-center gap-4">
-                            <p className="text-[10px] text-emerald-400 font-black tracking-[0.2em] animate-pulse">正在感悟经文...</p>
-                          </div>
-                        ) : (
-                          <div className="animate-in fade-in duration-1000">
-                             <p className="text-xl font-bold text-emerald-900 leading-relaxed italic mb-8 serif-font">“{aiInsight || '请稍候，AI 老师正在为您解读...' }”</p>
-                             <div className="bg-emerald-900 text-white p-6 rounded-2xl flex items-center gap-4 shadow-xl">
-                                <Target size={24} className="text-emerald-300 shrink-0" />
-                                <p className="text-[11px] font-medium leading-relaxed opacity-90 italic">愿先贤智慧指引您的修行。</p>
-                             </div>
-                          </div>
-                        )}
+                        <p className="mt-6 text-lg font-bold text-emerald-950 leading-relaxed serif-font">
+                          先合上译文，用自己的话复述这一段讲了什么。
+                        </p>
+                        <div className="mt-6 space-y-3 text-sm leading-6 text-emerald-900/70">
+                          <p>1. 这段话强调了哪一种品格或关系？</p>
+                          <p>2. 你能想到一个今天可以实践的小行动吗？</p>
+                        </div>
                      </div>
-                     <button 
-                      onClick={() => activeVerse && fetchAiInsight(activeVerse)}
-                      className="w-full py-4 bg-white border border-emerald-100 text-emerald-600 rounded-2xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-emerald-50 transition-all active:scale-95 shadow-sm"
+                     <button
+                      onClick={() => setReflectionDone(value => !value)}
+                      className={`w-full py-4 border rounded-2xl font-black text-[10px] flex items-center justify-center gap-2 transition-all ${
+                        reflectionDone ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50'
+                      }`}
                      >
-                       <RefreshCw size={14} /> 换个角度感悟
+                       <Target size={14} />
+                       {reflectionDone ? '本段练习已完成' : '标记为已理解'}
                      </button>
                   </motion.div>
                )}
