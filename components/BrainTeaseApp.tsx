@@ -25,7 +25,7 @@ const BrainTeaseApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       const data = await dataService.query<any>('SELECT * FROM brain_teasers ORDER BY id ASC');
       if (data && data.length > 0) {
         // 格式化 hints 字段（如果是字符串则解析 JSON）
-        const formatted = data.map(t => ({
+        const formatted = data.map((t: any) => ({
           ...t,
           hints: Array.isArray(t.hints) ? t.hints : JSON.parse(t.hints)
         })) as BrainTease[];

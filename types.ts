@@ -9,5 +9,5 @@ export interface AppItem {
   imageUrl: string;
   description: string;
   tags: string[];
-  icon?: string; // 新增可选图标属性
+  icon?: string;
 }

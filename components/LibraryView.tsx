@@ -1,111 +1,167 @@
-
-import React, { useState, useMemo } from 'react';
-import { ChevronRight, Bookmark, History, Sparkles, BookOpen } from 'lucide-react';
-import { motion as motionBase, AnimatePresence } from 'framer-motion';
-const motion = motionBase as any;
+import React, { useMemo, useState } from 'react';
+import { Bookmark, CheckCircle2, Clock3, History, Play, Trash2 } from 'lucide-react';
 import { AppItem } from '../types';
-import { useTranslation } from '../i18n';
+import { CATEGORY_META, formatFocusTime, getModuleMeta, UsageMap } from '../lib/product';
+import ModuleIcon from './ModuleIcon';
 
 interface LibraryViewProps {
   allModules: AppItem[];
   savedIds: string[];
   historyIds: string[];
+  usage: UsageMap;
   onOpenItem: (item: AppItem) => void;
+  onRunItem: (item: AppItem) => void;
+  onToggleSave: (id: string) => void;
+  onClearHistory: () => void;
 }
 
-const LibraryView: React.FC<LibraryViewProps> = ({ allModules, savedIds, historyIds, onOpenItem }) => {
-  const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'SAVED' | 'HISTORY'>('SAVED');
+type LibraryTab = 'PROGRESS' | 'SAVED' | 'HISTORY';
 
-  const savedItems = useMemo(() => 
-    allModules.filter(m => savedIds.includes(m.id)), 
-  [allModules, savedIds]);
+const LibraryView: React.FC<LibraryViewProps> = ({
+  allModules,
+  savedIds,
+  historyIds,
+  usage,
+  onOpenItem,
+  onRunItem,
+  onToggleSave,
+  onClearHistory,
+}) => {
+  const [activeTab, setActiveTab] = useState<LibraryTab>('PROGRESS');
 
-  const historyItems = useMemo(() => 
-    historyIds.map(id => allModules.find(m => m.id === id)).filter(Boolean) as AppItem[],
-  [allModules, historyIds]);
+  const savedItems = useMemo(() => allModules.filter(item => savedIds.includes(item.id)), [allModules, savedIds]);
+  const historyItems = useMemo(
+    () => historyIds.map(id => allModules.find(item => item.id === id)).filter(Boolean) as AppItem[],
+    [allModules, historyIds]
+  );
+  const progressItems = useMemo(
+    () =>
+      allModules
+        .filter(item => usage[item.id]?.launches)
+        .sort((a, b) => (usage[b.id]?.lastOpened || '').localeCompare(usage[a.id]?.lastOpened || '')),
+    [allModules, usage]
+  );
 
-  const currentList = activeTab === 'SAVED' ? savedItems : historyItems;
+  const currentList =
+    activeTab === 'PROGRESS' ? progressItems : activeTab === 'SAVED' ? savedItems : historyItems;
+  const totalSeconds = Object.values(usage).reduce((sum, item) => sum + item.totalSeconds, 0);
+  const totalLaunches = Object.values(usage).reduce((sum, item) => sum + item.launches, 0);
+
+  const TABS: Array<{ id: LibraryTab; label: string; count: number; icon: React.ReactNode }> = [
+    { id: 'PROGRESS', label: '进行中', count: progressItems.length, icon: <CheckCircle2 size={16} /> },
+    { id: 'SAVED', label: '收藏', count: savedItems.length, icon: <Bookmark size={16} /> },
+    { id: 'HISTORY', label: '最近使用', count: historyItems.length, icon: <History size={16} /> },
+  ];
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: 20 }} 
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className="flex-1 flex flex-col pt-6 overflow-hidden max-w-4xl w-full mx-auto"
-    >
-      <header className="flex flex-col mb-10 shrink-0">
-        <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 dark:text-white tracking-tight mb-2">{t('libraryTitle')}</h2>
-        <p className="text-gray-500 dark:text-gray-400">{t('libraryDesc')}</p>
+    <div className="w-full pb-24">
+      <header className="mb-8">
+        <div className="text-xs font-semibold text-[#2563EB] dark:text-[#8EACFF]">个人学习记录</div>
+        <h1 className="mt-3 text-3xl font-semibold text-[#111318] dark:text-white md:text-4xl">资源库</h1>
+        <p className="mt-3 text-sm leading-7 text-[#69707D] dark:text-white/55">
+          收藏只是入口，这里更重要的是看见自己正在进行的内容和真实投入。
+        </p>
       </header>
 
-      {/* Tabs */}
-      <div className="bg-[#FAFAFA] dark:bg-[#111] p-1 rounded-xl flex mb-8 shrink-0 transition-colors w-full max-w-sm border border-black/5 dark:border-white/5">
-        <button 
-          onClick={() => setActiveTab('SAVED')}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === 'SAVED' ? 'bg-white dark:bg-[#222] text-gray-900 dark:text-white shadow-sm border border-black/5 dark:border-white/5' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-        >
-          <Bookmark size={16} /> {t('saved')} ({savedItems.length})
-        </button>
-        <button 
-          onClick={() => setActiveTab('HISTORY')}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${activeTab === 'HISTORY' ? 'bg-white dark:bg-[#222] text-gray-900 dark:text-white shadow-sm border border-black/5 dark:border-white/5' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
-        >
-          <History size={16} /> {t('history')}
-        </button>
+      <section className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          { label: '已开始模块', value: progressItems.length },
+          { label: '累计练习', value: `${totalLaunches} 次` },
+          { label: '累计专注', value: formatFocusTime(totalSeconds) },
+          { label: '已收藏', value: savedItems.length },
+        ].map(stat => (
+          <div key={stat.label} className="rounded-lg border border-[#E2E5EA] bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)] dark:border-white/10 dark:bg-[#15171C]">
+            <div className="text-xl font-semibold text-[#111318] dark:text-white">{stat.value}</div>
+            <div className="mt-1 text-xs text-[#7A8190] dark:text-white/45">{stat.label}</div>
+          </div>
+        ))}
+      </section>
+
+      <div className="mb-5 flex items-center justify-between gap-4 border-b border-[#E2E5EA] dark:border-white/10">
+        <div className="flex gap-5 overflow-x-auto no-scrollbar">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`relative flex shrink-0 items-center gap-2 pb-3 text-sm font-medium ${
+                activeTab === tab.id ? 'text-[#2563EB] dark:text-[#8EACFF]' : 'text-[#7A8190] dark:text-white/45'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+              <span className="text-xs opacity-55">{tab.count}</span>
+              {activeTab === tab.id && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[#2563EB]" />}
+            </button>
+          ))}
+        </div>
+        {activeTab === 'HISTORY' && historyItems.length > 0 && (
+          <button
+            type="button"
+            onClick={onClearHistory}
+            className="mb-3 flex shrink-0 items-center gap-1.5 text-xs font-medium text-[#9A4B3D] hover:text-[#B43E2A]"
+          >
+            <Trash2 size={14} />
+            清除记录
+          </button>
+        )}
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar pb-24">
-        <AnimatePresence mode="wait">
-          {currentList.length > 0 ? (
-            <motion.div 
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-4"
-            >
-              {currentList.map((item, idx) => (
-                <motion.div 
-                  key={`${item.id}-${idx}`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => onOpenItem(item)}
-                  className="bg-white dark:bg-[#111] border border-black/5 dark:border-white/10 p-4 rounded-2xl flex items-center gap-4 cursor-pointer transition-all hover:border-black/10 dark:hover:border-white/20 group"
+      {currentList.length > 0 ? (
+        <div className="divide-y divide-[#ECEEF2] overflow-hidden rounded-lg border border-[#E2E5EA] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)] dark:divide-white/10 dark:border-white/10 dark:bg-[#15171C]">
+          {currentList.map(item => {
+            const itemUsage = usage[item.id];
+            const meta = getModuleMeta(item);
+            const isSaved = savedIds.includes(item.id);
+            return (
+              <article key={item.id} className="flex items-center gap-4 p-4 md:p-5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[#F0F3F9] text-[#566074] dark:bg-white/[0.07] dark:text-white/60">
+                  <ModuleIcon name={item.icon} size={21} />
+                </div>
+                <button type="button" onClick={() => onOpenItem(item)} className="min-w-0 flex-1 text-left">
+                  <h3 className="truncate text-sm font-semibold text-[#111318] dark:text-white">{item.title}</h3>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-[#7A8190] dark:text-white/40">
+                    <span>{CATEGORY_META[item.category].label}</span>
+                    <span>·</span>
+                    <Clock3 size={12} />
+                    <span>{itemUsage ? formatFocusTime(itemUsage.totalSeconds) : `${meta.minutes} 分钟`}</span>
+                    {itemUsage?.launches ? <span>· {itemUsage.launches} 次练习</span> : null}
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onToggleSave(item.id)}
+                  className={`hidden h-9 w-9 items-center justify-center rounded-md sm:flex ${
+                    isSaved ? 'text-[#2563EB]' : 'text-[#9AA1AE] hover:bg-[#F3F5F9] dark:hover:bg-white/[0.06]'
+                  }`}
+                  aria-label={isSaved ? '取消收藏' : '收藏'}
                 >
-                  <div className="w-16 h-16 rounded-xl flex-shrink-0 flex items-center justify-center relative overflow-hidden bg-black/5 dark:bg-white/5 text-gray-400 group-hover:text-brand-accent transition-colors">
-                    <span className="material-icons-outlined text-2xl">{item.icon || 'apps'}</span>
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 dark:text-white truncate text-base">{item.title}</h4>
-                    <p className="text-xs text-gray-500 font-medium mt-1 uppercase tracking-wider">{item.category}</p>
-                  </div>
-
-                  <ChevronRight size={16} className="text-gray-300 dark:text-gray-700 group-hover:text-gray-500 transition-colors" />
-                </motion.div>
-              ))}
-            </motion.div>
-          ) : (
-            <motion.div 
-              key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center py-20 text-center"
-            >
-              <div className="w-20 h-20 bg-[#FAFAFA] dark:bg-[#111] rounded-2xl flex items-center justify-center mb-6 text-gray-300 dark:text-gray-700">
-                 <BookOpen size={32} />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-300 mb-2">
-                {activeTab === 'SAVED' ? t('noSaved') : t('noHistory')}
-              </h3>
-              <p className="text-sm text-gray-500 max-w-[250px]">
-                {t('exploreHome')}
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
+                  <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRunItem(item)}
+                  className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[#2563EB] px-3 text-xs font-semibold text-white hover:bg-[#1D4ED8]"
+                >
+                  <Play size={13} fill="currentColor" />
+                  <span className="hidden sm:inline">继续</span>
+                </button>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-[#CCD1DA] px-6 py-16 text-center dark:border-white/15">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-[#F0F3F9] text-[#69707D] dark:bg-white/[0.07] dark:text-white/50">
+            {activeTab === 'SAVED' ? <Bookmark size={21} /> : activeTab === 'HISTORY' ? <History size={21} /> : <CheckCircle2 size={21} />}
+          </div>
+          <h3 className="mt-4 text-sm font-semibold text-[#1F2937] dark:text-white">
+            {activeTab === 'SAVED' ? '还没有收藏' : activeTab === 'HISTORY' ? '还没有使用记录' : '还没有开始任何模块'}
+          </h3>
+          <p className="mt-2 text-sm text-[#7A8190] dark:text-white/45">从首页或探索中开始一次练习，记录会自动出现在这里。</p>
+        </div>
+      )}
+    </div>
   );
 };
 
