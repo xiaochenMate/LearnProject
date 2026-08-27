@@ -4,12 +4,12 @@ import { AppItem } from './types';
 export const EDUCATION_ITEMS: AppItem[] = [
   {
     id: 'e1',
-    title: '3D地球',
+    title: '太阳系探索',
     author: '@通义',
     category: 'education',
     imageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=800',
-    description: '交互式3D地球仪，探索地理知识与全球数据可视化。',
-    tags: ['地理', '3D', '可视化'],
+    description: '在可交互的 3D 太阳系中观察行星、比较数据并完成探索任务。',
+    tags: ['天文', '太阳系', '3D探索'],
     icon: 'public'
   },
   {

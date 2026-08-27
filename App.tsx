@@ -72,6 +72,7 @@ const CurrencyConverterApp = lazyWithRetry(() => import('./components/CurrencyCo
 const LibraryView = lazyWithRetry(() => import('./components/LibraryView'));
 const SettingsView = lazyWithRetry(() => import('./components/SettingsView'));
 const ExploreView = lazyWithRetry(() => import('./components/ExploreView'));
+const SummerGardenView = lazyWithRetry(() => import('./components/SummerGardenView'));
 
 type Tab = 'HOME' | 'EXPLORE' | 'LIBRARY' | 'SETTINGS';
 type Theme = 'light' | 'dark';
@@ -119,7 +120,7 @@ const readJson = <T,>(key: string, fallback: T): T => {
 };
 
 const NAV_ITEMS: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
-  { id: 'HOME', label: '今日', icon: <LayoutGrid size={18} /> },
+  { id: 'HOME', label: '暑假', icon: <LayoutGrid size={18} /> },
   { id: 'EXPLORE', label: '探索', icon: <Compass size={18} /> },
   { id: 'LIBRARY', label: '资源库', icon: <Bookmark size={18} /> },
   { id: 'SETTINGS', label: '设置', icon: <Settings size={18} /> },
@@ -529,9 +530,9 @@ const App: React.FC = () => {
           <div className="rounded-lg border border-[#E5E7EB] bg-[#F8F9FC] p-3 dark:border-white/10 dark:bg-white/[0.03]">
             <div className="flex items-center gap-2 text-xs font-medium text-[#4B5565] dark:text-white/65">
               <span className="h-2 w-2 rounded-full bg-[#22C55E]" />
-              本地记录已开启
+              学习记录已开启
             </div>
-            <p className="mt-2 text-[11px] leading-5 text-[#8B92A0] dark:text-white/35">收藏和专注时间保存在当前设备。</p>
+            <p className="mt-2 text-[11px] leading-5 text-[#8B92A0] dark:text-white/35">暑假工作台可家庭同步，其他记录保存在当前设备。</p>
           </div>
           <button
             type="button"
@@ -559,7 +560,7 @@ const App: React.FC = () => {
 
         <div className="mx-auto flex min-h-full w-full max-w-[1180px] flex-col px-4 py-7 sm:px-6 md:px-8 md:py-10 lg:px-10">
           <Suspense fallback={<LoadingOverlay />}>
-            {activeTab === 'HOME' && renderHome()}
+            {activeTab === 'HOME' && <SummerGardenView />}
             {activeTab === 'EXPLORE' && (
               <ExploreView
                 allModules={allModules}

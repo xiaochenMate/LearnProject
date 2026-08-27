@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.netlify
+deno.lock
 *.local
 
 # Editor directories and files
