@@ -1,7 +1,7 @@
 name: Jiangnan campaign smoke tests
 on:
   push:
-    branches: [feat/jiangnan-campaign-v2]
+    branches: [main]
     paths: ['public/games/jiangnan/**', 'tests/jiangnan/**', '.github/workflows/jiangnan-campaign.yml']
   pull_request:
     paths: ['public/games/jiangnan/**', 'tests/jiangnan/**', '.github/workflows/jiangnan-campaign.yml']
