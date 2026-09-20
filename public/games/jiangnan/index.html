@@ -1,11 +1,42 @@
-<!doctype html><html lang="zh-CN"><head><base href="/games/jiangnan/"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#111a1c"><meta name="description" content="驾驶坦克穿行烟雨江南，在白墙黛瓦、石桥与垂柳之间战斗。支持键鼠与平板双摇杆。"><title>江南 · 烟雨装甲</title><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111a1c'/%3E%3Cpath d='M10 36h44v16H10zM20 25h24v11H20zM30 13h5v16' fill='%23d5b77b'/%3E%3C/svg%3E"><link rel="stylesheet" href="./style.css"><script type="importmap">{"imports":{"three":"./assets/three.module.js"}}</script></head><body>
-<canvas id="battle" aria-label="江南水乡三维坦克战场"></canvas><div id="vignette"></div><div id="damage"></div>
-<header><div class="brand"><span class="seal">江<br>南</span><div><strong>烟雨装甲</strong><small>JIANGNAN · ARMORED FRONT</small></div></div><div class="top-right"><span id="weather">小雨 / 06:40</span><button id="camera" title="切换视角 C" aria-label="切换视角">战术视角</button><button id="pause" aria-label="暂停游戏">Ⅱ</button></div></header>
-<section id="mission"><span class="eyebrow">河埠防线 · 清剿行动</span><h1>守住烟雨中的古镇</h1><p>利用街巷与树木掩护，击毁全部敌方坦克。</p><div class="mission-line"><span><i></i> 敌军剩余</span><b id="remaining">06</b><span id="status">等待出击</span></div></section>
-<div id="target-label"></div><div id="reticle"><i></i><span id="aim-range"></span></div><div id="toast" role="status"></div>
-<aside id="map-panel"><div class="map-title"><span>战术地图</span><span>N ↑</span></div><canvas id="minimap" width="360" height="270" aria-label="战术小地图"></canvas><div class="map-key"><span class="friendly">● 我方</span><span class="hostile">● 敌军</span><span>▧ 古桥禁行</span></div></aside>
-<footer><div class="armor"><span class="eyebrow">装甲完整度</span><div><b id="hp">100</b><span>/ 100</span></div><div class="health-track"><i id="health"></i></div></div><div class="round"><span class="shell-icon">▰</span><div><span class="eyebrow">穿甲弹 · 无限备弹</span><b id="reload">准备就绪</b><div class="reload-track"><i id="reload-bar"></i></div></div></div><div class="drive"><b id="speed">0</b><span>km/h</span><small id="fps">自动画质</small></div></footer>
-<div id="controls-hint"><kbd>W A S D</kbd> 驾驶 <span>·</span> 鼠标瞄准 <span>·</span> 左键 / 空格开火 <span>·</span> <kbd>C</kbd> 视角 <span>·</span> <kbd>Esc</kbd> 暂停</div>
-<div id="touch-controls"><div class="joystick" id="move-stick" aria-label="左摇杆驾驶"><span>驾驶</span><i></i></div><div class="joystick" id="aim-stick" aria-label="右摇杆瞄准"><span>瞄准</span><i></i></div><button id="fire" aria-label="按住开火"><span>◎</span>开火</button></div>
-<section id="overlay"><div class="intro"><span class="eyebrow" id="overlay-kicker">JIANGNAN / OPERATION 01</span><h2 id="overlay-title">江南<span>烟雨装甲</span></h2><p id="overlay-desc">白墙映水，炮声入巷。<br>驾驶装甲战车，守住这片水乡。</p><div class="brief"><span>01 <b>沿滨河石路推进</b></span><span>02 <b>借民居与树干掩护</b></span><span>03 <b>古桥有台阶，禁止通行</b></span></div><div class="settings"><label>画质 <select id="quality"><option value="auto">自动适配</option><option value="low">流畅</option><option value="high">精细</option></select></label><label><input type="checkbox" id="sound" checked> 音效</label><label><input type="checkbox" id="touch-mode"> 触控</label></div><button id="start" disabled>正在载入战场 <span id="load-progress">0%</span></button><small id="input-help">WASD 驾驶 · 鼠标瞄准 · 左键开火</small></div><div class="intro-caption">枕河居 / 青石桥 / 听雨堂<span>雨中作战 · 装甲训练</span></div></section>
-<script type="module" src="./game.js"></script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <base href="/games/jiangnan/">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#12262b">
+  <meta name="description" content="驾驶救援坦克穿行六片江南战区。探索古镇与运河，完成六章故事战役、护送与守卫任务；支持电脑和平板双摇杆操作。">
+  <title>江南 · 烟雨装甲 — 青岚行动</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2312262b'/%3E%3Cpath d='M10 36h44v16H10zM20 25h24v11H20zM30 13h5v16' fill='%23d5b77b'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./campaign.css?v=2">
+  <script type="importmap">{"imports":{"three":"./assets/three.module.js"}}</script>
+</head>
+<body>
+<canvas id="battle" aria-label="江南水乡三维战场"></canvas><div id="vignette"></div><div id="damage"></div>
+<header>
+  <div class="brand"><span class="seal">江<br>南</span><div><strong>烟雨装甲</strong><small>QINGLAN / RESCUE OPERATION</small></div></div>
+  <nav class="top-right" aria-label="战场工具"><span id="weather">小雨 / 06:40</span><button id="map-open" title="地图 M">战术地图</button><button id="camera" title="切换视角 C">战术视角</button><button id="photo">隐藏界面</button><button id="pause" aria-label="暂停游戏">Ⅱ</button></nav>
+</header>
+<section id="mission"><span id="mission-kicker" class="eyebrow">青岚行动 / 1 · 6</span><h1 id="mission-title">一 · 雨巷来信</h1><p id="mission-text">沿河岸推进，打通古镇出口。</p><div class="mission-line"><span>敌军剩余</span><b id="remaining">02</b><span id="status">等待出击</span></div></section>
+<div id="unit-labels"></div><div id="target-label"></div><div id="reticle"><i></i><span id="aim-range"></span></div><div id="toast" role="status" aria-live="polite"></div>
+<aside id="map-panel"><div class="map-title"><span>青岚全域 / 战术地图</span><span>N ↑</span></div><canvas id="minimap" width="360" height="300" role="img" aria-label="六区战术地图，展开后点击可通行地点设置路标"></canvas><div class="map-key"><span>● 我方</span><span>● 敌军</span><span>◎ 目标</span></div><div class="map-actions"><button id="clear-waypoint">清除路标</button><button id="map-close" hidden>返回战场</button></div><small class="map-note">地图打开时战斗暂停；点击陆地设置路标。老石桥不可通车，两座加固平桥连接南北岸。</small></aside>
+<footer><div class="armor"><span class="eyebrow">装甲完整度</span><div><b id="hp">100</b><span id="max-hp">/ 100</span></div><div class="health-track"><i id="health"></i></div></div><div class="round"><span class="eyebrow">穿甲弹 / 无限备弹</span><b id="reload">准备就绪</b><div class="reload-track"><i id="reload-bar"></i></div></div><div class="drive"><b id="speed">0</b><span>km/h</span><small id="fps">自动画质</small></div></footer>
+<div id="skills" aria-label="战车技能"><button id="repair" title="维修 R">维修 <b id="repair-count">2</b><kbd>R</kbd></button><button id="smoke" title="烟幕 Q">烟幕 <b id="smoke-count">2</b><kbd>Q</kbd></button><button id="boost" title="加速 E">加速 <b id="boost-count">就绪</b><kbd>E</kbd></button></div>
+<div id="controls-hint"><kbd>WASD</kbd> 驾驶 · 鼠标瞄准 · 左键 / 空格开火 · <kbd>M</kbd> 地图 · <kbd>C</kbd> 视角 · <kbd>Esc</kbd> 暂停</div>
+<div id="touch-controls"><div class="joystick" id="move-stick" aria-label="左摇杆驾驶"><span>驾驶</span><i></i></div><div class="joystick" id="aim-stick" aria-label="右摇杆瞄准"><span>瞄准</span><i></i></div><button id="fire" aria-label="按住连续开火"><span>◎</span>开火</button></div>
+<section id="overlay" aria-label="行动准备">
+  <div class="intro">
+    <span class="eyebrow" id="overlay-kicker">JIANGNAN / CAMPAIGN 02</span><h2 id="overlay-title">青岚行动</h2>
+    <p id="overlay-desc">雨落白墙，故乡待援。驾驶“青禾”，在六片战区之间打通一条归家的路。</p>
+    <div class="brief"><span>六片战区</span><span>六章战役</span><span>双岸通行</span></div>
+    <div class="mission-settings"><label>行动模式<select id="mode"><option value="campaign">故事战役</option><option value="tour">自由巡游 · 无敌军</option><option value="survival">无尽守卫</option></select></label><label>章节<select id="chapter"><option value="0">一 · 雨巷来信</option></select></label><label>难度<select id="difficulty"><option value="relaxed">轻松探索</option><option value="normal">标准挑战</option><option value="hard">装甲老兵</option></select></label></div>
+    <div class="garage"><div class="garage-title"><span>战地车库</span><span><b id="credits">0</b> 零件</span></div><div class="upgrades"><button id="upgrade-armor">装甲强化<small>0/3 · 160 零件</small></button><button id="upgrade-engine">动力升级<small>0/3 · 160 零件</small></button><button id="upgrade-loader">装填优化<small>0/3 · 160 零件</small></button></div></div>
+    <div class="settings"><label>画质<select id="quality"><option value="auto">自动适配</option><option value="low">流畅</option><option value="high">精细</option></select></label><label><input type="checkbox" id="sound" checked>音效</label><label><input type="checkbox" id="touch-mode">触控</label><label><input type="checkbox" id="assist" checked>触控辅助瞄准</label></div>
+    <div class="start-actions"><button id="start" disabled>载入战场 <span id="load-progress">0%</span></button><button id="restart">重试当前行动</button></div>
+    <small id="input-help">电脑：WASD 驾驶，鼠标瞄准，左键开火。<br>平板：左摇杆驾驶，右摇杆瞄准，按住开火。</small><small id="save-note">已完成章节与车库升级保存在此浏览器。</small>
+  </div>
+  <div class="intro-caption">白墙映水，归途有光。<span>虚构故事 / 无人装甲救援行动</span></div>
+</section>
+<noscript>游戏需要启用 JavaScript 和 WebGL。</noscript>
+<script type="module" src="./campaign-engine.js?v=2"></script>
+</body></html>
