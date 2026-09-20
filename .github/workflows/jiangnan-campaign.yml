@@ -1,0 +1,40 @@
+name: Jiangnan campaign smoke tests
+on:
+  push:
+    branches: [feat/jiangnan-campaign-v2]
+    paths: ['public/games/jiangnan/**', 'tests/jiangnan/**', '.github/workflows/jiangnan-campaign.yml']
+  pull_request:
+    paths: ['public/games/jiangnan/**', 'tests/jiangnan/**', '.github/workflows/jiangnan-campaign.yml']
+permissions:
+  contents: read
+jobs:
+  campaign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax and navigation rules
+        run: |
+          for f in public/games/jiangnan/campaign-*.js; do node --check "$f"; done
+          node --test tests/jiangnan/core.test.mjs
+      - name: Install browser test dependencies
+        run: |
+          python -m pip install playwright==1.57.0
+          python -m playwright install --with-deps chromium
+      - name: Real model and multi-touch smoke tests
+        run: python tests/jiangnan/browser_smoke.py
+      - name: Test report and reusable local preview
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jiangnan-campaign-preview
+          path: |
+            test-results/jiangnan/
+            public/games/jiangnan/
+          retention-days: 14
