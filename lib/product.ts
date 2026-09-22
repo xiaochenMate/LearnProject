@@ -25,7 +25,7 @@ export interface LearningPath {
 
 export const CATEGORY_META: Record<Category, { label: string; description: string }> = {
   education: { label: '学习', description: '建立知识与基础能力' },
-  entertainment: { label: '对弈', description: '通过策略练习保持专注' },
+  entertainment: { label: '游戏', description: '通过策略、休闲与沉浸互动保持专注' },
   utilities: { label: '工具', description: '解决具体任务并提升效率' },
 };
 
@@ -45,6 +45,7 @@ const MODULE_META: Record<string, { minutes: number; level: string; outcome: str
   ent5: { minutes: 20, level: '策略', outcome: '理解传统棋类的布局与节奏' },
   ent6: { minutes: 20, level: '策略', outcome: '训练计算、规划与复盘能力' },
   ent7: { minutes: 25, level: '策略', outcome: '建立全局判断与取舍意识' },
+  ent8: { minutes: 25, level: '3D战役', outcome: '驾驶装甲战车完成六章烟雨江南救援战役' },
   u1: { minutes: 15, level: '创作', outcome: '快速完成绘画与视觉表达' },
   u2: { minutes: 10, level: '日常', outcome: '用间隔复习稳步积累词汇' },
   u3: { minutes: 6, level: '查询', outcome: '准确理解与使用中文成语' },

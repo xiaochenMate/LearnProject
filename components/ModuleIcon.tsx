@@ -36,6 +36,7 @@ const ICONS: Record<string, React.ElementType> = {
   grid_view: Grid3X3,
   casino: Drama,
   blur_on: Gamepad2,
+  tank: Gamepad2,
   lightbulb: Brain,
   api: CircleDollarSign,
   palette: Paintbrush,

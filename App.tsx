@@ -129,7 +129,7 @@ const NAV_ITEMS: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
 const FILTERS: Array<{ id: CategoryFilter; label: string; icon: React.ReactNode }> = [
   { id: 'all', label: '全部', icon: <LayoutGrid size={15} /> },
   { id: 'education', label: '学习', icon: <GraduationCap size={15} /> },
-  { id: 'entertainment', label: '对弈', icon: <Gamepad2 size={15} /> },
+  { id: 'entertainment', label: '游戏', icon: <Gamepad2 size={15} /> },
   { id: 'utilities', label: '工具', icon: <Wrench size={15} /> },
 ];
 
@@ -192,6 +192,11 @@ const App: React.FC = () => {
   };
 
   const handleRunApp = (item: AppItem) => {
+    if (item.id === 'ent8') {
+      window.location.assign('/games/jiangnan/');
+      return;
+    }
+
     const now = new Date();
     setSelectedItem(null);
     setHistoryIds(current => [item.id, ...current.filter(id => id !== item.id)].slice(0, 30));
@@ -371,6 +376,42 @@ const App: React.FC = () => {
           </button>
         </div>
       </header>
+
+      <section className="mb-8 overflow-hidden rounded-xl border border-[#25373D] bg-[#101C20] text-white shadow-[0_18px_46px_rgba(15,23,42,0.18)]">
+        <div className="grid md:grid-cols-[1.35fr_.65fr]">
+          <div className="p-5 md:p-7">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-[0.18em] text-[#D8BD88]">
+              <span>新上线</span>
+              <span className="h-1 w-1 rounded-full bg-[#D8BD88]" />
+              <span>3D 战役游戏</span>
+            </div>
+            <h2 className="mt-3 text-2xl font-semibold tracking-wide md:text-3xl">江南 · 烟雨装甲</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/65">
+              驾驶装甲战车穿过白墙黛瓦、石桥河埠与烟雨竹林，完成六章连续救援战役。
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2 text-[11px] text-white/55">
+              <span className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5">六章剧情</span>
+              <span className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5">3D 坦克战</span>
+              <span className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5">支持平板双摇杆</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.location.assign('/games/jiangnan/')}
+              className="mt-6 flex h-11 items-center gap-2 rounded-lg bg-[#D6BE8A] px-5 text-sm font-semibold text-[#172326] shadow-[0_8px_22px_rgba(0,0,0,0.22)] transition-colors hover:bg-[#E7D3A7]"
+            >
+              <Gamepad2 size={17} />
+              进入战场
+              <ArrowRight size={15} />
+            </button>
+          </div>
+          <div className="relative hidden min-h-[220px] items-center justify-center overflow-hidden border-l border-white/10 md:flex">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(216,189,136,0.18),transparent_58%)]" />
+            <div className="absolute h-40 w-40 rounded-full border border-white/10" />
+            <div className="absolute h-28 w-28 rounded-full border border-[#D8BD88]/25" />
+            <Gamepad2 size={66} strokeWidth={1.15} className="relative text-[#D8BD88]" />
+          </div>
+        </div>
+      </section>
 
       <section className="mb-8 grid gap-4 lg:grid-cols-[1.45fr_1fr]">
         <div className="rounded-lg border border-[#E2E5EA] bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-[#15171C] md:p-6">
