@@ -34,7 +34,7 @@ const PATH_STYLES = {
 const FILTERS: Array<{ id: ExploreFilter; label: string; icon: React.ReactNode }> = [
   { id: 'all', label: '全部', icon: <Shapes size={15} /> },
   { id: 'education', label: '知识学习', icon: <BookOpen size={15} /> },
-  { id: 'entertainment', label: '策略练习', icon: <Gamepad2 size={15} /> },
+  { id: 'entertainment', label: '游戏与策略', icon: <Gamepad2 size={15} /> },
   { id: 'utilities', label: '实用工具', icon: <FlaskConical size={15} /> },
 ];
 
