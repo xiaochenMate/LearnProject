@@ -12,6 +12,7 @@ dist
 dist-ssr
 .netlify
 deno.lock
+migrated_prompt_history/
 *.local
 
 # Editor directories and files
