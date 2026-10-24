@@ -110,7 +110,7 @@ export const ENTERTAINMENT_ITEMS: AppItem[] = [
     title: '江南 · 烟雨装甲',
     author: '@ExBeam',
     category: 'entertainment',
-    imageUrl: '',
+    imageUrl: '/games/jiangnan/index.html',
     description: '驾驶装甲战车穿行白墙黛瓦、石桥河埠与烟雨竹林，完成六章连续救援战役。支持键鼠与平板双摇杆。',
     tags: ['3D', '坦克', '江南', '战役'],
     icon: 'tank'

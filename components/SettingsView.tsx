@@ -61,7 +61,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="text-xs font-semibold text-[#2563EB] dark:text-[#8EACFF]">产品与偏好</div>
         <h1 className="mt-3 text-3xl font-semibold text-[#111318] dark:text-white md:text-4xl">设置</h1>
         <p className="mt-3 text-sm leading-7 text-[#69707D] dark:text-white/55">
-          ExBeam 默认将学习记录保存在当前设备，不会假装同步到一个不存在的账号。
+          普通学习记录保存在当前设备；成长工作台可通过家庭码在孩子和平板之间同步。
         </p>
       </header>
 
@@ -181,7 +181,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
             </a>
             <div className="flex items-center justify-between px-5 py-4 text-sm text-[#69707D] dark:text-white/45">
               <span className="flex items-center gap-2"><ShieldCheck size={16} />本地优先</span>
-              <span>2026.07</span>
+              <span>2026.10</span>
             </div>
           </div>
         </section>

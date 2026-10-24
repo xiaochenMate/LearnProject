@@ -48,7 +48,7 @@ import {
   getMonsterCount,
   getSummerStreak,
   getTodayProgress,
-  getVacationDaysLeft,
+  getVacationStatus,
   normalizeSummerWorkspace,
   PLANT_CATALOG,
   QuizQuestion,
@@ -793,7 +793,7 @@ const SummerGardenView: React.FC = () => {
   const monsters = getMonsterCount(state, today);
   const incompleteSubjects = getIncompleteSubjects(state, today);
   const streak = getSummerStreak(state);
-  const daysLeft = getVacationDaysLeft(state.vacationEnd);
+  const vacationStatus = getVacationStatus(state.vacationStart, state.vacationEnd);
   const selectedPlant = PLANT_CATALOG.find(item => item.id === selectedPlantId);
   const todayLabel = useMemo(
     () => new Date().toLocaleDateString('zh-CN', {
@@ -1161,13 +1161,19 @@ const SummerGardenView: React.FC = () => {
     setMode('child');
   };
 
-  const saveConfig = (nextTasks = state.tasks, nextName = state.childName, nextEnd = state.vacationEnd) => {
+  const saveConfig = (
+    nextTasks = state.tasks,
+    nextName = state.childName,
+    nextStart = state.vacationStart,
+    nextEnd = state.vacationEnd,
+  ) => {
     dispatchMutation({
       id: createActionId(),
       type: 'save-config',
       date: today,
       tasks: nextTasks,
       childName: nextName,
+      vacationStart: nextStart,
       vacationEnd: nextEnd,
     });
   };
@@ -1255,12 +1261,20 @@ const SummerGardenView: React.FC = () => {
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#102416]/90 via-[#102416]/45 to-transparent" />
           <div className="relative z-10 max-w-[440px] p-5 text-white sm:p-6">
-            <div className="text-xs font-bold text-[#CFF6A9]">阳光花园 · 第 {streak + 1} 天挑战</div>
+            <div className="text-xs font-bold text-[#CFF6A9]">
+              {vacationStatus.phase === 'active'
+                ? `阳光花园 · 第 ${streak + 1} 天挑战`
+                : vacationStatus.phase === 'upcoming'
+                  ? '日常成长 · 暑假预备期'
+                  : '阳光花园 · 本期成长回顾'}
+            </div>
             <h3 className="mt-2 text-2xl font-bold leading-tight">
               {progress.completed === progress.total ? '花园守住了，今天全部完成！' : `还差 ${progress.total - progress.completed} 项，植物队需要你`}
             </h3>
             <p className="mt-3 text-sm leading-6 text-white/75">
-              未完成的学科会招来作业怪。先完成最短的一项，让花园安静下来。
+              {vacationStatus.phase === 'ended'
+                ? '本期计划已经结束，今天仍可以继续完成日常任务，保持好习惯。'
+                : '未完成的学科会招来作业怪。先完成最短的一项，让花园安静下来。'}
             </p>
           </div>
         </div>
@@ -1804,7 +1818,11 @@ const SummerGardenView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 text-xs font-bold text-[#16865C]">
             <Sprout size={15} />
-            EXBEAM 暑假成长工作台
+            {vacationStatus.phase === 'active'
+              ? 'EXBEAM 暑假成长工作台'
+              : vacationStatus.phase === 'upcoming'
+                ? 'EXBEAM 成长计划 · 暑假预备'
+                : 'EXBEAM 成长计划 · 本期复盘'}
           </div>
           <h1 className="mt-2 text-3xl font-bold text-[#18201A] dark:text-white md:text-4xl">
             {state.childName}的阳光花园
@@ -1847,13 +1865,27 @@ const SummerGardenView: React.FC = () => {
       </header>
 
       {mode === 'parent' && (
-        <div className="mb-5 grid gap-3 rounded-lg border border-[#C9DAFB] bg-[#F3F7FF] p-4 dark:border-[#2563EB]/30 dark:bg-[#2563EB]/10 sm:grid-cols-[1fr_180px] sm:items-end">
+        <div className="mb-5 grid gap-3 rounded-lg border border-[#C9DAFB] bg-[#F3F7FF] p-4 dark:border-[#2563EB]/30 dark:bg-[#2563EB]/10 sm:grid-cols-3 sm:items-end">
           <label className="text-xs font-bold text-[#405474] dark:text-white/60">
             孩子称呼
             <input
               value={state.childName}
               onChange={event => setState(current => ({ ...current, childName: event.target.value }))}
-              onBlur={() => saveConfig(state.tasks, state.childName, state.vacationEnd)}
+              onBlur={() => saveConfig(state.tasks, state.childName, state.vacationStart, state.vacationEnd)}
+              className="mt-1.5 h-10 w-full rounded-lg border border-[#C9D5E9] bg-white px-3 text-sm font-semibold text-[#263650] outline-none dark:border-white/10 dark:bg-[#15171C] dark:text-white"
+            />
+          </label>
+          <label className="text-xs font-bold text-[#405474] dark:text-white/60">
+            暑假开始日期
+            <input
+              type="date"
+              value={state.vacationStart}
+              max={state.vacationEnd}
+              onChange={event => {
+                const value = event.target.value;
+                setState(current => ({ ...current, vacationStart: value }));
+                saveConfig(state.tasks, state.childName, value, state.vacationEnd);
+              }}
               className="mt-1.5 h-10 w-full rounded-lg border border-[#C9D5E9] bg-white px-3 text-sm font-semibold text-[#263650] outline-none dark:border-white/10 dark:bg-[#15171C] dark:text-white"
             />
           </label>
@@ -1862,10 +1894,11 @@ const SummerGardenView: React.FC = () => {
             <input
               type="date"
               value={state.vacationEnd}
+              min={state.vacationStart}
               onChange={event => {
                 const value = event.target.value;
                 setState(current => ({ ...current, vacationEnd: value }));
-                saveConfig(state.tasks, state.childName, value);
+                saveConfig(state.tasks, state.childName, state.vacationStart, value);
               }}
               className="mt-1.5 h-10 w-full rounded-lg border border-[#C9D5E9] bg-white px-3 text-sm font-semibold text-[#263650] outline-none dark:border-white/10 dark:bg-[#15171C] dark:text-white"
             />
@@ -1875,7 +1908,7 @@ const SummerGardenView: React.FC = () => {
 
       <nav
         className="no-scrollbar flex gap-0.5 overflow-x-auto rounded-lg border border-[#E1E6E1] bg-white p-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] dark:border-white/10 dark:bg-[#15171C]"
-        aria-label="暑假工作台功能"
+        aria-label="成长工作台功能"
       >
         {PANEL_ITEMS.map(item => (
           <button
@@ -1897,7 +1930,15 @@ const SummerGardenView: React.FC = () => {
       {panel === 'today' && (
         <>
           <section className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <MetricCard icon={<CalendarDays size={16} />} label="暑假剩余" value={<>{daysLeft}<span className="ml-1 text-sm font-semibold text-[#7A837B]">天</span></>} accent="#2563EB" soft="#EDF4FF" />
+            <MetricCard
+              icon={<CalendarDays size={16} />}
+              label={vacationStatus.label}
+              value={vacationStatus.phase === 'ended'
+                ? <span className="text-base">已结束</span>
+                : <>{vacationStatus.days}<span className="ml-1 text-sm font-semibold text-[#7A837B]">天</span></>}
+              accent="#2563EB"
+              soft="#EDF4FF"
+            />
             <MetricCard icon={<CheckCircle2 size={16} />} label="今日进度" value={<>{progress.completed}/{progress.total}</>} accent="#16865C" soft="#EAF9F1" />
             <MetricCard icon={<Sun size={16} fill="currentColor" />} label="阳光值" value={state.sun} accent="#C78D00" soft="#FFF4C7" />
             <MetricCard icon={<Flower2 size={16} />} label="已种植物" value={state.garden.length} accent="#7C3AED" soft="#F4F0FF" />

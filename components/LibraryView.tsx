@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Bookmark, CheckCircle2, Clock3, History, Play, Trash2 } from 'lucide-react';
+import { ArrowRight, Bookmark, CheckCircle2, Clock3, Compass, History, Play, Trash2 } from 'lucide-react';
 import { AppItem } from '../types';
 import { CATEGORY_META, formatFocusTime, getModuleMeta, UsageMap } from '../lib/product';
 import ModuleIcon from './ModuleIcon';
@@ -13,6 +13,7 @@ interface LibraryViewProps {
   onRunItem: (item: AppItem) => void;
   onToggleSave: (id: string) => void;
   onClearHistory: () => void;
+  onExplore: () => void;
 }
 
 type LibraryTab = 'PROGRESS' | 'SAVED' | 'HISTORY';
@@ -26,6 +27,7 @@ const LibraryView: React.FC<LibraryViewProps> = ({
   onRunItem,
   onToggleSave,
   onClearHistory,
+  onExplore,
 }) => {
   const [activeTab, setActiveTab] = useState<LibraryTab>('PROGRESS');
 
@@ -158,7 +160,22 @@ const LibraryView: React.FC<LibraryViewProps> = ({
           <h3 className="mt-4 text-sm font-semibold text-[#1F2937] dark:text-white">
             {activeTab === 'SAVED' ? '还没有收藏' : activeTab === 'HISTORY' ? '还没有使用记录' : '还没有开始任何模块'}
           </h3>
-          <p className="mt-2 text-sm text-[#7A8190] dark:text-white/45">从首页或探索中开始一次练习，记录会自动出现在这里。</p>
+          <p className="mt-2 text-sm text-[#7A8190] dark:text-white/45">
+            {activeTab === 'SAVED'
+              ? '把想稍后练习的内容加入收藏，就能在这里快速找到。'
+              : activeTab === 'HISTORY'
+                ? '完成一次练习后，最近使用记录会自动出现在这里。'
+                : '从探索中开始一次练习，进度和专注时间会自动记录。'}
+          </p>
+          <button
+            type="button"
+            onClick={onExplore}
+            className="mx-auto mt-5 flex h-10 items-center gap-2 rounded-lg bg-[#2563EB] px-4 text-sm font-semibold text-white hover:bg-[#1D4ED8]"
+          >
+            <Compass size={16} />
+            去探索内容
+            <ArrowRight size={15} />
+          </button>
         </div>
       )}
     </div>

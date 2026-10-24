@@ -59,6 +59,7 @@ export interface SummerWorkspaceState {
   schemaVersion: 1;
   version: number;
   childName: string;
+  vacationStart: string;
   vacationEnd: string;
   tasks: SummerTask[];
   days: Record<string, SummerDayRecord>;
@@ -80,6 +81,7 @@ export interface SummerMutation {
   column?: number;
   rewardId?: string;
   childName?: string;
+  vacationStart?: string;
   vacationEnd?: string;
   tasks?: SummerTask[];
   mood?: SummerMood;
@@ -339,32 +341,45 @@ const pad = (value: number) => value.toString().padStart(2, '0');
 export const getDateKey = (date = new Date()) =>
   `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
-const getDefaultVacationEnd = () => {
+const getDefaultVacationRange = () => {
   const now = new Date();
-  const year = now.getMonth() > 7 ? now.getFullYear() + 1 : now.getFullYear();
-  return `${year}-08-31`;
+  const thisYearEnd = new Date(now.getFullYear(), 7, 31, 23, 59, 59);
+  const year = now > thisYearEnd ? now.getFullYear() + 1 : now.getFullYear();
+  return {
+    start: `${year}-07-01`,
+    end: `${year}-08-31`,
+  };
 };
 
-export const createSummerWorkspace = (): SummerWorkspaceState => ({
-  schemaVersion: 1,
-  version: 0,
-  childName: '小小守护员',
-  vacationEnd: getDefaultVacationEnd(),
-  tasks: DEFAULT_SUMMER_TASKS.map(task => ({ ...task })),
-  days: {},
-  sun: 0,
-  garden: [],
-  redemptions: [],
-  appliedActionIds: [],
-  updatedAt: new Date().toISOString(),
-});
+export const createSummerWorkspace = (): SummerWorkspaceState => {
+  const vacation = getDefaultVacationRange();
+  return {
+    schemaVersion: 1,
+    version: 0,
+    childName: '小小守护员',
+    vacationStart: vacation.start,
+    vacationEnd: vacation.end,
+    tasks: DEFAULT_SUMMER_TASKS.map(task => ({ ...task })),
+    days: {},
+    sun: 0,
+    garden: [],
+    redemptions: [],
+    appliedActionIds: [],
+    updatedAt: new Date().toISOString(),
+  };
+};
 
 export const normalizeSummerWorkspace = (value: Partial<SummerWorkspaceState> | null | undefined) => {
   const fallback = createSummerWorkspace();
   if (!value || value.schemaVersion !== 1) return fallback;
+  const vacationYear = typeof value.vacationEnd === 'string'
+    ? value.vacationEnd.match(/^(\d{4})-/)?.[1]
+    : undefined;
   return {
     ...fallback,
     ...value,
+    vacationStart: value.vacationStart || (vacationYear ? `${vacationYear}-07-01` : fallback.vacationStart),
+    vacationEnd: value.vacationEnd || fallback.vacationEnd,
     tasks: Array.isArray(value.tasks) ? value.tasks : fallback.tasks,
     days: value.days && typeof value.days === 'object' ? value.days : {},
     garden: Array.isArray(value.garden) ? value.garden : [],
@@ -410,6 +425,37 @@ export const getVacationDaysLeft = (vacationEnd: string) => {
   const end = new Date(`${vacationEnd}T23:59:59`);
   const now = new Date();
   return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / 86_400_000));
+};
+
+export interface VacationStatus {
+  phase: 'upcoming' | 'active' | 'ended';
+  days: number;
+  label: string;
+}
+
+export const getVacationStatus = (
+  vacationStart: string,
+  vacationEnd: string,
+  now = new Date(),
+): VacationStatus => {
+  const start = new Date(`${vacationStart}T00:00:00`);
+  const end = new Date(`${vacationEnd}T23:59:59`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+    return { phase: 'active', days: getVacationDaysLeft(vacationEnd), label: '计划剩余' };
+  }
+  if (now < start) {
+    return {
+      phase: 'upcoming',
+      days: Math.max(1, Math.ceil((start.getTime() - now.getTime()) / 86_400_000)),
+      label: '距离暑假',
+    };
+  }
+  if (now > end) return { phase: 'ended', days: 0, label: '计划状态' };
+  return {
+    phase: 'active',
+    days: Math.max(0, Math.ceil((end.getTime() - now.getTime()) / 86_400_000)),
+    label: '暑假剩余',
+  };
 };
 
 const isDayComplete = (state: SummerWorkspaceState, date: string) => {
@@ -533,6 +579,7 @@ export const applySummerMutation = (
     return withAppliedAction({
       ...state,
       childName: mutation.childName?.trim() || state.childName,
+      vacationStart: mutation.vacationStart || state.vacationStart,
       vacationEnd: mutation.vacationEnd || state.vacationEnd,
       tasks,
     }, mutation.id);

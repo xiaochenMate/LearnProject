@@ -65,6 +65,7 @@ const GobangApp = lazyWithRetry(() => import('./components/GobangApp'));
 const ChineseChessApp = lazyWithRetry(() => import('./components/ChineseChessApp'));
 const ChessApp = lazyWithRetry(() => import('./components/ChessApp'));
 const GoApp = lazyWithRetry(() => import('./components/GoApp'));
+const JiangnanGameApp = lazyWithRetry(() => import('./components/JiangnanGameApp'));
 const ProArtApp = lazyWithRetry(() => import('./components/ProArtApp'));
 const VocabularyApp = lazyWithRetry(() => import('./components/VocabularyApp'));
 const IdiomApp = lazyWithRetry(() => import('./components/IdiomApp'));
@@ -83,6 +84,19 @@ const STORAGE = {
   saved: 'exbeam.saved.v1',
   history: 'exbeam.history.v1',
   usage: 'exbeam.usage.v1',
+};
+
+const TAB_HASH: Record<Tab, string> = {
+  HOME: '#growth',
+  EXPLORE: '#explore',
+  LIBRARY: '#library',
+  SETTINGS: '#settings',
+};
+
+const getTabFromLocation = (): Tab => {
+  const entry = (Object.entries(TAB_HASH) as Array<[Tab, string]>)
+    .find(([, hash]) => hash === window.location.hash);
+  return entry?.[0] || 'HOME';
 };
 
 const safeStorage = {
@@ -120,7 +134,7 @@ const readJson = <T,>(key: string, fallback: T): T => {
 };
 
 const NAV_ITEMS: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
-  { id: 'HOME', label: '暑假', icon: <LayoutGrid size={18} /> },
+  { id: 'HOME', label: '成长', icon: <LayoutGrid size={18} /> },
   { id: 'EXPLORE', label: '探索', icon: <Compass size={18} /> },
   { id: 'LIBRARY', label: '资源库', icon: <Bookmark size={18} /> },
   { id: 'SETTINGS', label: '设置', icon: <Settings size={18} /> },
@@ -144,7 +158,7 @@ const LoadingOverlay = () => (
 
 const App: React.FC = () => {
   const allModules = useMemo(() => [...EDUCATION_ITEMS, ...ENTERTAINMENT_ITEMS, ...UTILITIES_ITEMS], []);
-  const [activeTab, setActiveTab] = useState<Tab>('HOME');
+  const [activeTab, setActiveTab] = useState<Tab>(getTabFromLocation);
   const [selectedItem, setSelectedItem] = useState<AppItem | null>(null);
   const [runningAppId, setRunningAppId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -172,6 +186,24 @@ const App: React.FC = () => {
   useEffect(() => safeStorage.set(STORAGE.usage, JSON.stringify(usage)), [usage]);
 
   useEffect(() => {
+    const syncTabFromLocation = () => setActiveTab(getTabFromLocation());
+    window.addEventListener('hashchange', syncTabFromLocation);
+    window.addEventListener('popstate', syncTabFromLocation);
+    return () => {
+      window.removeEventListener('hashchange', syncTabFromLocation);
+      window.removeEventListener('popstate', syncTabFromLocation);
+    };
+  }, []);
+
+  const navigateTab = useCallback((tab: Tab) => {
+    setActiveTab(tab);
+    const hash = TAB_HASH[tab];
+    if (window.location.hash !== hash) {
+      window.history.pushState(null, '', `${window.location.pathname}${window.location.search}${hash}`);
+    }
+  }, []);
+
+  useEffect(() => {
     const requestedId = new URLSearchParams(window.location.search).get('module');
     const requested = allModules.find(item => item.id === requestedId);
     if (requested) setSelectedItem(requested);
@@ -192,11 +224,6 @@ const App: React.FC = () => {
   };
 
   const handleRunApp = (item: AppItem) => {
-    if (item.id === 'ent8') {
-      window.location.assign('/games/jiangnan/');
-      return;
-    }
-
     const now = new Date();
     setSelectedItem(null);
     setHistoryIds(current => [item.id, ...current.filter(id => id !== item.id)].slice(0, 30));
@@ -264,6 +291,7 @@ const App: React.FC = () => {
     .map(id => allModules.find(item => item.id === id))
     .filter(Boolean) as AppItem[];
   const continueItem = recentItems[0] || allModules.find(item => item.id === 'e20') || allModules[0];
+  const jiangnanItem = allModules.find(item => item.id === 'ent8');
   const planItems = [
     continueItem,
     allModules.find(item => item.id === 'u2'),
@@ -294,6 +322,7 @@ const App: React.FC = () => {
             case 'ent5': return <ChineseChessApp onClose={closeRunningApp} />;
             case 'ent6': return <ChessApp onClose={closeRunningApp} />;
             case 'ent7': return <GoApp onClose={closeRunningApp} />;
+            case 'ent8': return <JiangnanGameApp onClose={closeRunningApp} />;
             case 'u1': return <ProArtApp onClose={closeRunningApp} />;
             case 'u2': return <VocabularyApp onClose={closeRunningApp} />;
             case 'u3': return <IdiomApp onClose={closeRunningApp} />;
@@ -396,7 +425,8 @@ const App: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => window.location.assign('/games/jiangnan/')}
+              onClick={() => jiangnanItem && handleRunApp(jiangnanItem)}
+              disabled={!jiangnanItem}
               className="mt-6 flex h-11 items-center gap-2 rounded-lg bg-[#D6BE8A] px-5 text-sm font-semibold text-[#172326] shadow-[0_8px_22px_rgba(0,0,0,0.22)] transition-colors hover:bg-[#E7D3A7]"
             >
               <Gamepad2 size={17} />
@@ -555,7 +585,7 @@ const App: React.FC = () => {
             <button
               key={item.id}
               type="button"
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => navigateTab(item.id)}
               className={`flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${
                 activeTab === item.id
                   ? 'bg-[#EEF2FF] text-[#2563EB]'
@@ -573,7 +603,7 @@ const App: React.FC = () => {
               <span className="h-2 w-2 rounded-full bg-[#22C55E]" />
               学习记录已开启
             </div>
-            <p className="mt-2 text-[11px] leading-5 text-[#8B92A0] dark:text-white/35">暑假工作台可家庭同步，其他记录保存在当前设备。</p>
+            <p className="mt-2 text-[11px] leading-5 text-[#8B92A0] dark:text-white/35">成长工作台可家庭同步，其他记录保存在当前设备。</p>
           </div>
           <button
             type="button"
@@ -620,6 +650,7 @@ const App: React.FC = () => {
                 onRunItem={handleRunApp}
                 onToggleSave={handleToggleSave}
                 onClearHistory={() => setHistoryIds([])}
+                onExplore={() => navigateTab('EXPLORE')}
               />
             )}
             {activeTab === 'SETTINGS' && (
@@ -641,7 +672,7 @@ const App: React.FC = () => {
           <button
             key={item.id}
             type="button"
-            onClick={() => setActiveTab(item.id)}
+            onClick={() => navigateTab(item.id)}
             className={`flex min-w-0 flex-col items-center gap-1 py-1.5 text-[10px] font-medium ${
               activeTab === item.id ? 'text-[#2563EB] dark:text-[#8EACFF]' : 'text-[#8B92A0] dark:text-white/35'
             }`}

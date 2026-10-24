@@ -34,6 +34,7 @@ const ICONS: Record<string, React.ElementType> = {
   schedule: Clock3,
   calculate: Calculator,
   grid_view: Grid3X3,
+  gamepad_2: Gamepad2,
   casino: Drama,
   blur_on: Gamepad2,
   tank: Gamepad2,
