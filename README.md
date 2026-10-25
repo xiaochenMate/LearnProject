@@ -12,6 +12,10 @@ The astronomy module spans four selectable scales: the solar system, the Milky W
 - Telescope images have source links and credits in `public/images/universe/CREDITS.md`. Planet textures remain bundled from Solar System Scope.
 - All positions and relative sizes are educational schematics, not a real-time sky chart. The observable universe is not the entire universe or a physical boundary.
 - Desktop, tablet, and mobile layouts share the same object data. WebGL failure leaves the reading and observation tools available.
+- Galaxies combine depth-aware star fields, emissive gas, and absorbing dust. Nebulae use volume ray marching with different cloud and supernova-remnant profiles. The black-hole model traces approximately bent rays through an animated accretion disk; it is an educational visualization, not a general-relativity solver or a reconstruction of Sagittarius A*.
+- Deep-space close-ups isolate the selected object. Mobile sampling and adaptive canvas resolution limit GPU cost while keeping interface text sharp.
+
+Visual references: [NASA black-hole anatomy](https://science.nasa.gov/universe/black-holes/anatomy/) and [NASA/ESA Orion Nebula fly-through](https://science.nasa.gov/asset/hubble/3d-fly-through-of-the-orion-nebula/). The rendered volumes are illustrative models rather than observed 3D reconstructions.
 
 Run the catalog and storage regression checks with `npm run test:universe`.
 

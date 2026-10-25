@@ -2,6 +2,13 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { COSMIC_OBJECTS, CosmicObject, UniverseScale } from './universeData';
 import { PLANETS } from './solarSystemData';
+import {
+  createBlackHoleVisual,
+  createGalaxyVisual,
+  createNebulaVisual,
+  createSpaceNoise,
+  SpaceVisual,
+} from './universeVisuals';
 
 interface SceneEvents {
   onSelect: (id: string) => void;
@@ -69,6 +76,11 @@ export function createUniverseScene(
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.1;
+  renderer.debug.onShaderError = () => {
+    events.onError(
+      '此设备暂时无法显示深空效果，可以重新载入或继续查看天体资料。',
+    );
+  };
   renderer.domElement.setAttribute('aria-label', '宇宙三维探索场景');
   renderer.domElement.setAttribute('role', 'img');
   renderer.domElement.className = 'universe-canvas';
@@ -87,8 +99,12 @@ export function createUniverseScene(
   controls.rotateSpeed = 0.6;
   controls.autoRotateSpeed = 0.32;
   const rng = seededRandom(512);
+  const mobile = window.innerWidth < 700;
   const dotTexture = pointTexture();
-  const resources = new Set<THREE.Texture>([dotTexture]);
+  const spaceNoise = createSpaceNoise();
+  const resources = new Set<THREE.Texture>([dotTexture, spaceNoise]);
+  const visuals = new Map<string, SpaceVisual>();
+  let galaxyBackdrop: SpaceVisual | undefined;
   const bodies = new Map<string, Body>();
   const pickTargets: THREE.Object3D[] = [];
   const animated: { object: THREE.Object3D; speed: number }[] = [];
@@ -138,36 +154,6 @@ export function createUniverseScene(
         blending: THREE.AdditiveBlending,
       }),
     );
-  };
-
-  const spiral = (
-    radius: number,
-    count: number,
-    seed: number,
-    irregular = false,
-  ) => {
-    const random = seededRandom(seed);
-    const positions: number[] = [];
-    const colors: number[] = [];
-    const warm = new THREE.Color('#FFE4AD');
-    const cold = new THREE.Color('#A4C7ED');
-    for (let i = 0; i < count; i++) {
-      const r = Math.pow(random(), 0.65) * radius;
-      const armCount = radius > 100 ? 4 : 2;
-      const arm = (Math.floor(random() * armCount) * Math.PI * 2) / armCount;
-      const scatter = (random() - 0.5) * (irregular ? 5 : 1.25);
-      const angle = arm + (r / radius) * 4.7 + scatter;
-      const bulge = i < count * 0.23;
-      const x = bulge ? (random() - 0.5) * radius * 0.3 : Math.cos(angle) * r;
-      const z = bulge ? (random() - 0.5) * radius * 0.18 : Math.sin(angle) * r;
-      positions.push(x, (random() - 0.5) * radius * (bulge ? 0.2 : 0.045), z);
-      const color = warm.clone().lerp(cold, Math.min(1, (r / radius) * 1.6));
-      color.multiplyScalar(0.6 + random() * 0.6);
-      colors.push(color.r, color.g, color.b);
-    }
-    const group = new THREE.Group();
-    group.add(points(positions, colors, radius > 100 ? 2.65 : 1.2, 0.95));
-    return group;
   };
 
   const stars: number[] = [];
@@ -239,12 +225,13 @@ export function createUniverseScene(
   };
 
   if (scale === 'galaxy') {
-    const disk = spiral(168, 24000, 42);
-    scene.add(disk);
-    animated.push({ object: disk, speed: 0.012 });
-    [55, 110, 170].forEach((radius) =>
-      scene.add(circle(radius, '#A9BECE', 0.09)),
+    galaxyBackdrop = createGalaxyVisual(
+      168,
+      seededRandom(42),
+      spaceNoise,
+      mobile,
     );
+    scene.add(galaxyBackdrop.group);
   }
 
   if (scale === 'cosmos') {
@@ -396,57 +383,44 @@ export function createUniverseScene(
           });
         }
       } else if (data.shape === 'galaxy') {
-        const disk = spiral(data.size, 6500, index * 13 + 7, data.id === 'lmc');
-        disk.rotation.set(
-          data.id === 'andromeda' ? 0.6 : 0.18,
+        const disk = createGalaxyVisual(
+          data.size,
+          seededRandom(index * 13 + 7),
+          spaceNoise,
+          mobile,
+          data.id === 'lmc',
+        );
+        disk.group.rotation.set(
+          data.id === 'andromeda' ? 0.32 : 0.18,
           index * 0.7,
           index % 2 ? 0.2 : -0.1,
         );
-        group.add(disk);
-        spin = disk;
+        group.add(disk.group);
+        visuals.set(data.id, disk);
         if (data.id === 'whirlpool') {
-          const companion = spiral(7, 900, 918);
-          companion.position.set(32, 2, -16);
-          group.add(companion);
+          const companion = createGalaxyVisual(
+            7,
+            seededRandom(918),
+            spaceNoise,
+            mobile,
+          );
+          companion.group.position.set(32, 2, -16);
+          group.add(companion.group);
+          visuals.set('whirlpool-companion', companion);
         }
       } else if (data.shape === 'nebula') {
-        const positions: number[] = [];
-        const colors: number[] = [];
-        const color = new THREE.Color(data.color);
-        for (let i = 0; i < 2200; i++) {
-          const theta = rng() * Math.PI * 2;
-          const phi = Math.acos(rng() * 2 - 1);
-          const radius = (0.25 + rng() * 0.75) * data.size;
-          positions.push(
-            Math.cos(theta) * Math.sin(phi) * radius,
-            Math.cos(phi) * radius * 0.55,
-            Math.sin(theta) * Math.sin(phi) * radius,
-          );
-          const mixed = color
-            .clone()
-            .lerp(new THREE.Color('#D6DFFF'), rng() * 0.55);
-          colors.push(mixed.r, mixed.g, mixed.b);
-        }
-        group.add(points(positions, colors, 1.3, 0.8));
+        const nebula = createNebulaVisual(
+          data.size,
+          data.id === 'crab',
+          spaceNoise,
+          mobile,
+        );
+        group.add(nebula.group);
+        visuals.set(data.id, nebula);
       } else if (data.shape === 'blackhole') {
-        group.add(
-          new THREE.Mesh(
-            new THREE.SphereGeometry(data.size * 0.65, 48, 32),
-            new THREE.MeshBasicMaterial({ color: '#010203' }),
-          ),
-        );
-        const disk = new THREE.Mesh(
-          new THREE.RingGeometry(data.size * 0.85, data.size * 1.95, 100),
-          new THREE.MeshBasicMaterial({
-            color: '#F7BD77',
-            transparent: true,
-            opacity: 0.9,
-            side: THREE.DoubleSide,
-          }),
-        );
-        disk.rotation.x = Math.PI / 2.5;
-        group.add(disk);
-        group.add(circle(data.size * 2.3, '#F5C98D', 0.6));
+        const blackHole = createBlackHoleVisual(data.size, spaceNoise, mobile);
+        group.add(blackHole.group);
+        visuals.set(data.id, blackHole);
       } else if (data.shape === 'cluster') {
         for (let i = 0; i < (data.id === 'local-group' ? 22 : 65); i++) {
           const sprite = new THREE.Sprite(
@@ -514,7 +488,19 @@ export function createUniverseScene(
       ring.visible = false;
       group.add(ring);
       const hit = new THREE.Mesh(
-        new THREE.SphereGeometry(Math.max(4.5, data.size), 12, 8),
+        new THREE.SphereGeometry(
+          Math.max(
+            4.5,
+            data.size *
+              (data.shape === 'blackhole'
+                ? 3.2
+                : data.shape === 'nebula'
+                  ? 1.5
+                  : 1),
+          ),
+          12,
+          8,
+        ),
         new THREE.MeshBasicMaterial({
           transparent: true,
           opacity: 0,
@@ -577,11 +563,15 @@ export function createUniverseScene(
       (-(y - bounds.top) / bounds.height) * 2 + 1,
     );
     raycaster.setFromCamera(pointer, camera);
-    const hit = raycaster.intersectObjects(pickTargets, false)[0];
+    const hit = raycaster.intersectObjects(
+      pickTargets.filter((target) => target.parent?.visible),
+      false,
+    )[0];
     if (hit) return hit.object.userData.objectId;
     let nearest: string | null = null;
     let minDistance = 23;
     bodies.forEach((body) => {
+      if (!body.group.visible) return;
       body.group.getWorldPosition(world);
       projected.copy(world).project(camera);
       if (projected.z < -1 || projected.z > 1) return;
@@ -650,13 +640,34 @@ export function createUniverseScene(
   controls.addEventListener('start', onStart);
 
   let previousTime = performance.now();
+  let averageFrameMs = 16.7;
+  let sampledFrames = 0;
+  let lastResolutionChange = previousTime;
+  let simulationTime = 0;
+  const galaxyDirection = new THREE.Vector3(0.25, 0.8, 1).normalize();
+  const blackHoleDirection = new THREE.Vector3(0.15, 0.24, 1).normalize();
   const animate = (time: number) => {
     if (disposed) return;
     frame = requestAnimationFrame(animate);
-    const delta = Math.min((time - previousTime) / 1000, 0.05);
+    const frameMs = time - previousTime;
+    const delta = Math.min(frameMs / 1000, 0.05);
     previousTime = time;
     if (document.hidden || contextLost) return;
+    averageFrameMs += (Math.min(frameMs, 100) - averageFrameMs) * 0.035;
+    sampledFrames++;
+    // Reduce canvas cost on slower GPUs while keeping HTML labels and controls sharp.
+    if (
+      sampledFrames > 60 &&
+      sampledFrames % 45 === 0 &&
+      averageFrameMs > 29 &&
+      time - lastResolutionChange > 2500 &&
+      renderer.getPixelRatio() > 0.85
+    ) {
+      renderer.setPixelRatio(Math.max(0.85, renderer.getPixelRatio() * 0.8));
+      lastResolutionChange = time;
+    }
     if (playing) {
+      simulationTime += delta;
       animated.forEach(({ object, speed }) => {
         object.rotation.y += speed * delta;
       });
@@ -685,6 +696,26 @@ export function createUniverseScene(
     }
     scene.updateMatrixWorld(true);
     const selected = bodies.get(selectedId);
+    const closeObservation = Boolean(
+      tracking &&
+        selected &&
+        ['galaxy', 'nebula', 'blackhole'].includes(selected.data.shape),
+    );
+    if (galaxyBackdrop) {
+      galaxyBackdrop.group.visible = !closeObservation;
+      if (!closeObservation) galaxyBackdrop.update(simulationTime, false);
+    }
+    bodies.forEach((body) => {
+      body.group.visible = !closeObservation || body.data.id === selectedId;
+    });
+    visuals.forEach((visual, id) => {
+      if (
+        !closeObservation ||
+        id === selectedId ||
+        (selectedId === 'whirlpool' && id === 'whirlpool-companion')
+      )
+        visual.update(simulationTime, closeObservation && id === selectedId);
+    });
     const blend = 1 - Math.exp(-5 * delta);
     if (framing === 'overview') {
       desired.set(0.15, 0.58, 0.8).normalize().multiplyScalar(overviewDistance);
@@ -694,11 +725,28 @@ export function createUniverseScene(
     } else if (selected && framing === 'focus') {
       selected.group.getWorldPosition(world);
       const distance = Math.max(
-        selected.data.size * (selectedId === 'saturn' ? 8.2 : 5),
+        selected.data.size *
+          (selected.data.shape === 'blackhole'
+            ? 11
+            : selected.data.shape === 'nebula'
+              ? 6.3
+              : selected.data.shape === 'galaxy'
+                ? 3.6
+                : selectedId === 'saturn'
+                  ? 8.2
+                  : 5),
         scale === 'solar' ? 22 : 50,
       );
       const aspectAdjust = Math.max(1, 0.85 / camera.aspect);
-      desired.copy(world).addScaledVector(direction, distance * aspectAdjust);
+      const viewDirection =
+        selected.data.shape === 'galaxy'
+          ? galaxyDirection
+          : selected.data.shape === 'blackhole'
+            ? blackHoleDirection
+            : direction;
+      desired
+        .copy(world)
+        .addScaledVector(viewDirection, distance * aspectAdjust);
       controls.target.lerp(world, blend);
       camera.position.lerp(desired, blend);
       if (camera.position.distanceTo(desired) < 0.25) framing = null;
@@ -723,13 +771,22 @@ export function createUniverseScene(
     );
     sorted.forEach((body) => {
       body.group.getWorldPosition(world);
-      world.y += body.data.size * (scale === 'solar' ? 1.3 : 0.5);
+      world.y +=
+        body.data.size *
+        (body.data.shape === 'blackhole'
+          ? 2.8
+          : body.data.shape === 'nebula'
+            ? 1.6
+            : scale === 'solar'
+              ? 1.3
+              : 0.5);
       projected.copy(world).project(camera);
       const x = ((projected.x + 1) * width) / 2;
       const y = ((-projected.y + 1) * height) / 2 - 16;
       const labelWidth = body.data.name.length * 12 + 26;
       const visible =
         labelsVisible &&
+        body.group.visible &&
         projected.z > -1 &&
         projected.z < 1 &&
         x > 20 &&
@@ -757,17 +814,22 @@ export function createUniverseScene(
       if (!bodies.has(id)) return;
       selectedId = id;
       bodies.forEach((body) => {
-        body.ring.visible = body.data.id === id;
+        body.ring.visible =
+          body.data.id === id && ['planet', 'star'].includes(body.data.shape);
         body.label.classList.toggle('is-selected', body.data.id === id);
         body.label.setAttribute('aria-pressed', String(body.data.id === id));
       });
       if (focus) {
+        const selected = bodies.get(id)!;
+        controls.minDistance =
+          selected.data.shape === 'blackhole' ? selected.data.size * 4.2 : 7;
         framing = 'focus';
         tracking = true;
         trackInitialized = false;
       }
     },
     overview() {
+      controls.minDistance = 7;
       framing = 'overview';
       tracking = false;
       trackInitialized = false;
