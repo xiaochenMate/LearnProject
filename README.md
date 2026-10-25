@@ -2,7 +2,18 @@
 
 ExBeam is a Vite + React personal learning workspace for classical Chinese reading, vocabulary practice, board games, science interactives, and practical tools. The product is designed around daily practice, curated learning paths, and honest local progress tracking.
 
-The Solar System Explorer uses locally bundled educational textures from Solar System Scope so the 3D experience remains available without third-party runtime image requests.
+## Universe Explorer
+
+The astronomy module spans four selectable scales: the solar system, the Milky Way, nearby galaxies, and large-scale cosmic structures. Its 26 curated objects include planets, stars, nebulae, a black hole, galaxies, clusters, and the observable universe.
+
+- A shared 3D viewport supports object selection, orbiting, zoom, simulation pause, labels, and overview framing.
+- A 12-stop route connects Earth to the observable universe. Search works across all scales.
+- Observation notes, completion, quiz results, and the last object persist on the current device. Existing solar exploration records migrate once.
+- Telescope images have source links and credits in `public/images/universe/CREDITS.md`. Planet textures remain bundled from Solar System Scope.
+- All positions and relative sizes are educational schematics, not a real-time sky chart. The observable universe is not the entire universe or a physical boundary.
+- Desktop, tablet, and mobile layouts share the same object data. WebGL failure leaves the reading and observation tools available.
+
+Run the catalog and storage regression checks with `npm run test:universe`.
 
 ## Summer Garden
 

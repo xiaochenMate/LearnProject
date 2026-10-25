@@ -30,7 +30,7 @@ export const CATEGORY_META: Record<Category, { label: string; description: strin
 };
 
 const MODULE_META: Record<string, { minutes: number; level: string; outcome: string }> = {
-  e1: { minutes: 12, level: '探索', outcome: '建立空间与地理直觉' },
+  e1: { minutes: 20, level: '探索', outcome: '从太阳系到深空，建立宇宙尺度感' },
   e20: { minutes: 10, level: '入门', outcome: '朗读、理解并积累国学常识' },
   e21: { minutes: 12, level: '进阶', outcome: '理解经典文本与汉字脉络' },
   e2: { minutes: 8, level: '入门', outcome: '理解生态系统中的捕食关系' },

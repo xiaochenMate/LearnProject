@@ -4,12 +4,12 @@ import { AppItem } from './types';
 export const EDUCATION_ITEMS: AppItem[] = [
   {
     id: 'e1',
-    title: '太阳系探索',
-    author: '@通义',
+    title: '宇宙探索',
+    author: '@ExBeam',
     category: 'education',
     imageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=800',
-    description: '在可交互的 3D 太阳系中观察行星、比较数据并完成探索任务。',
-    tags: ['天文', '太阳系', '3D探索'],
+    description: '从地球出发，穿越银河系与星系世界，探索宇宙结构、天文影像并记录自己的发现。',
+    tags: ['天文', '宇宙', '3D探索', '太阳系'],
     icon: 'public'
   },
   {

@@ -13,6 +13,8 @@ dist-ssr
 .netlify
 deno.lock
 migrated_prompt_history/
+.playwright-cli/
+output/playwright/
 *.local
 
 # Editor directories and files
