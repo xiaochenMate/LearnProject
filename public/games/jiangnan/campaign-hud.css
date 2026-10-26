@@ -1,0 +1,124 @@
+:root{--ink:#e6eef0;--muted:#98a8b2;--gold:#82e5c2;--line:#d5e9ed26;--panel:#141a20e8;--cyan:#79d7ec;--coral:#ff9c8c}
+*{letter-spacing:0!important}
+html,body{background:#0c1014;color:var(--ink)}
+button,select{background:#141a20e8;border-radius:6px;min-height:40px}
+button:hover{background:#212c34;border-color:var(--gold)}
+button:disabled{opacity:.4}
+button:focus-visible,select:focus-visible,#battle:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+button svg,#reticle svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.icon-button{width:42px;height:42px;display:inline-grid;place-items:center;padding:0;flex-shrink:0}
+header{inset:16px 16px auto;align-items:center;z-index:2}
+header nav{gap:6px}
+.field-status{display:flex;align-items:center;gap:8px;font-size:11px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;max-width:calc(100% - 160px)}
+.field-status i{width:6px;height:6px;border-radius:50%;background:var(--gold);flex-shrink:0}
+#checkpoint-status{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#mission{top:74px;left:16px;width:280px;padding:14px 16px;background:var(--panel);border:1px solid var(--line);border-left:2px solid var(--gold);border-radius:6px}
+#mission h1{font-size:21px;font-weight:600;margin:5px 0 10px;line-height:1.3}
+.eyebrow{font-size:10px;color:var(--gold)}
+#mission p{font-size:11px;line-height:1.6;color:#b7c6cc;min-height:35px}
+#task-steps{padding:0;margin:8px 0 10px;list-style:none;display:grid;gap:5px;font-size:11px}
+#task-steps li{display:flex;gap:8px;align-items:center;color:var(--muted)}
+#task-steps li::before{content:'';width:6px;height:6px;border:1px solid currentColor;border-radius:2px;flex-shrink:0}
+#task-steps li.current{color:var(--cyan)}
+#task-steps li.done{color:var(--gold)}
+#task-steps li.done::before{background:var(--gold)}
+.mission-row{margin-top:10px;font-size:10px;gap:6px}
+.mission-row b{font-size:20px;font-variant-numeric:tabular-nums}
+#route-status{color:var(--cyan);font-size:10px;margin-top:9px;min-height:14px;line-height:1.4}
+.thin-track{background:#d5e9ed1a;border-radius:2px}
+#reload-bar{background:var(--cyan)}
+#radio{top:74px;left:50%;width:300px;max-width:30vw;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 14px}
+#radio p{font-size:11px;line-height:1.6}
+#radio b{color:var(--cyan)}
+#reticle{color:var(--cyan)}
+#reticle svg{width:28px;height:28px;stroke-width:1}
+#reticle.confirmed{color:var(--coral)}
+#enemy-health{background:#141a20ed;color:var(--coral);border:1px solid #ff9c8c60;padding:5px 8px;border-radius:4px;max-width:180px}
+#toast{top:48%;bottom:auto;max-width:min(360px,calc(100vw - 32px));white-space:normal;text-align:center;background:#0c1014ed;border-color:var(--line);border-radius:6px;padding:10px 14px;line-height:1.6;z-index:3}
+#map-panel{right:16px;bottom:92px;width:190px;background:var(--panel);border-radius:6px;padding:9px}
+.map-head{color:var(--cyan);font-size:11px}
+#minimap-button{display:block;width:100%;padding:0;border:0;background:none;min-height:0;margin-top:8px}
+#minimap{margin:0;aspect-ratio:200/154}
+.map-key{font-size:9px;line-height:1.5}
+footer{bottom:16px;left:16px;right:auto;width:430px;gap:22px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 16px;align-items:center;text-shadow:none}
+footer small{color:var(--muted);font-size:9px}
+.armor{width:122px;flex-shrink:0}.armor b{font-size:30px;line-height:1.25;font-variant-numeric:tabular-nums}
+.ammo{width:128px}.ammo b{font-size:11px;margin-top:8px;min-height:16px}
+.drive{margin-left:auto}.drive b{font-size:24px}.drive small{font-size:8px;white-space:nowrap}
+#abilities{right:16px;bottom:24px;gap:7px}
+#abilities button{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 10px;min-width:96px;font-size:11px;background:var(--panel)}
+#abilities b{border:0;padding:0;margin:0 0 0 3px;font-variant-numeric:tabular-nums;color:var(--gold);min-width:16px}
+#abilities svg{width:16px;height:16px}
+#overlay{background:#0c1014d6;backdrop-filter:blur(2px);padding:24px;display:grid;place-items:center}
+.menu{width:min(880px,100%);grid-template-columns:minmax(0,1fr) minmax(280px,330px);gap:42px;padding:10px;align-items:start}
+.menu h2{font-family:inherit;font-size:36px;line-height:1.25;font-weight:600;margin:14px 0 18px;overflow-wrap:anywhere}
+.menu h2 span{display:inline;color:var(--gold);padding:0}
+.menu p{font-size:12px;color:#b6c6cc;line-height:1.8;margin:12px 0}
+.menu #mission-brief{font-size:11px;border-left:2px solid var(--cyan);padding-left:12px;min-height:0}
+.menu-side{background:none;border:0;border-left:1px solid var(--line);border-radius:0;padding:0 0 0 26px}
+#chapters{margin-top:12px;gap:3px}
+#chapters button{font-size:12px;min-height:39px;padding:9px 10px;border-radius:4px}
+#chapters button.active{border-color:#82e5c26b;background:#82e5c20c}
+#chapters small{white-space:nowrap;margin-left:6px}
+.garage{margin-top:16px;padding-top:16px}.garage p{font-size:10px}
+#upgrades{gap:5px}#upgrades button{font-size:11px;min-height:35px;padding:8px}
+.save-note{font-size:10px;margin-top:14px;line-height:1.6}
+.settings{gap:12px;font-size:11px;margin:20px 0 14px;align-items:center}
+.settings select{background:#141a20;color:var(--ink);min-height:34px;border-radius:4px}
+.settings label{min-height:34px}input{accent-color:var(--gold)}
+button.primary{background:var(--gold);color:#0c1014;font-size:13px;padding:14px 16px;min-height:46px;border-radius:6px;text-align:center}
+#restart{min-height:40px;font-size:12px;margin-top:8px}
+#garage-button{width:100%;margin-top:8px;min-height:36px;font-size:11px;color:var(--muted)}
+#load-detail{font-size:10px;line-height:1.6;overflow-wrap:anywhere;margin-top:10px}
+.legacy{font-size:10px;margin-top:10px}
+#result-stats{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+#result-stars{color:var(--gold);font-size:20px;line-height:1.5}
+#result-stats dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0}
+#result-stats dt{color:var(--muted);font-size:10px}#result-stats dd{font-size:20px;margin:4px 0 0;font-variant-numeric:tabular-nums}
+.joystick{width:112px;height:112px;bottom:24px;background:#141a2099;border-color:#79d7ec66}
+.joystick i{background:#79d7ec3d;border-color:#79d7ec99}.joystick span{color:var(--ink)}
+#move-stick{left:24px}#aim-stick{right:24px}
+#fire{right:40px;bottom:166px;width:80px;height:80px;border-color:#ff9c8c99;background:#38252aeb;color:var(--coral);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+#fire svg{width:26px;height:26px}#fire small{font-size:10px}
+.touch footer{left:calc(50% - 190px);right:auto;bottom:22px;width:380px;gap:20px;padding:12px 16px}
+.touch .armor{width:145px}.touch .ammo{width:145px}
+.touch #abilities{right:144px;bottom:162px;flex-direction:row;gap:6px}
+.touch #map-panel{top:74px;bottom:auto;width:154px;right:16px}
+.touch #mission{width:260px}.touch #radio{display:none}
+.touch #toast{top:48%;bottom:auto}
+#atlas{background:#0c1014ed;backdrop-filter:blur(2px);padding:16px}
+.atlas-card{width:min(760px,100%);max-height:calc(100dvh - 32px);background:transparent;border:0;border-radius:0;padding:0}
+#large-map{width:100%;max-height:calc(100dvh - 140px);object-fit:contain;margin-top:12px}
+.atlas-card p{font-size:10px;line-height:1.6;margin:10px 0 0}
+body:not(.playing) header,body:not(.playing) #mission,body:not(.playing) #radio,body:not(.playing) footer,body:not(.playing) #abilities,body:not(.playing) #map-panel,body:not(.playing) #reticle,body:not(.playing) #touch-controls{visibility:hidden}
+body:not(.playing) #reticle,.paused #reticle,.paused #enemy-health{display:none}
+.boot-error .menu-side,.boot-error .settings,.boot-error #restart,.boot-error #garage-button,.boot-error #mission-brief,.boot-error #result-stats{display:none!important}
+.boot-error .menu{display:block;max-width:450px}
+@media(max-width:1000px){#radio{display:none}.menu{gap:28px;grid-template-columns:minmax(0,1fr) 300px}.menu h2{font-size:30px}.menu-side{padding-left:22px}}
+@media(max-height:620px) and (min-width:651px){
+ #overlay{padding:16px}.menu{padding:0;gap:24px}.menu h2{font-size:26px;margin:8px 0}.menu p{font-size:11px;line-height:1.6;margin:8px 0}.settings{margin:10px 0}
+ .menu-side{padding-left:20px}#chapters{margin-top:6px;gap:1px}#chapters button{min-height:30px;padding:5px 8px}.garage{margin-top:8px;padding-top:8px}#upgrades button{min-height:29px;padding:5px 8px}.save-note{margin-top:8px;font-size:9px}
+ #mission,.touch #mission{top:66px;left:12px;width:235px;padding:10px 12px}#mission h1{font-size:17px;margin:4px 0 6px}#task-steps{gap:3px;margin:6px 0}#mission p{font-size:10px;min-height:0}.mission-row{margin-top:6px}
+ .touch #map-panel{top:66px;right:12px;width:128px}header{top:12px;left:12px;right:12px}
+ .touch .joystick{width:88px;height:88px;bottom:16px}.touch #move-stick{left:18px}.touch #aim-stick{right:18px}
+ .touch #map-panel{width:112px;padding:7px}
+ .touch #fire{width:60px;height:60px;right:32px;bottom:112px}.touch #abilities{right:116px;bottom:132px}.touch #abilities button{min-width:84px;padding:8px}
+ .touch footer{left:calc(50% - 152px);width:304px;bottom:16px;padding:10px 12px;gap:20px}.touch .armor,.touch .ammo{width:128px}.touch .armor b{font-size:26px}
+ #result-stats{margin-top:8px;padding-top:8px}#result-stats dl{gap:8px;margin:8px 0}#result-stats dd{font-size:16px}
+}
+@media(max-width:650px){
+ #overlay,.playing.paused #overlay{display:block;padding:24px 18px}.menu{display:block;padding:0;max-width:450px;margin:auto}.menu h2{font-size:28px;margin:10px 0 14px}.menu-main{margin-bottom:26px}.menu-side{border-left:0;border-top:1px solid var(--line);padding:22px 0 0}
+ header,.touch header{top:12px;left:12px;right:12px}.field-status{padding:8px;font-size:10px}.icon-button{width:38px;height:38px;min-height:38px}
+ #mission,.touch #mission{top:64px;left:12px;width:calc(100% - 24px);padding:11px 12px}#mission h1{font-size:18px;margin:5px 0 7px}#task-steps{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:10px;margin:6px 0 8px}#mission p{font-size:10px;min-height:0;line-height:1.6}.mission-row{margin-top:6px}#route-status{font-size:10px;margin-top:7px}
+ .touch #map-panel,#map-panel{top:auto;right:12px;bottom:274px;width:124px;padding:7px}.map-head{font-size:9px}.map-key{font-size:8px}
+ .touch footer,footer{left:12px;right:auto;bottom:184px;width:222px;padding:10px 12px;gap:14px}.touch .armor,.armor{width:88px}.touch .ammo,.ammo{width:94px}.armor b{font-size:25px}.armor span{font-size:10px}.ammo b{font-size:10px}.drive{display:none}footer small{font-size:8px}
+ .touch #abilities,#abilities{left:12px;right:auto;bottom:274px;flex-direction:row;gap:5px}.touch #abilities button,#abilities button{min-width:90px;padding:8px;font-size:10px}.touch #abilities svg,#abilities svg{width:14px;height:14px}
+ .touch .joystick,.joystick{width:104px;height:104px;bottom:24px}.touch #move-stick,#move-stick{left:20px}.touch #aim-stick,#aim-stick{right:20px}
+ .touch #fire,#fire{right:38px;bottom:150px;width:68px;height:68px}
+ #toast,.touch #toast{top:300px;bottom:auto;font-size:11px;max-width:calc(100vw - 36px)}
+ #radio{display:none}.settings{margin:14px 0}.atlas-card p{font-size:9px}#result-stats dl{gap:10px}
+}
+@media(max-width:360px){.field-status{max-width:calc(100% - 140px)}.touch #map-panel,#map-panel{width:108px}.touch #abilities button,#abilities button{min-width:82px;padding:6px}.touch footer,footer{width:208px;gap:10px;padding:9px}.touch .armor,.armor{width:84px}.touch .ammo,.ammo{width:94px}}
+@media(max-width:650px) and (max-height:700px){#mission p{display:none}.touch #map-panel,#map-panel{bottom:254px;width:112px}.touch footer,footer{bottom:162px}.touch #abilities,#abilities{bottom:254px}.touch .joystick,.joystick{width:100px;height:100px;bottom:18px}.touch #fire,#fire{bottom:146px;width:64px;height:64px}#toast,.touch #toast{top:220px}}
+@media(max-width:650px) and (max-height:600px){#map-panel{display:none!important}}
+@media(max-height:350px){#mission p,#mission .mission-row,#task-steps,#map-panel{display:none!important}.touch #mission,#mission{width:230px}#toast,.touch #toast{top:48%;max-width:230px}}

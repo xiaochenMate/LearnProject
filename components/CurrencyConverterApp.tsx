@@ -1,272 +1,511 @@
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ArrowLeftRight,
+  Download,
+  ExternalLink,
+  History,
+  RefreshCw,
+  Save,
+  Trash2,
+  WifiOff,
+} from "lucide-react";
+import { Workbench, IconButton } from "./ModuleWorkbench";
+import { useModuleState } from "../lib/moduleSession";
+import {
+  CURRENCIES,
+  RATE_ENDPOINT,
+  RATE_SOURCE,
+  calculateConversion,
+  formatCurrency,
+  pairDates,
+  pairRate,
+  parseRateResponse,
+  validConversionRecords,
+  validCurrencySettings,
+  validRateSnapshot,
+  type ConversionRecord,
+  type CurrencySettings,
+  type RateSnapshot,
+} from "../lib/labsCurrency";
+import { csv, downloadLabFile } from "../lib/labsCommon";
+import "./labs.css";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  X, RefreshCw, ArrowUpDown, ChevronRight, 
-  Search, TrendingUp, Info, DollarSign, Euro, Banknote, Clock, Check
-} from 'lucide-react';
-import { motion as motionBase, AnimatePresence } from 'framer-motion';
-const motion = motionBase as any;
-
-interface Currency {
-  code: string;
-  name: string;
-  symbol: string;
-  flag: string;
-}
-
-const CURRENCIES: Currency[] = [
-  { code: 'CNY', name: '人民币', symbol: '¥', flag: '🇨🇳' },
-  { code: 'USD', name: '美元', symbol: '$', flag: '🇺🇸' },
-  { code: 'EUR', name: '欧元', symbol: '€', flag: '🇪🇺' },
-  { code: 'JPY', name: '日元', symbol: '¥', flag: '🇯🇵' },
-  { code: 'GBP', name: '英镑', symbol: '£', flag: '🇬🇧' },
-  { code: 'HKD', name: '港币', symbol: 'HK$', flag: '🇭🇰' },
-  { code: 'AUD', name: '澳元', symbol: 'A$', flag: '🇦🇺' },
-  { code: 'CAD', name: '加元', symbol: 'C$', flag: '🇨🇦' },
-  { code: 'KRW', name: '韩元', symbol: '₩', flag: '🇰🇷' },
-  { code: 'SGD', name: '新币', symbol: 'S$', flag: '🇸🇬' },
-  { code: 'CHF', name: '瑞士法郎', symbol: 'Fr', flag: '🇨🇭' },
-  { code: 'THB', name: '泰铢', symbol: '฿', flag: '🇹🇭' },
-  { code: 'MYR', name: '林吉特', symbol: 'RM', flag: '🇲🇾' },
-];
-
-// 模拟汇率数据 (以1 CNY为基准)
-const MOCK_RATES: Record<string, number> = {
-  CNY: 1,
-  USD: 0.138,
-  EUR: 0.127,
-  JPY: 20.84,
-  GBP: 0.106,
-  HKD: 1.08,
-  AUD: 0.208,
-  CAD: 0.189,
-  KRW: 184.56,
-  SGD: 0.185,
-  CHF: 0.122,
-  THB: 4.85,
-  MYR: 0.65,
-};
-
-const CurrencyConverterApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const [fromCurrency, setFromCurrency] = useState<Currency>(CURRENCIES[0]);
-  const [toCurrency, setToCurrency] = useState<Currency>(CURRENCIES[1]);
-  const [amount, setAmount] = useState<string>('100');
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
-  
-  // 选择器状态
-  const [selectorTarget, setSelectorTarget] = useState<'from' | 'to' | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // 计算结果
-  const result = useMemo(() => {
-    const numAmount = parseFloat(amount) || 0;
-    const baseRate = MOCK_RATES[fromCurrency.code];
-    const targetRate = MOCK_RATES[toCurrency.code];
-    return (numAmount / baseRate) * targetRate;
-  }, [amount, fromCurrency, toCurrency]);
-
-  const handleSwap = () => {
-    const temp = fromCurrency;
-    setFromCurrency(toCurrency);
-    setToCurrency(temp);
-  };
-
-  const handleRefresh = () => {
-    setIsUpdating(true);
-    setTimeout(() => {
-      setLastUpdate(new Date().toLocaleTimeString());
-      setIsUpdating(false);
-    }, 800);
-  };
-
-  const handleNumberInput = (num: string) => {
-    if (num === '.' && amount.includes('.')) return;
-    if (amount === '0' && num !== '.') {
-      setAmount(num);
-    } else if (amount.length < 12) {
-      setAmount(prev => prev + num);
-    }
-  };
-
-  const handleDelete = () => {
-    setAmount(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
-  };
-
-  const filteredCurrencies = CURRENCIES.filter(c => 
-    c.code.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    c.name.includes(searchQuery)
+export default function CurrencyConverterApp() {
+  const [settings, setSettings, settingsAvailable] =
+    useModuleState<CurrencySettings>(
+      "exbeam.currency.settings.v1",
+      { from: "CNY", to: "USD", amount: "100", percent: "0", fixed: "0" },
+      validCurrencySettings,
+    );
+  const [rates, setRates, cacheAvailable] = useModuleState<RateSnapshot | null>(
+    "exbeam.rates.v2",
+    null,
+    (v) => v === null || validRateSnapshot(v),
   );
-
-  const selectCurrency = (c: Currency) => {
-    if (selectorTarget === 'from') {
-      setFromCurrency(c);
-    } else {
-      setToCurrency(c);
-    }
-    setSelectorTarget(null);
-    setSearchQuery('');
+  const [records, setRecords, recordsAvailable] = useModuleState<
+    ConversionRecord[]
+  >("exbeam.currency.records.v1", [], validConversionRecords);
+  const [loading, setLoading] = useState(false),
+    [error, setError] = useState(""),
+    [message, setMessage] = useState("");
+  const [origin, setOrigin] = useState<"cache" | "network">("cache"),
+    [tab, setTab] = useState<"compare" | "records">("compare");
+  const [online, setOnline] = useState(() => navigator.onLine);
+  const request = useRef<AbortController | null>(null);
+  const { from, to, amount, percent, fixed } = settings;
+  const update = (patch: Partial<CurrencySettings>) => {
+    setSettings((s) => ({ ...s, ...patch }));
+    setMessage("");
   };
-
+  const refresh = useCallback(async () => {
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(RATE_ENDPOINT, {
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("汇率服务暂时不可用");
+      const snapshot = parseRateResponse(await response.json());
+      if (request.current !== controller) return;
+      setRates(snapshot);
+      setOrigin("network");
+      setMessage("已获取参考汇率；数据日期以各币种标注为准。");
+    } catch {
+      if (request.current === controller) {
+        setOrigin("cache");
+        setError("未能更新。保留最近一次有效数据；无缓存的币种暂不可换算。");
+      }
+    } finally {
+      clearTimeout(timeout);
+      if (request.current === controller) {
+        setLoading(false);
+        request.current = null;
+      }
+    }
+  }, [setRates]);
+  useEffect(() => {
+    const connection = () => setOnline(navigator.onLine);
+    window.addEventListener("online", connection);
+    window.addEventListener("offline", connection);
+    if (navigator.onLine) void refresh();
+    else setError("当前离线，使用本机缓存。");
+    return () => {
+      request.current?.abort();
+      request.current = null;
+      window.removeEventListener("online", connection);
+      window.removeEventListener("offline", connection);
+    };
+  }, [refresh]);
+  const rate = pairRate(rates, from, to),
+    result = calculateConversion(amount, rate, percent, fixed);
+  const dates = pairDates(rates, from, to),
+    same = from === to;
+  const save = () => {
+    if (!result || rate === null) return;
+    if (records.length >= 100) {
+      setMessage("记录已达 100 条，请先导出再移除旧项。");
+      return;
+    }
+    setRecords((previous) => [
+      {
+        id: crypto.randomUUID(),
+        at: new Date().toISOString(),
+        settings: { ...settings },
+        rate,
+        dates,
+        fetchedAt: rates?.fetchedAt || null,
+        source: RATE_SOURCE,
+        net: result.net,
+        fee: result.fee,
+      },
+      ...previous,
+    ]);
+    setMessage("换算结果与当时的参考汇率已记录。");
+  };
+  const exportTable = () => {
+    downloadLabFile(
+      "currency-reference.csv",
+      csv([
+        [
+          "source_currency",
+          "target_currency",
+          "amount",
+          "rate",
+          "gross",
+          "fee_source_currency",
+          "net",
+          "rate_dates",
+          "retrieved_at",
+          "source",
+          "price_type",
+        ],
+        ...CURRENCIES.map(([code]) => {
+          const r = pairRate(rates, from, code),
+            value = calculateConversion(amount, r, percent, fixed);
+          return [
+            from,
+            code,
+            amount,
+            r,
+            value?.gross,
+            value?.fee,
+            value?.net,
+            pairDates(rates, from, code).join(" / "),
+            rates?.fetchedAt || "unknown (legacy cache)",
+            RATE_SOURCE,
+            "reference; not a live executable quote",
+          ];
+        }),
+      ]),
+    );
+    setMessage("参考汇率与费用换算 CSV 已生成。");
+  };
+  const select = (
+    label: string,
+    value: string,
+    change: (value: string) => void,
+  ) => (
+    <select
+      aria-label={label}
+      value={value}
+      onChange={(e) => change(e.target.value)}
+    >
+      {CURRENCIES.map(([code, name]) => (
+        <option key={code} value={code}>
+          {code} · {name}
+        </option>
+      ))}
+    </select>
+  );
   return (
-    <div className="w-full h-full relative  dark: flex flex-col font-sans overflow-hidden      ">
-      {/* Header */}
-      
-
-      <main className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 max-w-2xl mx-auto w-full relative">
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#4b4b4b_1px,transparent_1px)] [background-size:24px_24px]"></div>
-
-        {/* 转换卡片 */}
-        <div className="w-full space-y-4 mb-8">
-          <div className="relative">
-            {/* Source Currency */}
-            <motion.div 
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setSelectorTarget('from')}
-              className="bg-white dark:bg-dark-card p-6 md:p-8 rounded-[2.5rem] border border-morandi-border dark:border-white/5 shadow-sm transition-all hover:border-morandi-blue/30 cursor-pointer"
-            >
-               <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{fromCurrency.flag}</span>
-                    <span className="text-sm font-black text-morandi-taupe dark:text-slate-500 uppercase tracking-widest">{fromCurrency.code}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-[10px] font-bold text-slate-300 italic">
-                    {fromCurrency.name} <ChevronRight size={12} />
-                  </div>
-               </div>
-               <div className="text-4xl md:text-6xl font-black text-morandi-charcoal dark:text-slate-100 tracking-tighter truncate serif-font">
-                 {fromCurrency.symbol}{amount}
-               </div>
-            </motion.div>
-
-            {/* Swap Button */}
-            <button 
-              onClick={(e) => { e.stopPropagation(); handleSwap(); }}
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-morandi-charcoal dark:bg-slate-200 text-white dark:text-dark-bg rounded-full shadow-2xl flex items-center justify-center z-10 hover:scale-110 active:scale-90 transition-all border-4 border-morandi-oatmeal dark:border-dark-bg"
-            >
-              <ArrowUpDown size={20} />
-            </button>
-
-            {/* Target Currency */}
-            <motion.div 
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setSelectorTarget('to')}
-              className="bg-white dark:bg-dark-card p-6 md:p-8 rounded-[2.5rem] border border-morandi-border dark:border-white/5 shadow-sm mt-2 transition-all hover:border-morandi-blue/30 cursor-pointer"
-            >
-               <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{toCurrency.flag}</span>
-                    <span className="text-sm font-black text-morandi-taupe dark:text-slate-500 uppercase tracking-widest">{toCurrency.code}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-[10px] font-bold text-slate-300 italic">
-                    {toCurrency.name} <ChevronRight size={12} />
-                  </div>
-               </div>
-               <div className="text-4xl md:text-6xl font-black text-morandi-blue dark:text-blue-400 tracking-tighter truncate serif-font">
-                 {toCurrency.symbol}{result.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-               </div>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* 提示信息 */}
-        <div className="flex items-center gap-3 mb-8 px-6 py-3 bg-morandi-sage/10 dark:bg-emerald-950/20 rounded-2xl border border-morandi-sage/20">
-           <TrendingUp size={16} className="text-morandi-sage" />
-           <p className="text-[10px] md:text-xs text-morandi-taupe dark:text-slate-400 font-medium italic">
-             当前参考汇率: 1 {fromCurrency.code} = {(MOCK_RATES[toCurrency.code]/MOCK_RATES[fromCurrency.code]).toFixed(4)} {toCurrency.code}
-           </p>
-        </div>
-
-        {/* 数字键盘 */}
-        <div className="grid grid-cols-3 gap-2 w-full max-w-sm">
-          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0'].map((val) => (
-            <button
-              key={val}
-              onClick={() => handleNumberInput(val)}
-              className="h-14 md:h-16 bg-white dark:bg-dark-card/50 rounded-2xl text-xl font-bold text-morandi-charcoal dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 active:scale-95 transition-all shadow-sm"
-            >
-              {val}
-            </button>
-          ))}
-          <button
-            onClick={handleDelete}
-            className="h-14 md:h-16 bg-morandi-rose/5 dark:bg-rose-950/10 rounded-2xl text-morandi-rose flex items-center justify-center hover:bg-morandi-rose hover:text-white transition-all shadow-sm"
+    <Workbench
+      title="汇率换算台"
+      eyebrow="CURRENCY REFERENCE"
+      className="labs-workbench labs-currency"
+      toolbar={
+        <>
+          <IconButton
+            label="更新参考汇率"
+            disabled={loading || !online}
+            onClick={() => void refresh()}
           >
-            <X size={24} />
+            <RefreshCw size={17} className={loading ? "labs-spin" : ""} />
+          </IconButton>
+          <IconButton
+            label="导出换算 CSV"
+            disabled={!rates || !result}
+            onClick={exportTable}
+          >
+            <Download size={17} />
+          </IconButton>
+          <button
+            className="wb-button is-primary"
+            disabled={!result || records.length >= 100}
+            onClick={save}
+          >
+            <Save size={15} />
+            记录换算
           </button>
-        </div>
-
-        <button 
-          onClick={() => setAmount('0')}
-          className="mt-6 text-[10px] font-black uppercase tracking-[0.2em] text-morandi-taupe hover:text-morandi-charcoal transition-colors"
-        >
-          Clear Amount
-        </button>
-      </main>
-
-      {/* 币种选择器浮层 */}
-      <AnimatePresence>
-        {selectorTarget && (
-          <div className="w-full h-full relative flex flex-col bg-morandi-oatmeal dark:rk-bg animate-in fade-in duration-300 ">
-             
-             
-             <div className="p-6 shrink-0">
-                <div className="relative">
-                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                   <input 
-                    autoFocus
-                    type="text" 
-                    placeholder="搜索货币代码或名称..." 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-6 py-4 bg-white dark:bg-dark-card border border-morandi-border dark:border-white/5 rounded-2xl outline-none focus:ring-2 focus:ring-morandi-blue transition-all dark:text-white"
-                   />
-                </div>
-             </div>
-
-             <div className="flex-1 overflow-y-auto px-6 pb-12 no-scrollbar">
-                <div className="grid grid-cols-1 gap-2">
-                   {filteredCurrencies.map((c) => {
-                     const isSelected = (selectorTarget === 'from' ? fromCurrency : toCurrency).code === c.code;
-                     return (
-                       <button 
-                        key={c.code}
-                        onClick={() => selectCurrency(c)}
-                        className={`flex items-center justify-between p-5 rounded-2xl border transition-all ${isSelected ? 'bg-morandi-blue border-morandi-blue text-white shadow-lg' : 'bg-white dark:bg-dark-card border-morandi-border dark:border-white/5 text-morandi-charcoal dark:text-slate-300 hover:border-morandi-blue/50'}`}
-                       >
-                         <div className="flex items-center gap-4">
-                           <span className="text-3xl">{c.flag}</span>
-                           <div className="text-left">
-                              <div className="text-sm font-black uppercase tracking-widest">{c.code}</div>
-                              <div className={`text-[10px] font-medium ${isSelected ? 'text-white/70' : 'text-morandi-taupe'}`}>{c.name}</div>
-                           </div>
-                         </div>
-                         {isSelected && <Check size={18} />}
-                       </button>
-                     );
-                   })}
-                </div>
-             </div>
+        </>
+      }
+      status={
+        <>
+          <span>
+            {!online && <WifiOff size={13} />}
+            {loading
+              ? "正在请求参考汇率"
+              : rates
+                ? origin === "network" && online
+                  ? "已获取网络参考数据"
+                  : "使用本机缓存数据"
+                : "尚无可用汇率缓存"}
+          </span>
+          <span>
+            {settingsAvailable && cacheAvailable && recordsAvailable
+              ? "本机保存可用"
+              : "本机保存不可用，请导出记录"}
+          </span>
+          <span>非实时成交价</span>
+        </>
+      }
+    >
+      <div className="labs-currency-layout">
+        <main className="labs-currency-main">
+          <section className="labs-conversion">
+            <div className="labs-money-input">
+              <label className="wb-field">
+                换算金额
+                {select("源币种", from, (value) => update({ from: value }))}
+                <input
+                  aria-label="换算金额"
+                  type="number"
+                  min={0}
+                  max={1e12}
+                  step="any"
+                  value={amount}
+                  onChange={(e) => update({ amount: e.target.value })}
+                />
+              </label>
+              <div className="labs-amount-presets">
+                {[100, 1000, 10000].map((n) => (
+                  <button
+                    className="wb-button"
+                    key={n}
+                    onClick={() => update({ amount: String(n) })}
+                  >
+                    {n.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <IconButton
+              label="交换币种"
+              className="labs-swap"
+              onClick={() => update({ from: to, to: from })}
+            >
+              <ArrowLeftRight size={19} />
+            </IconButton>
+            <div className="labs-money-output">
+              <label className="wb-field">
+                目标币种
+                {select("目标币种", to, (value) => update({ to: value }))}
+              </label>
+              <span className="labs-money-label">扣除模拟费用后</span>
+              <output aria-live="polite" aria-label="换算结果">
+                {result ? formatCurrency(result.net, to) : "—"}
+              </output>
+              <span className="labs-money-label">
+                {rate === null
+                  ? "所选币种尚无可用数据"
+                  : `1 ${from} = ${rate.toLocaleString("zh-CN", { maximumSignificantDigits: 7 })} ${to}`}
+              </span>
+            </div>
+          </section>
+          <div className="labs-inline-fields labs-fees">
+            <label className="wb-field">
+              模拟比例费用 / %
+              <input
+                aria-label="比例费用"
+                type="number"
+                min={0}
+                max={100}
+                step={0.1}
+                value={percent}
+                onChange={(e) => update({ percent: e.target.value })}
+              />
+            </label>
+            <label className="wb-field">
+              模拟固定费用 / {from}
+              <input
+                aria-label="固定费用"
+                type="number"
+                min={0}
+                max={1e12}
+                step="any"
+                value={fixed}
+                onChange={(e) => update({ fixed: e.target.value })}
+              />
+            </label>
+            <div className="wb-stat">
+              <span>费用合计 / {from}</span>
+              <strong>{result ? formatCurrency(result.fee, from) : "—"}</strong>
+            </div>
           </div>
-        )}
-      </AnimatePresence>
-
-      {/* Footer Info */}
-      <footer className="h-10 bg-white/90 dark:bg-dark-card/90 border-t border-morandi-border dark:border-white/5 px-8 flex items-center justify-between text-[9px] font-bold text-slate-400 italic shrink-0">
-         <div className="flex gap-6">
-           <span className="flex items-center gap-1.5"><div className="w-1 h-1 bg-emerald-500 rounded-full"></div> 数据接口: 稳定在线</span>
-           <span className="hidden sm:inline">OFFICIAL_EXCHANGE_DATA v2.1</span>
-         </div>
-         <button onClick={handleRefresh} className="flex items-center gap-1.5 hover:text-morandi-blue transition-colors">
-            <RefreshCw size={10} /> 同步最新数据
-         </button>
-      </footer>
-
-      <style>{`
-        .serif-font { font-family: 'Noto Serif SC', serif; }
-      `}</style>
-    </div>
+          {!result && rate !== null && (
+            <p className="wb-notice is-error" role="status">
+              请输入 0 至 1 万亿的有效金额与费用；比例为
+              0–100%，总费用不能超过金额。
+            </p>
+          )}
+          <div className="labs-rate-meta">
+            <p>
+              <strong>数据日期：</strong>
+              {same
+                ? "同币种换算无需外部汇率"
+                : dates.length
+                  ? dates.join(" / ")
+                  : "尚无数据"}
+              {dates.length > 1
+                ? " · 两币种参考日期不同，交叉汇率仅供估算"
+                : ""}
+            </p>
+            <p>
+              获取时间：
+              {rates?.fetchedAt
+                ? new Date(rates.fetchedAt).toLocaleString("zh-CN")
+                : rates
+                  ? "旧缓存未记录获取时间"
+                  : "—"}
+            </p>
+            <a href={RATE_SOURCE} target="_blank" rel="noreferrer">
+              Frankfurter · 参考数据来源
+              <ExternalLink size={13} />
+            </a>
+            <p>
+              费用为手动模拟，在源币种金额中先扣除再换算；不含实际银行价差，不作为交易报价。
+            </p>
+          </div>
+          {error && (
+            <p className="wb-notice is-error" role="status">
+              {error}
+            </p>
+          )}
+          {message && (
+            <p className="wb-notice" role="status">
+              {message}
+            </p>
+          )}
+          <div className="wb-tabs">
+            <button
+              aria-pressed={tab === "compare"}
+              onClick={() => setTab("compare")}
+            >
+              多币种对照
+            </button>
+            <button
+              aria-pressed={tab === "records"}
+              onClick={() => setTab("records")}
+            >
+              <History size={14} />
+              换算记录 {records.length}
+            </button>
+          </div>
+          {tab === "compare" ? (
+            <div className="labs-table-wrap">
+              <table className="labs-table">
+                <caption>
+                  {amount || "—"} {from} · 参考换算
+                </caption>
+                <thead>
+                  <tr>
+                    <th>币种</th>
+                    <th>参考汇率</th>
+                    <th>模拟净额</th>
+                    <th>数据日期</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {CURRENCIES.map(([code, name]) => {
+                    const r = pairRate(rates, from, code),
+                      value = calculateConversion(amount, r, percent, fixed);
+                    return (
+                      <tr key={code}>
+                        <th>
+                          <button
+                            title={`换算为${name}`}
+                            onClick={() => update({ to: code })}
+                          >
+                            {code}
+                            <small>{name}</small>
+                          </button>
+                        </th>
+                        <td>
+                          {r === null
+                            ? "暂无"
+                            : r.toLocaleString("zh-CN", {
+                                maximumSignificantDigits: 7,
+                              })}
+                        </td>
+                        <td>{value ? formatCurrency(value.net, code) : "—"}</td>
+                        <td>
+                          {from === code
+                            ? "同币种"
+                            : pairDates(rates, from, code).join(" / ") || "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <section className="labs-history">
+              <button
+                className="wb-button"
+                disabled={!records.length}
+                onClick={() =>
+                  downloadLabFile(
+                    "currency-records.csv",
+                    csv([
+                      [
+                        "recorded_at",
+                        "from",
+                        "to",
+                        "amount",
+                        "rate",
+                        "fee_percent",
+                        "fixed_fee",
+                        "fee_source_currency",
+                        "net_target_currency",
+                        "rate_dates",
+                        "retrieved_at",
+                        "source",
+                      ],
+                      ...records.map((r) => [
+                        r.at,
+                        r.settings.from,
+                        r.settings.to,
+                        r.settings.amount,
+                        r.rate,
+                        r.settings.percent,
+                        r.settings.fixed,
+                        r.fee,
+                        r.net,
+                        r.dates.join(" / "),
+                        r.fetchedAt || "unknown",
+                        r.source,
+                      ]),
+                    ]),
+                  )
+                }
+              >
+                <Download size={15} />
+                导出全部记录
+              </button>
+              {!records.length && <div className="wb-empty">暂无换算记录</div>}
+              <ul className="wb-list">
+                {records.map((r) => (
+                  <li className="labs-record" key={r.id}>
+                    <strong>
+                      {r.settings.amount} {r.settings.from} →{" "}
+                      {formatCurrency(r.net, r.settings.to)}
+                    </strong>
+                    <small>
+                      {new Date(r.at).toLocaleString("zh-CN")} · 参考日期{" "}
+                      {r.dates.join(" / ") || "同币种"} · 当时汇率 {r.rate}
+                    </small>
+                    <div className="wb-actions">
+                      <button
+                        className="wb-button"
+                        onClick={() => {
+                          setSettings(r.settings);
+                          setMessage(
+                            "已恢复金额、币种和费用；当前结果使用当前缓存，不覆盖历史记录的汇率。",
+                          );
+                        }}
+                      >
+                        恢复换算条件
+                      </button>
+                      <IconButton
+                        label="移除此条换算记录"
+                        onClick={() =>
+                          setRecords(records.filter((item) => item.id !== r.id))
+                        }
+                      >
+                        <Trash2 size={15} />
+                      </IconButton>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </main>
+      </div>
+    </Workbench>
   );
-};
-
-export default CurrencyConverterApp;
+}

@@ -1,12 +1,14 @@
+import dataService from './dataService';
 
-import { createClient } from '@supabase/supabase-js';
+export { SERVER_API } from './dataService';
 
-// Vite 使用 import.meta.env 读取变量
-// @ts-ignore
-const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
-// @ts-ignore
-const supabaseAnonKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
-
-export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+/** @deprecated Compatibility for the former from(table).select(columns) path. */
+export const supabase = Object.freeze({
+  from(table: string) {
+    return Object.freeze({
+      select(columns = '*') {
+        return dataService.querySupabase(table, columns);
+      },
+    });
+  },
+});

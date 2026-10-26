@@ -7,13 +7,22 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:universe": "node --test tests/universe/*.test.mjs"
+    "dev:cloudflare": "wrangler dev --config wrangler.jsonc --port 8787",
+    "deploy:cloudflare": "npm run build && wrangler deploy --config wrangler.jsonc --env-file /dev/null",
+    "test:cloudflare": "node --test tests/cloudflare/*.test.mjs",
+    "verify:cloudflare": "node scripts/cloudflare/verify-release.mjs",
+    "test:universe": "node --test tests/universe/*.test.mjs",
+    "test:explorer": "node --test tests/explorer/*.test.mjs",
+    "test:jiangnan": "node --test tests/jiangnan/*.test.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.9.0",
     "@netlify/blobs": "^10.7.11",
     "@netlify/functions": "^5.3.0",
+    "@sabaki/go-board": "^1.4.3",
     "@supabase/supabase-js": "^2.45.4",
+    "@weshell/xiangqi.js": "^1.0.3",
+    "astronomy-engine": "^2.1.19",
     "chess.js": "^0.10.3",
     "clsx": "^2.1.1",
     "framer-motion": "^12.4.3",
@@ -33,6 +42,7 @@
     "postcss": "^8.5.23",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.4.2",
-    "vite": "^5.1.4"
+    "vite": "^5.1.4",
+    "wrangler": "^4.120.1"
   }
 }

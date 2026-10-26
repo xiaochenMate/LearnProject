@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "exbeam",
+  "account_id": "32165092642bdb2e884e415dc93278cf",
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-10-26",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "exbeam-production",
+    "database_id": "ec260552-1076-401a-9b2f-cf67da6a4fc7"
+  }],
+  "vars": {
+    "EXBEAM_RELEASE": "2026-10-26-cloudflare-1",
+    "LEGACY_BLOBS_VERIFIED_EMPTY": "2026-10-26"
+  },
+  "routes": [
+    { "pattern": "exbeam.com/*", "zone_name": "exbeam.com" },
+    { "pattern": "www.exbeam.com/*", "zone_name": "exbeam.com" },
+    { "pattern": "preview.exbeam.com", "custom_domain": true }
+  ]
+}

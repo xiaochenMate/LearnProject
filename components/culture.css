@@ -1,0 +1,196 @@
+.culture-workspace { --culture-accent: #a0e7cc; --wb-accent: var(--culture-accent); }
+.culture-sanzijing { --culture-accent: #8ddcec; }
+.culture-qianziwen { --culture-accent: #b4e4cc; }
+.culture-idiom { --culture-accent: #f4a69b; }
+.culture-workspace .wb-content { min-height: 0; overflow: auto; }
+.culture-directory-toggle { display: none; }
+.culture-workspace h3, .culture-workspace h4, .culture-workspace p { margin-top: 0; }
+.culture-workspace h4 { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+.culture-workspace p { overflow-wrap: anywhere; }
+.culture-local, .culture-section-heading, .culture-library h3, .culture-search > span, .culture-list-heading > span, .culture-completed { display: flex; align-items: center; gap: 7px; }
+.culture-local, .culture-muted { color: var(--wb-muted); font-size: 12px; }
+.culture-summary { display: flex; align-items: center; gap: 18px; padding: 20px 28px; border-bottom: 1px solid var(--wb-line); }
+.culture-summary > img { width: 96px; height: 72px; object-fit: cover; border-radius: 4px; border: 1px solid var(--wb-line); }
+.culture-collection { display: flex; flex-direction: column; min-width: 72px; }
+.culture-collection > span { color: var(--wb-muted); font-size: 11px; }
+.culture-collection > strong { font-size: 28px; line-height: 1.6; font-weight: 500; font-variant-numeric: tabular-nums; }
+.culture-collection small { margin-left: 6px; color: var(--wb-muted); font-size: 11px; font-weight: 400; }
+.culture-summary .wb-stat { padding: 4px 16px; }
+.culture-summary .wb-stat strong { font-weight: 500; }
+.culture-total-progress { display: flex; flex-direction: column; gap: 6px; margin-left: auto; width: 130px; min-width: 80px; color: var(--wb-muted); font-size: 11px; }
+.culture-total-progress progress { width: 100%; height: 4px; border: 0; border-radius: 0; accent-color: var(--wb-accent); background: #ffffff16; }
+.culture-total-progress progress::-webkit-progress-bar { background: #ffffff16; }
+.culture-total-progress progress::-webkit-progress-value { background: var(--wb-accent); }
+.culture-total-progress progress::-moz-progress-bar { background: var(--wb-accent); }
+.culture-legacy { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.culture-tabs button { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; }
+.culture-layout { grid-template-columns: 258px minmax(0, 1fr); min-height: 640px; }
+.culture-library { display: flex; flex-direction: column; gap: 14px; }
+.culture-filter-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.culture-list-heading { display: flex; justify-content: space-between; align-items: center; color: var(--wb-muted); font-size: 11px; }
+.culture-list-heading .wb-icon { width: 30px; height: 30px; min-height: 30px; }
+.culture-items { max-height: 640px; overflow-y: auto; scrollbar-width: thin; }
+.culture-items > li { padding: 0; }
+.culture-items > li > button { display: flex; flex-direction: column; width: 100%; gap: 6px; padding: 13px 10px; text-align: left; border: 0; border-left: 2px solid transparent; border-radius: 0; background: transparent; color: var(--wb-text); }
+.culture-items button:hover { background: #ffffff06; }
+.culture-items button[aria-current='true'] { background: #ffffff08; border-left-color: var(--wb-accent); }
+.culture-items strong { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+.culture-items button[aria-current='true'] strong { color: var(--wb-accent); }
+.culture-items strong svg { flex-shrink: 0; }
+.culture-items button > span { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: var(--wb-muted); font-size: 10px; }
+.culture-items small { font-size: 10px; white-space: nowrap; }
+.culture-small-empty { display: flex; flex-direction: column; align-items: center; padding: 28px 4px; gap: 8px; color: var(--wb-muted); font-size: 12px; text-align: center; }
+.culture-main { padding: 28px 36px; }
+.culture-reading-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.culture-reading-header > div:first-child { min-width: 0; }
+.culture-kicker { display: block; font-size: 11px; color: var(--wb-accent); margin-bottom: 9px; }
+.culture-reading-header h3 { font-size: 25px; margin: 0 0 14px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.culture-tags { display: flex; flex-wrap: wrap; gap: 8px; color: var(--wb-muted); font-size: 10px; }
+.culture-tags > span + span { border-left: 1px solid var(--wb-line); padding-left: 8px; }
+.culture-reading-header > .wb-toolbar { flex-wrap: nowrap; }
+.culture-reading-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; font-size: 11px; color: var(--wb-muted); margin-top: 23px; padding-bottom: 14px; border-bottom: 1px solid var(--wb-line); }
+.culture-reading-tools label { display: flex; align-items: center; gap: 7px; }
+.culture-reading-tools input { width: 15px; height: 15px; }
+.culture-rate select { padding: 4px; border: 1px solid var(--wb-line); border-radius: 3px; background: var(--wb-panel); color: var(--wb-text); }
+.culture-reading-tools .culture-muted { font-size: 10px; overflow-wrap: anywhere; }
+.culture-text { border-bottom: 1px solid var(--wb-line); padding: 30px 0; }
+.culture-text-poetry { display: flex; flex-direction: column; gap: 18px; }
+.culture-text-poetry p { display: flex; gap: 24px; align-items: baseline; color: var(--wb-text); font-family: 'Songti SC', 'STSong', serif; font-size: 25px; line-height: 1.8; margin: 0; }
+.culture-text-poetry p > span { flex-shrink: 0; font-family: sans-serif; font-size: 10px; color: var(--wb-muted); font-variant-numeric: tabular-nums; }
+.culture-characters { display: flex; flex-wrap: wrap; gap: 22px 28px; }
+.culture-character-line { display: grid; grid-auto-columns: minmax(40px, 54px); grid-auto-flow: column; gap: 4px; }
+.culture-character-line button { display: flex; flex-direction: column; align-items: center; border: 0; border-bottom: 1px solid transparent; padding: 3px 0; background: transparent; color: var(--wb-text); border-radius: 0; min-width: 0; }
+.culture-character-line button:hover, .culture-character-line button[aria-pressed='true'], .culture-character-line button.is-speaking { color: var(--wb-accent); border-bottom-color: var(--wb-accent); }
+.culture-character-line small { color: var(--wb-muted); font-size: 12px; min-height: 23px; }
+.culture-character-line button > span { font-family: 'Songti SC', 'STSong', serif; font-size: 36px; line-height: 1.8; }
+.culture-character-line i { height: 8px; line-height: 8px; color: var(--wb-accent); font-style: normal; }
+.culture-lexicon { padding: 18px 0; border-bottom: 1px solid var(--wb-line); }
+.culture-section-heading { justify-content: space-between; }
+.culture-section-heading h4 { margin: 0; }
+.culture-lexicon p { font-size: 13px; line-height: 1.9; margin: 10px 0 0; }
+.culture-interpretation { display: grid; gap: 24px; padding: 26px 0; }
+.culture-interpretation p { font-size: 14px; line-height: 2; color: #bac6cf; margin-bottom: 0; }
+.culture-interpretation h4 { color: var(--wb-accent); }
+.culture-interpretation .culture-example { border-left: 2px solid var(--wb-accent); padding-left: 16px; }
+.culture-interpretation .culture-context { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--wb-muted); }
+.culture-context svg { flex-shrink: 0; margin-top: 4px; }
+.culture-workspace summary { cursor: pointer; color: var(--wb-muted); font-size: 12px; padding: 5px 0; }
+.culture-workspace details[open] > summary { color: var(--wb-accent); margin-bottom: 12px; }
+.culture-workspace details > small { color: var(--wb-muted); font-size: 11px; }
+.culture-reading-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 20px 0; border-top: 1px solid var(--wb-line); border-bottom: 1px solid var(--wb-line); }
+.culture-reading-actions .culture-muted { font-size: 10px; }
+.culture-note { padding: 24px 0; }
+.culture-note > div { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; color: var(--wb-muted); }
+.culture-note textarea { resize: vertical; min-height: 86px; }
+.culture-reading-nav { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 14px 0; color: var(--wb-muted); font-size: 11px; }
+.culture-source { border-top: 1px solid var(--wb-line); margin-top: 20px; padding-top: 16px; }
+.culture-source summary { display: flex; align-items: center; gap: 7px; }
+.culture-source p { color: var(--wb-muted); font-size: 12px; line-height: 1.9; }
+.culture-source a, .culture-reference { display: inline-flex; align-items: center; gap: 6px; color: var(--wb-accent); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.culture-reading-scope { background: var(--wb-panel); }
+.culture-original-caption { color: var(--wb-muted); font-size: 11px; margin: 14px 0; }
+.culture-original-lines { list-style: none; padding: 0; margin: 0; }
+.culture-original-lines > li { padding: 16px 0; border-bottom: 1px solid var(--wb-line); }
+.culture-original-line { display: flex; align-items: flex-start; gap: 16px; }
+.culture-line-number { color: var(--wb-muted); font-size: 10px; min-width: 20px; padding-top: 10px; }
+.culture-original-line p { font-family: 'Songti SC', 'STSong', serif; font-size: 22px; line-height: 1.9; margin: 0; flex: 1; min-width: 0; white-space: pre-wrap; }
+.culture-original-line .wb-toolbar { flex-shrink: 0; gap: 5px; }
+.culture-original-line .wb-icon { width: 30px; min-height: 30px; height: 30px; }
+.culture-original-lines details { padding-left: 36px; }
+.culture-original-lines details p { color: var(--wb-muted); font-size: 12px; line-height: 1.9; }
+.culture-practice-heading { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding-bottom: 20px; border-bottom: 1px solid var(--wb-line); }
+.culture-practice-heading h3 { font-size: 21px; margin: 0; }
+.culture-practice-count { color: var(--wb-muted); font-size: 11px; white-space: nowrap; }
+.culture-question-select { max-width: 250px; margin: 20px 0 0; }
+.culture-question { margin-top: 26px; }
+.culture-question > h4 { font-size: 18px; margin-bottom: 16px; line-height: 1.6; font-weight: 500; }
+.culture-clue { padding: 0 0 0 15px; border-left: 2px solid var(--wb-accent); color: #bac6cf; font-size: 15px; line-height: 1.9; white-space: pre-line; margin: 0 0 25px; }
+.culture-order { display: flex; flex-direction: column; list-style: none; margin: 0 0 22px; padding: 0; gap: 8px; }
+.culture-order li { min-height: 48px; }
+.culture-order li > button { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 14px; padding: 10px 14px; border: 1px solid var(--wb-line); border-radius: 4px; background: var(--wb-panel); color: var(--wb-text); text-align: left; font-family: 'Songti SC', 'STSong', serif; font-size: 19px; }
+.culture-order li > button > span, .culture-order-slot > span:first-child { font-family: sans-serif; font-size: 10px; color: var(--wb-muted); }
+.culture-order button svg { margin-left: auto; flex-shrink: 0; color: var(--wb-muted); }
+.culture-order-slot { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border: 1px dashed var(--wb-line); border-radius: 4px; color: #8d9ba860; }
+.culture-candidates { display: flex; flex-wrap: wrap; gap: 9px; }
+.culture-candidates .wb-button { font-family: 'Songti SC', 'STSong', serif; font-size: 17px; min-height: 44px; }
+.culture-practice-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; padding: 16px 0; border-top: 1px solid var(--wb-line); }
+.culture-answer-field { max-width: 450px; }
+.culture-answer-field input { font-size: 18px; min-height: 48px; }
+.culture-choices { display: flex; flex-direction: column; gap: 9px; border: 0; margin: 0; padding: 0; }
+.culture-choices label { display: flex; align-items: flex-start; gap: 11px; padding: 14px; border: 1px solid var(--wb-line); border-radius: 4px; color: #bac6cf; background: var(--wb-panel); cursor: pointer; }
+.culture-choices label.is-selected { border-color: var(--wb-accent); }
+.culture-choices input { flex-shrink: 0; accent-color: var(--wb-accent); margin: 5px 0 0; }
+.culture-choice-index { color: var(--wb-accent); font-size: 12px; padding-top: 2px; }
+.culture-choices label > span:last-child { min-width: 0; overflow-wrap: anywhere; font-size: 14px; line-height: 1.8; }
+.culture-submit { margin-top: 24px; min-width: 140px; }
+.culture-feedback { border-top: 2px solid #f4a69b; padding: 22px 0; margin-top: 24px; }
+.culture-feedback.is-correct { border-color: var(--wb-accent); }
+.culture-feedback h4 { color: #f4a69b; font-size: 17px; }
+.culture-feedback.is-correct h4 { color: var(--wb-accent); }
+.culture-feedback p { white-space: pre-line; line-height: 1.9; font-size: 13px; color: #bac6cf; }
+.culture-feedback .culture-answer { color: var(--wb-text); font-size: 16px; }
+.culture-feedback small { display: block; color: var(--wb-muted); font-size: 11px; margin-bottom: 20px; }
+.culture-completed { color: var(--wb-accent); padding: 15px 0; font-size: 12px; }
+.culture-completed svg { flex-shrink: 0; }
+.culture-back-reading { margin-top: 15px; }
+.culture-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 1050px) {
+  .culture-summary { gap: 12px; padding: 18px 20px; }
+  .culture-summary .wb-stat { padding: 4px 12px; }
+  .culture-layout { grid-template-columns: 225px minmax(0, 1fr); }
+  .culture-main { padding: 24px; }
+  .culture-total-progress { width: 100px; }
+}
+@media (max-width: 760px) {
+  .culture-summary { flex-wrap: wrap; gap: 14px; }
+  .culture-summary > img { width: 64px; height: 64px; }
+  .culture-total-progress { display: none; }
+  .culture-summary .wb-stat { padding: 4px 10px; }
+  .culture-layout { grid-template-columns: 200px minmax(0, 1fr); }
+  .culture-main { padding: 22px 18px; }
+  .culture-reading-header h3 { font-size: 22px; }
+  .culture-text-poetry p { font-size: 22px; gap: 15px; }
+  .culture-reading-header { gap: 10px; }
+}
+@media (max-width: 640px) {
+  .culture-workspace .culture-directory-toggle { display: inline-flex; }
+  .culture-workspace .culture-library { display: none; }
+  .culture-workspace.culture-directory-open .culture-library { display: flex; }
+  .culture-summary { gap: 8px; padding: 16px; }
+  .culture-summary > img { width: 48px; height: 56px; }
+  .culture-collection { min-width: 62px; }
+  .culture-collection > strong { font-size: 23px; }
+  .culture-summary .wb-stat { padding: 3px 10px; }
+  .culture-summary .wb-stat strong { font-size: 19px; }
+  .culture-summary .wb-stat span { font-size: 10px; }
+  .culture-layout { display: flex; flex-direction: column; min-height: 0; }
+  .culture-library { padding: 16px; gap: 12px; }
+  .culture-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .culture-items { max-height: 192px; }
+  .culture-items > li > button { padding: 11px 10px; }
+  .culture-items button > span, .culture-items small { font-size: 11px; }
+  .culture-main { padding: 22px 16px; }
+  .culture-reading-header h3 { font-size: 21px; }
+  .culture-reading-header > .wb-toolbar { gap: 5px; }
+  .culture-reading-header .wb-icon { min-width: 36px; width: 36px; height: 36px; }
+  .culture-text-poetry p { gap: 14px; font-size: 22px; }
+  .culture-character-line { grid-auto-columns: minmax(39px, 48px); gap: 3px; }
+  .culture-character-line button > span { font-size: 32px; }
+  .culture-reading-tools { gap: 12px; }
+  .culture-reading-tools > span { width: 100%; }
+  .culture-practice-heading h3 { font-size: 19px; }
+  .culture-question > h4 { font-size: 17px; }
+  .culture-order li > button { font-size: 18px; }
+  .culture-practice-tools .wb-button { flex: 1 1 auto; }
+  .culture-original-line { flex-wrap: wrap; gap: 8px; }
+  .culture-original-line p { font-size: 21px; flex-basis: calc(100% - 30px); }
+  .culture-original-line .wb-toolbar { width: 100%; padding-left: 28px; }
+  .culture-original-line .wb-icon { width: 34px; min-width: 34px; height: 34px; }
+  .culture-workspace .wb-header .culture-local { display: none; }
+}
+@media (max-width: 360px) {
+  .culture-summary > img { display: none; }
+  .culture-summary { justify-content: space-between; }
+  .culture-summary .wb-stat { padding: 3px 8px; }
+  .culture-reading-header { flex-wrap: wrap; }
+}

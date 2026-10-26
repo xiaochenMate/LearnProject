@@ -1,293 +1,95 @@
+import React, { useMemo, useRef, useState } from 'react';
+import { ArrowRight, BookOpen, Check, Eye, Play, RotateCcw, Volume2, X } from 'lucide-react';
+import { Workbench, IconButton } from './ModuleWorkbench';
+import { useModuleState } from '../lib/moduleSession';
+import { PRACTICE_WORDS, WORD_CATEGORIES, type PracticeWord } from '../lib/practiceData';
+import { initialVocabulary, validVocabulary, type VocabularySession } from '../lib/practiceSessions';
+import { newRunId, normalizeWord, seededRandom, shuffle, updateWordProgress } from '../lib/practiceCore';
+import { usePracticeSpeech } from '../lib/practiceHooks';
+import type { ExperienceEvidence } from '../lib/explorerStore';
+import './practice.css';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  X, GraduationCap, ChevronRight, BookOpen, 
-  CheckCircle2, AlertCircle, RotateCcw, 
-  BrainCircuit, TrendingUp, Award,
-  Volume2, Eye, EyeOff, Loader2, Sparkles,
-  Info, Database
-} from 'lucide-react';
-import dataService from '../lib/dataService';
-import Button from './ui/Button';
-import Card from './ui/Card';
-import Typography from './ui/Typography';
-
-interface Word {
-  id: number;
-  word: string;
-  phonetic: string;
-  definition: string;
-  example_sentence: string;
-  category_id: number;
-  status?: 'New' | 'Learning' | 'Mastered';
-}
-
-interface Category {
-  id: number;
-  name: string;
-  label: string;
-}
-
-const FALLBACK_WORDS: Record<string, Word[]> = {
-  'ielts': [
-    { id: 901, word: 'Envisage', phonetic: '/ɪnˈvɪz.ɪdʒ/', definition: '想象，设想', example_sentence: 'It\'s hard to envisage how it might happen.', category_id: 8 },
-    { id: 902, word: 'Pragmatic', phonetic: '/præɡˈmæt.ɪk/', definition: '务实的，重实效的', example_sentence: 'A pragmatic approach to management.', category_id: 8 },
-    { id: 903, word: 'Mitigate', phonetic: '/ˈmɪt.ɪ.ɡeɪt/', definition: '缓和，减轻', example_sentence: 'Drainage schemes have helped to mitigate this problem.', category_id: 8 }
-  ],
-  'primary': [
-    { id: 101, word: 'Apple', phonetic: '/ˈæp.əl/', definition: '苹果', example_sentence: 'I like eating apples.', category_id: 1 },
-    { id: 102, word: 'School', phonetic: '/skuːl/', definition: '学校', example_sentence: 'The kids are at school.', category_id: 1 }
-  ]
+function correctAnswer(word: PracticeWord, kind: 'meaning' | 'spelling', answer: string) { return kind === 'spelling' ? normalizeWord(answer) === normalizeWord(word.word) : answer === word.definition; }
+const VocabularyApp: React.FC<{ onClose: () => void; userEmail?: string; onDiscover?: (evidence: ExperienceEvidence) => void }> = ({ onClose, onDiscover }) => {
+  const [state, setState, storage] = useModuleState('exbeam.practice.vocabulary.v1', initialVocabulary, validVocabulary);
+  const [view, setView] = useState<'learn' | 'test' | 'wrong' | 'library'>(() => state.test ? 'test' : 'learn');
+  const [query, setQuery] = useState('');
+  const [kind, setKind] = useState<'meaning' | 'spelling'>(() => state.test?.kind || 'meaning');
+  const speech = usePracticeSpeech();
+  const guard = useRef('');
+  const reported = useRef('');
+  const categoryWords = PRACTICE_WORDS.filter(w => w.category === state.category);
+  const word = PRACTICE_WORDS.find(w => w.id === state.current)!;
+  const wrongWords = PRACTICE_WORDS.filter(w => state.progress[w.id]?.wrong);
+  const seen = PRACTICE_WORDS.filter(w => state.progress[w.id]?.seen).length;
+  const mastered = PRACTICE_WORDS.filter(w => (state.progress[w.id]?.correct || 0) >= 2).length;
+  const due = categoryWords.filter(w => state.progress[w.id]?.due <= Date.now()).length;
+  const test = state.test;
+  const testWord = test && test.index < test.ids.length ? PRACTICE_WORDS.find(w => w.id === test.ids[test.index])! : null;
+  const choices = useMemo(() => { if (!testWord || !test) return []; const random = seededRandom(`${test.id}-${testWord.id}`); return shuffle([testWord.definition, ...shuffle(PRACTICE_WORDS.filter(w => w.id !== testWord.id), random).slice(0, 3).map(w => w.definition)], random); }, [testWord?.id, test?.id]);
+  const results = test ? test.ids.filter(id => Object.prototype.hasOwnProperty.call(test.answers, String(id))).map(id => { const w = PRACTICE_WORDS.find(w => w.id === id)!; return { word: w, response: test.answers[id], correct: correctAnswer(w, test.kind, test.answers[id]) }; }) : [];
+  const selectWord = (id: number) => { setState(s => ({ ...s, current: id, revealed: false })); setView('learn'); };
+  const nextWord = () => {
+    const pool = categoryWords.filter(w => w.id !== state.current);
+    const sorted = [...pool].sort((a, b) => (state.progress[a.id]?.due || 0) - (state.progress[b.id]?.due || 0));
+    if (sorted[0]) setState(s => ({ ...s, current: sorted[0].id, revealed: false }));
+  };
+  const selfRate = (known: boolean) => {
+    if (!state.revealed) return;
+    const updated: VocabularySession['progress'] = { ...state.progress, [word.id]: updateWordProgress(state.progress[word.id], known, false) };
+    const next = categoryWords.filter(w => w.id !== word.id).sort((a, b) => (updated[a.id]?.due || 0) - (updated[b.id]?.due || 0))[0];
+    setState(s => ({ ...s, progress: updated, current: next?.id || s.current, revealed: false }));
+    onDiscover?.({ key: `vocabulary-study-${word.id}`, kind: 'note', title: `学习了${word.word}`, detail: `${word.word}：${word.definition}。自评${known ? '熟悉' : '待复习'}，不代表测验成绩。` });
+  };
+  const startTest = (wrong = false) => {
+    const pool = wrong ? wrongWords.filter(w => w.category === state.category) : [...categoryWords].sort((a, b) => (state.progress[a.id]?.due || 0) - (state.progress[b.id]?.due || 0));
+    if (!pool.length) return;
+    const ids = shuffle(pool.slice(0, 10)).map(w => w.id);
+    guard.current = ''; setState(s => ({ ...s, test: { id: newRunId(), ids, index: 0, answers: {}, input: '', submitted: false, kind } })); setView('test');
+  };
+  const answer = () => {
+    if (!test || !testWord || test.submitted || !test.input.trim() || guard.current === `${test.id}-${test.index}`) return;
+    guard.current = `${test.id}-${test.index}`;
+    const correct = correctAnswer(testWord, test.kind, test.input);
+    setState(s => !s.test || s.test.submitted ? s : ({ ...s, progress: { ...s.progress, [testWord.id]: updateWordProgress(s.progress[testWord.id], correct, true) }, test: { ...s.test, answers: { ...s.test.answers, [testWord.id]: s.test.input.trim() }, submitted: true } }));
+  };
+  const advance = () => {
+    if (!test || !test.submitted) return;
+    const finished = test.index + 1 >= test.ids.length;
+    if (finished && reported.current !== test.id) {
+      reported.current = test.id;
+      const correct = results.filter(r => r.correct).length;
+      if (correct > 0) onDiscover?.({ key: `vocabulary-test-${test.id}`, kind: 'challenge', title: `完成${WORD_CATEGORIES[state.category]}测验`, detail: `${test.kind === 'spelling' ? '拼写' : '词义'}测验答对${correct}/${test.ids.length}题，错词已进入本机复习。` });
+    }
+    setState(s => !s.test || !s.test.submitted ? s : { ...s, test: { ...s.test, index: s.test.index + 1, input: '', submitted: false } });
+  };
+  const list = (view === 'wrong' ? wrongWords.filter(w => w.category === state.category) : categoryWords).filter(w => `${w.word} ${w.definition} ${w.phonetic}`.toLowerCase().includes(query.toLowerCase().trim()));
+  return <Workbench title="词汇航线" eyebrow="VOCABULARY / 06" className="practice practice-vocabulary" toolbar={<>
+    <IconButton label="朗读当前单词" disabled={!speech.available || (view === 'test' && test?.kind === 'spelling' && !test.submitted)} onClick={() => speech.speak(view === 'test' && testWord ? testWord.word : word.word, 'en-GB')}><Volume2 size={18} /></IconButton><IconButton label="关闭单词练习" onClick={onClose}><X size={18} /></IconButton>
+  </>} status={<><span>{storage ? '学习与错词保存在本机' : '本机存储不可用，本次仍可练习'}</span><span>{speech.notice || (!speech.available ? '此浏览器无发音功能' : `${PRACTICE_WORDS.length}个本地词条 · 自评不计入测验成绩`)}</span></>}>
+    <nav className="wb-tabs" aria-label="词汇视图">{([['learn', '学习'], ['test', '测验'], ['wrong', `错词 ${wrongWords.length}`], ['library', '词库']] as const).map(([id, label]) => <button key={id} aria-pressed={view === id} onClick={() => setView(id)}>{label}</button>)}</nav>
+    <div className="wb-grid"><aside className="wb-sidebar">
+      <label className="wb-field">词汇分类<select value={state.category} disabled={!!test && test.index < test.ids.length} onChange={e => { const category = e.target.value as VocabularySession['category']; setState(s => ({ ...s, category, current: PRACTICE_WORDS.find(w => w.category === category)!.id, revealed: false })); }}>{Object.entries(WORD_CATEGORIES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+      <div className="practice-stack"><span className="wb-muted">已学 / 全部词条</span><strong className="practice-count">{seen} / {PRACTICE_WORDS.length}</strong><progress className="practice-progress" value={seen} max={PRACTICE_WORDS.length} aria-label="单词学习进度" /><small className="wb-muted">连续测对两次 {mastered} 个 · 本分类到期 {due} 个</small></div>
+      <label className="wb-field">测验题型<select value={kind} disabled={!!test && test.index < test.ids.length} onChange={e => setKind(e.target.value as 'meaning' | 'spelling')}><option value="meaning">看单词选词义</option><option value="spelling">看词义拼单词</option></select></label>
+      {test && test.index < test.ids.length ? <div className="practice-stack"><button className="wb-button" onClick={() => setView('test')}><Play size={16} />继续测验 {test.index + 1}/{test.ids.length}</button><button className="wb-button" onClick={() => { setState(s => !s.test ? s : { ...s, test: { ...s.test, index: s.test.ids.length, input: '', submitted: false } }); setView('test'); }}>结束本次测验</button></div> : <button className="wb-button" onClick={() => startTest()}><Play size={16} />开始10词测验</button>}
+    </aside><main className="wb-main">{view === 'learn' ? <>
+      <div className="practice-meta"><span>{WORD_CATEGORIES[word.category]}</span><span>{state.progress[word.id]?.seen ? '已学' : '新词'}</span></div>
+      <section className="practice-stage"><h3 className="practice-word">{word.word}</h3><p className="wb-muted">{word.phonetic}</p><div className="practice-actions"><button className="wb-button" disabled={!speech.available} onClick={() => speech.speak(word.word, 'en-GB')}><Volume2 size={17} />发音</button><button className="wb-button" onClick={() => setState(s => ({ ...s, revealed: !s.revealed }))}><Eye size={17} />{state.revealed ? '隐藏释义' : '查看释义'}</button></div>{state.revealed && <div className="practice-stack"><strong className="practice-prompt">{word.definition}</strong><p>{word.example}</p><p className="wb-muted">{word.translation}</p><button className="wb-button" disabled={!speech.available} onClick={() => speech.speak(word.example, 'en-GB')}><Volume2 size={16} />例句发音</button></div>}</section>
+      <div className="practice-actions"><button className="wb-button" disabled={!state.revealed} onClick={() => selfRate(false)}><RotateCcw size={16} />不熟悉 · 1小时后复习</button><button className="wb-button is-primary" disabled={!state.revealed} onClick={() => selfRate(true)}><Check size={16} />熟悉 · 明天复习</button><IconButton label="下一个单词" onClick={nextWord}><ArrowRight size={18} /></IconButton></div>
+    </> : view === 'test' ? !test ? <>
+      <div className="practice-stage"><h3 className="practice-word">{word.word}</h3><p className="wb-muted">{kind === 'meaning' ? '选择正确的中文词义' : '根据中文词义拼写英文单词'}</p><button className="wb-button is-primary" onClick={() => startTest()}><Play size={17} />开始测验</button></div>
+    </> : testWord ? <>
+      <div className="practice-meta"><span>{test.kind === 'meaning' ? '词义选择' : '拼写测验'}</span><span>{test.index + 1} / {test.ids.length}</span></div><progress className="practice-progress" value={test.index} max={test.ids.length} aria-label="测验进度" />
+      <form className="practice-stage" onSubmit={e => { e.preventDefault(); test.submitted ? advance() : answer(); }}><h3 className="practice-word">{test.kind === 'meaning' ? testWord.word : testWord.definition}</h3>{test.kind === 'meaning' ? <div className="practice-options">{choices.map((choice, i) => <button key={choice} type="button" className={`practice-option ${test.input === choice ? 'is-selected' : ''} ${test.submitted && choice === testWord.definition ? 'is-correct' : ''}`} aria-pressed={test.input === choice} disabled={test.submitted} onClick={() => setState(s => s.test ? { ...s, test: { ...s.test, input: choice } } : s)}><span>{String.fromCharCode(65 + i)}</span><span>{choice}</span></button>)}</div> : <input className="practice-answer" aria-label="英文拼写" value={test.input} autoComplete="off" autoCapitalize="off" spellCheck={false} maxLength={60} disabled={test.submitted} onChange={e => { const value = e.target.value; setState(s => s.test ? { ...s, test: { ...s.test, input: value } } : s); }} />}<button className="wb-button is-primary" type="submit" disabled={!test.submitted && !test.input.trim()}>{test.submitted ? <><ArrowRight size={16} />{test.index + 1 === test.ids.length ? '查看结果' : '下一词'}</> : <><Check size={16} />提交答案</>}</button></form>
+      {test.submitted && <div className={`practice-feedback ${correctAnswer(testWord, test.kind, test.answers[testWord.id] || '') ? '' : 'is-wrong'}`} role="status"><strong>{correctAnswer(testWord, test.kind, test.answers[testWord.id] || '') ? '回答正确' : '已加入错词复习'}</strong><p>{testWord.word} · {testWord.definition}</p><p>{testWord.example}</p></div>}
+    </> : <>
+      <h3>本轮测验结果</h3><div className="wb-stats"><div className="wb-stat"><span>答对</span><strong>{results.filter(r => r.correct).length} / {results.length}</strong></div><div className="wb-stat"><span>正确率</span><strong>{results.length ? Math.round(results.filter(r => r.correct).length / results.length * 100) : 0}%</strong></div></div><div className="practice-actions"><button className="wb-button is-primary" onClick={() => startTest()}><Play size={16} />新测验</button><button className="wb-button" disabled={!wrongWords.some(w => w.category === state.category)} onClick={() => startTest(true)}><RotateCcw size={16} />错词再测</button></div><div className="wb-list">{results.map(r => <div key={r.word.id} className="practice-stack"><strong className={r.correct ? 'practice-good' : 'practice-bad'}>{r.word.word} · {r.word.definition}</strong><small>你的答案：{r.response}</small><p className="wb-muted">{r.word.example}</p></div>)}</div>
+    </> : <>
+      <label className="wb-field">搜索单词、音标或词义<input value={query} onChange={e => setQuery(e.target.value)} placeholder="word / 中文词义" /></label>
+      {view === 'wrong' && <button className="wb-button" disabled={!list.length || !!test && test.index < test.ids.length} onClick={() => startTest(true)}><RotateCcw size={16} />错词再测</button>}
+      {list.length ? <div className="practice-catalog">{list.map(w => <article key={w.id} className="practice-entry"><div className="practice-entry-head"><strong>{w.word}</strong><IconButton label={`朗读${w.word}`} disabled={!speech.available} onClick={() => speech.speak(w.word, 'en-GB')}><Volume2 size={17} /></IconButton></div><small className="wb-muted">{w.phonetic}</small><p>{w.definition}</p><p>{w.example}</p><small className="wb-muted">{w.translation}</small><small>{state.progress[w.id]?.seen ? state.progress[w.id]?.wrong ? '待复习' : `连续测对 ${state.progress[w.id].correct} 次` : '未学习'}</small><button className="wb-button" onClick={() => selectWord(w.id)}><BookOpen size={16} />学习这个词</button></article>)}</div> : <div className="wb-empty">{query ? '没有找到匹配词条。' : '当前分类没有错词。'}</div>}
+    </>}</main></div>
+  </Workbench>;
 };
-
-const VocabularyApp: React.FC<{ onClose: () => void, userEmail?: string }> = ({ onClose, userEmail }) => {
-  const [view, setView] = useState<'selection' | 'learning' | 'complete'>('selection');
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCat, setSelectedCat] = useState<Category | null>(null);
-  const [words, setWords] = useState<Word[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isRevealed, setIsRevealed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [dbMode, setDbMode] = useState<'NEON' | 'LOCAL'>('LOCAL');
-
-  // Load Categories
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const data = await dataService.queryNeon<Category[]>`SELECT * FROM vocab_categories ORDER BY id ASC`;
-        setCategories(data);
-        setDbMode('NEON');
-      } catch (e) {
-        console.warn("Neon failed, using local categories");
-        setCategories([
-          { id: 1, name: 'primary', label: '小学英语' },
-          { id: 4, name: 'cet4', label: '四级核心' },
-          { id: 8, name: 'ielts', label: '雅思高频' }
-        ]);
-      }
-    };
-    init();
-  }, []);
-
-  const startLearning = async (cat: Category) => {
-    setIsLoading(true);
-    setSelectedCat(cat);
-    try {
-      // Simple logic: Fetch words in category. If logged in, join with progress.
-      const data = userEmail 
-        ? await dataService.queryNeon<Word[]>`
-            SELECT w.*, p.status 
-            FROM vocab_words w 
-            LEFT JOIN vocab_progress p ON w.id = p.word_id AND p.user_email = ${userEmail}
-            WHERE w.category_id = ${cat.id}
-            ORDER BY COALESCE(p.next_review_date, '1970-01-01') ASC
-            LIMIT 15
-          `
-        : await dataService.queryNeon<Word[]>`SELECT * FROM vocab_words WHERE category_id = ${cat.id} LIMIT 10`;
-      
-      if (data && data.length > 0) {
-        setWords(data);
-      } else {
-        setWords(FALLBACK_WORDS[cat.name] || FALLBACK_WORDS['ielts']);
-      }
-    } catch (e) {
-      setWords(FALLBACK_WORDS[cat.name] || FALLBACK_WORDS['ielts']);
-    }
-    setCurrentIndex(0);
-    setIsRevealed(false);
-    setView('learning');
-    setIsLoading(false);
-  };
-
-  const handleResponse = async (known: boolean) => {
-    const word = words[currentIndex];
-    if (userEmail) {
-      try {
-        const nextDate = known 
-          ? new Date(Date.now() + 24 * 60 * 60 * 1000) // Tomorrow
-          : new Date(Date.now() + 60 * 60 * 1000);    // 1 hour later
-        
-        const status = known ? 'Learning' : 'New';
-
-        await dataService.queryNeon`
-          INSERT INTO vocab_progress (user_email, word_id, status, next_review_date, correct_count)
-          VALUES (${userEmail}, ${word.id}, ${status}, ${nextDate}, ${known ? 1 : 0})
-          ON CONFLICT (user_email, word_id) DO UPDATE SET
-            status = CASE WHEN ${known} THEN 'Learning' ELSE 'New' END,
-            next_review_date = ${nextDate},
-            correct_count = vocab_progress.correct_count + ${known ? 1 : 0}
-        `;
-      } catch (e) { console.error("Update failed", e); }
-    }
-
-    if (currentIndex < words.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-      setIsRevealed(false);
-    } else {
-      setView('complete');
-    }
-  };
-
-  const speakWord = (text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const msg = new SpeechSynthesisUtterance(text);
-      msg.lang = 'en-US';
-      window.speechSynthesis.speak(msg);
-    }
-  };
-
-  const currentWord = words[currentIndex];
-
-  return (
-    <div className="w-full h-full relative  flex flex-col font-sans  overflow-hidden      ">
-      
-
-      <main className="flex-1 flex flex-col items-center justify-center p-6 relative">
-        <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:32px_32px]"></div>
-
-        {view === 'selection' && (
-          <div className="w-full max-w-4xl animate-in fade-in zoom-in duration-500">
-            <div className="text-center mb-12">
-               <Typography variant="h1" className="text-white mb-4 uppercase tracking-tighter italic">选择你的学习航线</Typography>
-               <Typography variant="body" className="text-slate-500 font-medium italic">精准匹配不同难度，开启高效词汇增量</Typography>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {categories.map(cat => (
-                <button 
-                  key={cat.id}
-                  onClick={() => startLearning(cat)}
-                  className="group relative h-32 bg-slate-900/50 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between hover:border-blue-500 hover:bg-blue-500/5 transition-all"
-                >
-                  <BookOpen className="text-slate-700 group-hover:text-blue-500 transition-colors" size={24} />
-                  <div>
-                    <Typography variant="label" className="text-slate-500 group-hover:text-blue-400">{cat.name}</Typography>
-                    <Typography variant="h4" className="text-white">{cat.label}</Typography>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            <Card className="mt-12 bg-blue-500/5 border border-blue-500/10 p-6 flex items-center gap-6">
-               <div className="p-4 bg-blue-600/10 rounded-2xl"><TrendingUp className="text-blue-400" /></div>
-               <div>
-                  <Typography variant="label" className="text-blue-400 mb-1">间隔复习算法 (SRS)</Typography>
-                  <Typography variant="body" className="text-slate-400 italic">系统会自动分析你的记忆曲线。对于“不认识”的单词，1小时后将再次出现；对于“认识”的单词，复习周期将延长。科学复习，终生不忘。</Typography>
-               </div>
-            </Card>
-          </div>
-        )}
-
-        {view === 'learning' && currentWord && (
-          <div className="w-full max-w-xl flex flex-col items-center">
-            <div className="w-full flex justify-between items-center mb-8 px-4">
-               <Typography variant="label" className="text-slate-500">学习进度: {currentIndex + 1} / {words.length}</Typography>
-               <div className="flex gap-1">
-                  {words.map((_, i) => (
-                    <div key={i} className={`h-1 w-6 rounded-full transition-all ${i === currentIndex ? 'bg-blue-500' : i < currentIndex ? 'bg-emerald-500' : 'bg-slate-800'}`}></div>
-                  ))}
-               </div>
-            </div>
-
-            <div 
-              className={`w-full aspect-[4/3] relative perspective-1000 group cursor-pointer transition-all duration-700 ${isRevealed ? 'rotate-y-180' : ''}`}
-              onClick={() => { setIsRevealed(!isRevealed); speakWord(currentWord.word); }}
-            >
-               {/* Card Front */}
-               <Card className="absolute inset-0 backface-hidden bg-slate-900 border-2 border-slate-800 flex flex-col items-center justify-center p-12 group-hover:border-blue-500/50 transition-colors">
-                  <div className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] mb-4 flex items-center gap-2">
-                    <Sparkles size={12} /> Target_Word
-                  </div>
-                  <Typography variant="h1" className="text-6xl text-white mb-4">{currentWord.word}</Typography>
-                  <Typography variant="body" className="text-slate-500 font-mono italic text-lg">{currentWord.phonetic}</Typography>
-                  <Typography variant="label" className="mt-12 text-slate-600 animate-pulse">点击翻转释义</Typography>
-               </Card>
-
-               {/* Card Back */}
-               <Card className="absolute inset-0 backface-hidden rotate-y-180 bg-slate-900 border-2 border-blue-500 flex flex-col p-10">
-                  <div className="flex justify-between items-start mb-6">
-                    <button onClick={(e) => { e.stopPropagation(); speakWord(currentWord.word); }} className="p-3 bg-blue-500/10 rounded-2xl text-blue-400 hover:bg-blue-500 hover:text-white transition-all"><Volume2 size={20}/></button>
-                    <Typography variant="label" className="text-blue-500">{currentWord.word}</Typography>
-                  </div>
-                  
-                  <div className="flex-1 overflow-y-auto no-scrollbar">
-                    <Typography variant="h3" className="text-white mb-6 border-l-4 border-blue-500 pl-4">{currentWord.definition}</Typography>
-                    <div className="space-y-3">
-                       <Typography variant="label" className="text-slate-500">经典例句</Typography>
-                       <Typography variant="body" className="text-lg text-slate-300 italic font-serif">"{currentWord.example_sentence}"</Typography>
-                    </div>
-                  </div>
-                  <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
-                     <Typography variant="caption" className="text-slate-500">ID: W_{currentWord.id.toString().padStart(4, '0')}</Typography>
-                     <Typography variant="caption" className="text-emerald-500 flex items-center gap-1"><CheckCircle2 size={10}/> 数据已加密</Typography>
-                  </div>
-               </Card>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 w-full mt-10">
-               <Button 
-                variant="outline"
-                onClick={() => handleResponse(false)}
-                className="py-8 flex flex-col items-center gap-2 group"
-               >
-                  <AlertCircle size={20} className="group-hover:scale-110 transition-transform" />
-                  <span>陌生 / 错题</span>
-               </Button>
-               <Button 
-                onClick={() => handleResponse(true)}
-                className="py-8 flex flex-col items-center gap-2 group"
-               >
-                  <CheckCircle2 size={20} className="group-hover:scale-110 transition-transform" />
-                  <span>认识 / 记住了</span>
-               </Button>
-            </div>
-          </div>
-        )}
-
-        {view === 'complete' && (
-          <div className="text-center animate-in fade-in zoom-in duration-700">
-             <div className="w-32 h-32 bg-emerald-500/20 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 shadow-2xl">
-                <Award size={64} className="text-emerald-500" />
-             </div>
-             <Typography variant="h1" className="text-white mb-4 uppercase tracking-tighter italic">航程阶段达成</Typography>
-             <Typography variant="body" className="text-slate-500 font-medium italic mb-12">你已完成本次词汇流同步。大脑突触正在建立新的连接。</Typography>
-             
-             <div className="flex gap-4 justify-center">
-                <Button onClick={() => setView('selection')} size="lg" className="px-10">
-                   <RotateCcw size={20} className="mr-3"/> 切换其他航线
-                </Button>
-                <Button variant="secondary" onClick={onClose} size="lg" className="px-10">
-                   完成训练
-                </Button>
-             </div>
-          </div>
-        )}
-      </main>
-
-      <footer className="h-10 bg-slate-950 border-t border-slate-900 px-8 flex items-center justify-between z-20">
-         <div className="flex gap-10">
-           <span className="text-[9px] font-mono text-blue-500/50 flex items-center gap-2 italic tracking-[0.2em]">
-             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
-             认知引擎: 活动中
-           </span>
-           <span className="text-[9px] font-mono text-slate-700 uppercase tracking-widest italic flex items-center gap-2">
-             <BrainCircuit size={10} /> 神经突触模拟模式
-           </span>
-         </div>
-         <div className="text-[9px] font-mono text-slate-700 uppercase tracking-[0.4em] flex items-center gap-3 italic">
-           <Info size={10} /> 安全通讯链路已建立
-         </div>
-      </footer>
-
-      <style>{`
-        .backface-hidden { backface-visibility: hidden; }
-        .rotate-y-180 { transform: rotateY(180deg); }
-        .perspective-1000 { perspective: 1000px; }
-        .tech-font { font-family: 'Orbitron', sans-serif; }
-      `}</style>
-    </div>
-  );
-};
-
 export default VocabularyApp;

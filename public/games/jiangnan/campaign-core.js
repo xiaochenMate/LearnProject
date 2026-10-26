@@ -12,7 +12,7 @@ export const DISTRICTS = [
 export const MISSIONS = [
   { title:'雾中来电', area:'枕河古镇', type:'clear', start:[-40,-12], target:[-42,-35], radius:10,
     brief:'青岚镇的航道信号熄灭了。驾驶「雨燕」清理西巷，找到失联的巡检站。',
-    radio:'阿禾 / 通讯员：先别急着开火。沿河向西，避开老石桥；黄色光圈就是巡检站。',
+    radio:'阿禾 / 通讯员：先别急着开火。沿河向西，避开老石桥；薄荷色光圈就是巡检站。',
     goal:'击毁两辆侦察车，然后抵达巡检站。', enemies:[[-64,-39,'scout'],[-42,-54,'scout']] },
   { title:'码头复电', area:'西埠码头', type:'capture', start:[-42,-35], target:[-77,-62], radius:9, duration:8,
     brief:'巡检站只剩一段录音：货船被困在雾里。先夺回码头电台，让补给车收到安全航路。',

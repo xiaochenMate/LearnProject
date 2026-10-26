@@ -1,4 +1,5 @@
 import { COSMIC_BY_ID, UniverseScale } from './universeData';
+import { sanitizeLocation, UniverseLocation } from './universeNavigation';
 
 const STORAGE_KEY = 'exbeam.universe.progress.v1';
 export interface UniverseProgress {
@@ -7,6 +8,7 @@ export interface UniverseProgress {
   observed: string[];
   notes: Record<string, string>;
   quizzes: UniverseScale[];
+  location?: UniverseLocation;
 }
 
 export const readUniverseProgress = (): UniverseProgress => {
@@ -44,6 +46,9 @@ export const readUniverseProgress = (): UniverseProgress => {
           ]
         : [];
     return {
+      ...(stored?.location
+        ? { location: sanitizeLocation(stored.location) }
+        : {}),
       selectedId: COSMIC_BY_ID.has(stored?.selectedId)
         ? stored.selectedId
         : fallback.selectedId,

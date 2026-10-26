@@ -1,291 +1,665 @@
+import React, { useState } from "react";
+import {
+  ArrowRight,
+  Bird,
+  Bug,
+  CheckCircle2,
+  CircleDot,
+  Download,
+  FileSpreadsheet,
+  Fish,
+  Leaf,
+  Link2,
+  NotebookPen,
+  Plus,
+  RotateCcw,
+  Trash2,
+  X,
+} from "lucide-react";
+import { Workbench, IconButton } from "./ModuleWorkbench";
+import { useModuleState } from "../lib/moduleSession";
+import type { ExperienceEvidence } from "../lib/explorerStore";
+import {
+  ECO_PRESETS,
+  SPECIES,
+  SPECIES_BY_ID,
+  checkTopology,
+  ecologyChartSvg,
+  energyLevels,
+  initialEcoState,
+  legacyEcoState,
+  nextSpecies,
+  validEcoRecords,
+  validEcoState,
+  validateLabChain,
+  type EcoRecord,
+  type EcoState,
+  type LabSpecies,
+} from "../lib/labsEcology";
+import { csv, downloadLabFile } from "../lib/labsCommon";
+import "./labs.css";
 
-import React, { useState } from 'react';
-import { RefreshCw, CheckCircle, ArrowRight, X, Leaf, Info } from 'lucide-react';
-
-// --- 类型定义 ---
-interface Organism {
-  id: string;
-  name: string;
-  icon: string;
-  role: 'producer' | 'consumer' | 'decomposer';
-  description: string;
+const TASKS = [
+  {
+    id: "chain",
+    name: "建立捕食链",
+    text: "至少三个营养级，生产者在起点，箭头指向摄食者。",
+  },
+  {
+    id: "budget",
+    name: "顶级能量预算",
+    text: "保持合法捕食链，让末级可用能量达到你设置的实验目标。",
+  },
+  {
+    id: "disruption",
+    name: "移除一个营养级",
+    text: "移除中间营养级，观察这条单一路径中失去能量供应的成员。",
+  },
+];
+function SpeciesIcon({
+  kind,
+  size = 25,
+}: {
+  kind: LabSpecies["kind"];
+  size?: number;
+}) {
+  const Icon =
+    kind === "plant"
+      ? Leaf
+      : kind === "bug"
+        ? Bug
+        : kind === "bird"
+          ? Bird
+          : kind === "fish"
+            ? Fish
+            : CircleDot;
+  return <Icon size={size} />;
 }
 
-// --- 数据配置 ---
-const ORGANISMS: Organism[] = [
-  { id: 'grass', name: '草', icon: '🌱', role: 'producer', description: '生产者：通过光合作用制造能量' },
-  { id: 'mushroom', name: '蘑菇', icon: '🍄', role: 'decomposer', description: '分解者：分解动植物遗体' },
-  { id: 'locust', name: '蝗虫', icon: '🦗', role: 'consumer', description: '初级消费者：以植物为食' },
-  { id: 'rabbit', name: '兔子', icon: '🐰', role: 'consumer', description: '初级消费者：喜爱吃草' },
-  { id: 'frog', name: '青蛙', icon: '🐸', role: 'consumer', description: '次级消费者：捕食昆虫' },
-  { id: 'snake', name: '蛇', icon: '🐍', role: 'consumer', description: '三级消费者：捕食小型动物' },
-  { id: 'wolf', name: '狼', icon: '🐺', role: 'consumer', description: '顶级掠食者：捕食草食动物' },
-  { id: 'eagle', name: '老鹰', icon: '🦅', role: 'consumer', description: '顶级掠食者：空中捕猎' },
-];
-
-const PREDATOR_PREY_MAP: Record<string, string[]> = {
-  'grass': ['rabbit', 'locust'],
-  'locust': ['frog'],
-  'frog': ['snake', 'eagle'],
-  'rabbit': ['wolf', 'snake', 'eagle'],
-  'snake': ['eagle', 'wolf'],
-  'wolf': ['mushroom'],
-  'eagle': ['mushroom'],
-  'mushroom': ['grass'],
-};
-
-const DECOMPOSER_TARGETS = ['grass', 'locust', 'rabbit', 'frog', 'snake', 'wolf', 'eagle'];
-
-const FoodChainApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const [chain, setChain] = useState<Organism[]>([]);
-  const [feedback, setFeedback] = useState<{ type: 'neutral' | 'success' | 'error', msg: string }>({
-    type: 'neutral',
-    msg: '请将生物加入轨道，构建完整食物链。'
-  });
-  const [shakingIds, setShakingIds] = useState<number[]>([]);
-  const [showEnergyFlow, setShowEnergyFlow] = useState(false);
-
-  // --- 交互处理 ---
-  const handleDragStart = (e: React.DragEvent, organism: Organism) => {
-    e.dataTransfer.setData('text/plain', JSON.stringify(organism));
+export default function FoodChainApp({
+  onDiscover,
+}: {
+  onClose: () => void;
+  onDiscover?: (evidence: ExperienceEvidence) => void;
+}) {
+  const [state, setState, available] = useModuleState<EcoState>(
+    "exbeam.ecology.lab.v1",
+    () => {
+      try {
+        return initialEcoState(window.localStorage);
+      } catch {
+        return legacyEcoState(null);
+      }
+    },
+    validEcoState,
+  );
+  const [records, setRecords, recordsAvailable] = useModuleState<EcoRecord[]>(
+    "exbeam.ecology.records.v1",
+    [],
+    validEcoRecords,
+  );
+  const [feedback, setFeedback] = useState(""),
+    [note, setNote] = useState("");
+  const [task, setTask] = useState("chain"),
+    [tab, setTab] = useState<"members" | "records">("members");
+  const { chain, habitat, initial, efficiency, target, removed } = state;
+  const topology = checkTopology(chain, habitat),
+    validation = validateLabChain(chain, habitat);
+  const rows = topology ? [] : energyLevels(chain, initial, efficiency);
+  const removedIndex = removed ? chain.indexOf(removed) : -1;
+  const lastEnergy = rows.length ? rows[rows.length - 1].energy : 0;
+  const options = nextSpecies(chain, habitat);
+  const update = (patch: Partial<EcoState>) => {
+    setState((s) => ({ ...s, ...patch }));
+    setFeedback("");
   };
-
-  // 兼容移动端点击添加
-  const handleAddClick = (organism: Organism) => {
-    setChain(prev => [...prev, organism]);
-    setFeedback({ type: 'neutral', msg: '已添加节点。' });
-    setShowEnergyFlow(false);
-    setShakingIds([]);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const data = e.dataTransfer.getData('text/plain');
-    if (!data) return;
-    try {
-      const organism = JSON.parse(data) as Organism;
-      handleAddClick(organism);
-    } catch (err) {
-      console.error('Drop error', err);
-    }
-  };
-
-  const handleRemove = (index: number) => {
-    setChain(prev => prev.filter((_, i) => i !== index));
-    setShowEnergyFlow(false);
-    setShakingIds([]);
-  };
-
-  const handleReset = () => {
-    setChain([]);
-    setFeedback({ type: 'neutral', msg: '轨道已清空。' });
-    setShowEnergyFlow(false);
-    setShakingIds([]);
-  };
-
-  const handleVerify = () => {
-    if (chain.length < 2) {
-      setFeedback({ type: 'error', msg: '链条太短，至少需要两个生物！' });
+  const record = () => {
+    if (records.length >= 100) {
+      setFeedback("记录已达 100 条，请先导出再移除旧项。");
       return;
     }
-    if (chain[0].role !== 'producer') {
-      setFeedback({ type: 'error', msg: '食物链应从生产者（如植物）开始。' });
-      setShakingIds([0]);
+    setRecords((previous) => [
+      {
+        id: crypto.randomUUID(),
+        at: new Date().toISOString(),
+        state: { ...state, chain: [...chain] },
+        task,
+        note,
+      },
+      ...previous,
+    ]);
+  };
+  const verify = () => {
+    if (!validation.valid) {
+      setFeedback(validation.message);
       return;
     }
-    let isValid = true;
-    let errorMsg = '';
-    const errors: number[] = [];
-
-    for (let i = 0; i < chain.length - 1; i++) {
-      const current = chain[i];
-      const next = chain[i+1];
-      let canEat = false;
-      if (next.role === 'decomposer') {
-         if (DECOMPOSER_TARGETS.includes(current.id)) canEat = true;
-      } else {
-         const predators = PREDATOR_PREY_MAP[current.id] || [];
-         if (predators.includes(next.id)) canEat = true;
-      }
-      if (!canEat) {
-        isValid = false;
-        errors.push(i, i + 1);
-        errorMsg = `${next.name} 不以 ${current.name} 为食。`;
-        break;
-      }
+    if (task !== "disruption" && removed) {
+      setFeedback("请先恢复被移除的营养级，再验证完整能量链。");
+      return;
     }
-
-    if (isValid) {
-      setFeedback({ type: 'success', msg: '完美构建！能量正在流动。' });
-      setShowEnergyFlow(true);
-      setTimeout(() => setShowEnergyFlow(false), 3000);
-    } else {
-      setFeedback({ type: 'error', msg: errorMsg });
-      setShakingIds(errors);
+    if (task === "budget" && lastEnergy < target) {
+      setFeedback(
+        `末级仅有 ${lastEnergy.toPrecision(3)} kJ，尚未达到 ${target} kJ 的自定目标。`,
+      );
+      return;
     }
+    if (
+      task === "disruption" &&
+      (removedIndex <= 0 || removedIndex >= chain.length - 1)
+    ) {
+      setFeedback("选择一个中间营养级进行移除实验。");
+      return;
+    }
+    const message =
+      task === "disruption"
+        ? `${SPECIES_BY_ID.get(removed!)!.name}被移除；此单一路径中，其后 ${chain.length - removedIndex - 1} 级失去输入。真实食物网可能还有其他食物来源。`
+        : `${validation.message} 末级能量 ${lastEnergy.toPrecision(4)} kJ；本实验采用 ${(efficiency * 100).toFixed(0)}% 的统一传递效率。`;
+    setFeedback(message);
+    record();
+    onDiscover?.({
+      key: `eco-${task}-${chain.join("-")}`,
+      kind: "experiment",
+      title: `生态实验 · ${TASKS.find((t) => t.id === task)!.name}`,
+      detail: `${chain.map((id) => SPECIES_BY_ID.get(id)!.name).join(" → ")}\n生产者 ${initial} kJ；${message}`,
+    });
   };
-
+  const effectiveEnergy = (index: number, value: number) =>
+    removedIndex >= 0 && index >= removedIndex ? 0 : value;
+  const exportData = () => {
+    if (!rows.length) return;
+    downloadLabFile(
+      "ecology-energy.csv",
+      csv([
+        [
+          "model",
+          "habitat",
+          "level",
+          "species",
+          "baseline_kJ",
+          "scenario_kJ",
+          "transferred_kJ",
+          "untransferred_kJ",
+          "efficiency",
+          "removed_species",
+          "target_kJ",
+        ],
+        ...rows.map((r, i) => [
+          "single path teaching model; not field measurements",
+          habitat,
+          r.level,
+          SPECIES_BY_ID.get(r.id)!.name,
+          r.energy,
+          effectiveEnergy(i, r.energy),
+          effectiveEnergy(i, r.transferred),
+          effectiveEnergy(i, r.untransferred),
+          efficiency,
+          removed || "",
+          target,
+        ]),
+      ]),
+    );
+    setFeedback("能量预算 CSV 已生成。");
+  };
+  const exportChart = () => {
+    if (!rows.length) return;
+    const svg = ecologyChartSvg(state);
+    downloadLabFile("ecology-energy.svg", svg, "image/svg+xml");
+    setFeedback("能量图表 SVG 已生成。");
+  };
   return (
-    <div className="w-full h-full relative  flex flex-col font-sans  overflow-hidden     bg-white text-slate-900 bg-white text-slate-900">
-      {/* 顶部导航 - 移动端高度优化 */}
-      
-
-      <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
-        <div className="absolute inset-0 opacity-[0.07] pointer-events-none" 
-             style={{ backgroundImage: 'linear-gradient(#10b981 1px, transparent 1px), linear-gradient(90deg, #10b981 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
-        </div>
-
-        {/* 生物库 - 移动端改为顶部横向滑动区域 */}
-        <aside className="w-full md:w-72 bg-[#082020]/90 backdrop-blur border-b md:border-b-0 md:border-r border-[#155e5e] p-3 sm:p-5 flex flex-col z-10 shadow-xl shrink-0 max-h-[35%] md:max-h-none">
-          <div className="flex items-center justify-between mb-2 md:mb-4 px-1">
-            <h2 className="text-[10px] sm:text-xs font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
-              <Info className="w-3 h-3 sm:w-4 sm:h-4" /> 样本库
-            </h2>
-            <span className="hidden md:inline text-[9px] text-slate-500 italic">点击或拖拽添加</span>
-          </div>
-          
-          <div className="flex md:grid md:grid-cols-2 gap-2 sm:gap-3 overflow-x-auto md:overflow-y-auto no-scrollbar pb-2 md:pb-0 touch-pan-x">
-            {ORGANISMS.map(org => (
-              <div
-                key={org.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, org)}
-                onClick={() => handleAddClick(org)}
-                className="group relative flex-shrink-0 w-20 h-24 sm:w-24 sm:h-28 md:w-auto md:h-auto bg-[#0f3535] border border-[#1e4e4e] rounded-xl p-2 sm:p-3 cursor-pointer hover:border-emerald-500 hover:bg-[#134040] transition-all flex flex-col items-center justify-center gap-1 sm:gap-2 active:scale-95 shadow-md"
+    <Workbench
+      title="生态连接实验室"
+      eyebrow="ENERGY & LIVING SYSTEMS"
+      className="labs-workbench labs-ecology"
+      toolbar={
+        <>
+          <IconButton
+            label="清空食物链"
+            disabled={!chain.length}
+            onClick={() => update({ chain: [], removed: null })}
+          >
+            <RotateCcw size={17} />
+          </IconButton>
+          <IconButton
+            label="导出能量 CSV"
+            disabled={!rows.length}
+            onClick={exportData}
+          >
+            <FileSpreadsheet size={17} />
+          </IconButton>
+          <IconButton
+            label="导出能量图表 SVG"
+            disabled={!rows.length}
+            onClick={exportChart}
+          >
+            <Download size={17} />
+          </IconButton>
+        </>
+      }
+      status={
+        <>
+          <span>
+            {available && recordsAvailable
+              ? "构建与实验记录已保存在本机"
+              : "本机保存不可用，请导出数据"}
+          </span>
+          <span>简化示例食性 · 不代表完整食物网</span>
+          <span>{chain.length} / 6 营养级</span>
+        </>
+      }
+    >
+      <div className="labs-layout">
+        <main className="labs-stage">
+          <div className="labs-stage-heading">
+            <div>
+              <h3>{habitat === "meadow" ? "草地" : "池塘"} · 能量传递</h3>
+              <span>
+                食物 <ArrowRight size={13} /> 摄食者
+              </span>
+            </div>
+            <label className="wb-field">
+              配置预设
+              <select
+                aria-label="生态预设"
+                value=""
+                onChange={(e) => {
+                  const p = ECO_PRESETS.find(
+                    (preset) => preset.id === e.target.value,
+                  );
+                  if (p)
+                    update({
+                      habitat: p.habitat,
+                      chain: [...p.chain],
+                      removed: null,
+                    });
+                }}
               >
-                <div className="text-3xl sm:text-4xl filter drop-shadow-md group-hover:scale-110 transition-transform">{org.icon}</div>
-                <span className="text-[10px] sm:text-xs font-bold text-slate-300 truncate w-full text-center">{org.name}</span>
-                
-                {/* 桌面端 Tooltip */}
-                <div className="hidden md:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-40 p-2 bg-black/90 border border-emerald-500/50 rounded-lg text-[10px] text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
-                    <p className="font-bold text-emerald-400 mb-0.5">{org.role === 'producer' ? '生产者' : org.role === 'decomposer' ? '分解者' : '消费者'}</p>
-                    <p className="line-clamp-2">{org.description}</p>
+                <option value="" disabled>
+                  载入一条示例链
+                </option>
+                {ECO_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="labs-eco-chain" aria-label="当前食物链">
+            {!chain.length ? (
+              <div className="wb-empty">
+                <Leaf size={40} />
+                <strong>生产者是起点</strong>
+              </div>
+            ) : (
+              chain.map((id, index) => {
+                const species = SPECIES_BY_ID.get(id)!;
+                return (
+                  <React.Fragment key={id}>
+                    {index > 0 && (
+                      <ArrowRight className="labs-eco-arrow" size={20} />
+                    )}
+                    <div
+                      className={`labs-species ${removedIndex >= 0 && index >= removedIndex ? "is-disrupted" : ""}`}
+                    >
+                      <IconButton
+                        label={`移除${species.name}`}
+                        className="labs-node-remove"
+                        onClick={() =>
+                          update({
+                            chain: chain.filter((_, i) => i !== index),
+                            removed: null,
+                          })
+                        }
+                      >
+                        <X size={12} />
+                      </IconButton>
+                      <SpeciesIcon kind={species.kind} size={35} />
+                      <strong>{species.name}</strong>
+                      <small>{species.role}</small>
+                      <span>第 {index + 1} 营养级</span>
+                    </div>
+                  </React.Fragment>
+                );
+              })
+            )}
+          </div>
+          {topology && chain.length > 0 && (
+            <p className="wb-notice is-error labs-feedback">{topology}</p>
+          )}
+          <div className="labs-stats">
+            <div className="wb-stat">
+              <span>生产者能量</span>
+              <strong>
+                {initial.toLocaleString()} <small>kJ</small>
+              </strong>
+            </div>
+            <div className="wb-stat">
+              <span>末级基线</span>
+              <strong>
+                {rows.length ? lastEnergy.toPrecision(3) : "—"}{" "}
+                <small>kJ</small>
+              </strong>
+            </div>
+            <div className="wb-stat">
+              <span>末级 / 生产者</span>
+              <strong>
+                {rows.length
+                  ? `${((lastEnergy / initial) * 100).toPrecision(3)}%`
+                  : "—"}
+              </strong>
+            </div>
+          </div>
+          <section className="labs-energy">
+            <h3>
+              能量预算 <small>线性比例 · kJ</small>
+            </h3>
+            {rows.map((r, i) => (
+              <div className="labs-energy-row" key={r.id}>
+                <span>{SPECIES_BY_ID.get(r.id)!.name}</span>
+                <div className="labs-energy-track">
+                  <div
+                    style={{ width: `${(r.energy / initial) * 100}%` }}
+                    className={
+                      removedIndex >= 0 && i >= removedIndex
+                        ? "is-disrupted"
+                        : ""
+                    }
+                  />
                 </div>
+                <output>{effectiveEnergy(i, r.energy).toPrecision(3)}</output>
               </div>
             ))}
+            {!rows.length && (
+              <p className="wb-muted">能量图等待合法的生产者起始链。</p>
+            )}
+            <p className="labs-model-note">
+              效率是可调实验假设，不是所有物种固定
+              10%。未传入下一级的能量包括呼吸、未摄食与未同化部分；此处不模拟数量或种群时间变化。
+            </p>
+            <a
+              href="https://openstax.org/books/biology-2e/pages/46-2-energy-flow-through-ecosystems"
+              target="_blank"
+              rel="noreferrer"
+            >
+              能量传递概念来源 · OpenStax
+            </a>
+          </section>
+          {feedback && (
+            <p className="wb-notice labs-feedback" role="status">
+              {feedback}
+            </p>
+          )}
+        </main>
+        <aside className="labs-inspector">
+          <div className="wb-tabs">
+            <button
+              aria-pressed={tab === "members"}
+              onClick={() => setTab("members")}
+            >
+              生境与任务
+            </button>
+            <button
+              aria-pressed={tab === "records"}
+              onClick={() => setTab("records")}
+            >
+              记录 {records.length}
+            </button>
           </div>
-        </aside>
-
-        {/* 轨道面板 */}
-        <div className="flex-1 flex flex-col p-4 sm:p-6 md:p-10 relative overflow-hidden">
-          
-          <div className="mb-4 sm:mb-8 flex flex-col items-center shrink-0">
-             <h2 className="text-xl sm:text-3xl font-black text-white mb-2 tech-font tracking-tight uppercase italic" style={{ textShadow: '0 0 15px rgba(16,185,129,0.4)' }}>
-               食物链重构区
-             </h2>
-             <div className={`text-[10px] sm:text-xs font-bold px-4 py-1.5 rounded-full transition-all border ${
-                 feedback.type === 'success' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' :
-                 feedback.type === 'error' ? 'bg-red-500/20 text-red-300 border-red-500/50 animate-pulse' :
-                 'bg-slate-800/80 text-slate-400 border-slate-700'
-             }`}>
-                {feedback.msg}
-             </div>
-          </div>
-
-          <div 
-             onDragOver={handleDragOver}
-             onDrop={handleDrop}
-             className="flex-1 bg-black/40 border-2 border-dashed border-[#1e4e4e] rounded-3xl relative flex items-center justify-start px-6 overflow-x-auto no-scrollbar transition-all group"
-          >
-             {chain.length === 0 && (
-                 <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600/40 pointer-events-none">
-                    <Leaf size={48} className="mb-4 opacity-10" />
-                    <p className="text-xs sm:text-sm font-black uppercase tracking-[0.3em]">待构建区域 / Empty Field</p>
-                 </div>
-             )}
-
-             <div className="flex items-center gap-1 sm:gap-2 min-w-max mx-auto px-4">
-                 {chain.map((item, index) => (
-                    <React.Fragment key={`${item.id}-${index}`}>
-                        {index > 0 && (
-                            <div className="text-emerald-500/30 flex items-center justify-center px-1 sm:px-2">
-                                <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
-                            </div>
-                        )}
-
-                        <div className={`
-                            relative w-20 h-28 sm:w-28 sm:h-36 bg-[#0f2525] border-2 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-xl transition-all
-                            ${shakingIds.includes(index) ? 'border-red-500 animate-[shake_0.5s_ease-in-out]' : 'border-emerald-500/20'}
-                        `}>
-                            <button 
-                                onClick={() => handleRemove(index)}
-                                className="absolute -top-1.5 -right-1.5 bg-slate-800 border border-slate-700 hover:bg-red-500 text-white rounded-full p-1.5 shadow-lg z-10"
-                            >
-                                <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                            </button>
-
-                            <div className="text-3xl sm:text-4xl filter drop-shadow-xl">{item.icon}</div>
-                            <div className="text-center px-1">
-                                <div className="text-[10px] sm:text-xs font-black text-slate-200 truncate w-full">{item.name}</div>
-                                <div className="text-[8px] sm:text-[9px] text-emerald-500/50 uppercase tracking-tighter mt-0.5">{item.role}</div>
-                            </div>
-
-                            {showEnergyFlow && (
-                                <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-                                    <div 
-                                        className="w-full h-full bg-gradient-to-r from-transparent via-emerald-400/20 to-transparent"
-                                        style={{ 
-                                            animation: `energyFlow 1.2s ease-in-out forwards`, 
-                                            animationDelay: `${index * 0.2}s`,
-                                            transform: 'translateX(-100%)'
-                                        }}
-                                    ></div>
-                                </div>
-                            )}
-                        </div>
-                    </React.Fragment>
-                 ))}
-             </div>
-          </div>
-
-          <footer className="mt-4 sm:mt-8 flex flex-col sm:flex-row justify-center gap-3 shrink-0 pb-[env(safe-area-inset-bottom)]">
-              <button 
-                onClick={handleReset}
-                className="order-2 sm:order-1 px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all border border-slate-700"
-              >
-                  <RefreshCw className="w-4 h-4" />
-                  重置系统
-              </button>
-              
-              <button 
-                onClick={handleVerify}
-                disabled={chain.length < 2}
-                className={`
-                    order-1 sm:order-2 px-8 py-3 sm:py-4 rounded-xl font-black flex items-center justify-center gap-3 text-sm sm:text-base shadow-2xl transition-all
-                    ${chain.length < 2 
-                        ? 'bg-slate-800/50 text-slate-600 cursor-not-allowed border border-slate-800' 
-                        : 'bg-emerald-500 text-black hover:bg-emerald-400 hover:scale-105 active:scale-95'
+          {tab === "members" ? (
+            <div className="labs-inspector-body">
+              <div className="wb-tabs">
+                <button
+                  aria-pressed={habitat === "meadow"}
+                  onClick={() =>
+                    update({ habitat: "meadow", chain: [], removed: null })
+                  }
+                >
+                  草地
+                </button>
+                <button
+                  aria-pressed={habitat === "pond"}
+                  onClick={() =>
+                    update({ habitat: "pond", chain: [], removed: null })
+                  }
+                >
+                  池塘
+                </button>
+              </div>
+              <h3>
+                <Leaf size={15} />
+                生态成员
+              </h3>
+              <div className="labs-species-library">
+                {SPECIES.filter((s) => s.habitat === habitat).map((s) => (
+                  <button
+                    className="wb-button"
+                    key={s.id}
+                    title={s.role}
+                    disabled={
+                      chain.includes(s.id) ||
+                      chain.length >= 6 ||
+                      !options.some((o) => o.id === s.id)
                     }
-                `}
+                    onClick={() =>
+                      update({ chain: [...chain, s.id], removed: null })
+                    }
+                  >
+                    <SpeciesIcon kind={s.kind} size={20} />
+                    <span>{s.name}</span>
+                    {chain.includes(s.id) ? (
+                      <CheckCircle2 size={13} />
+                    ) : (
+                      <Plus size={13} />
+                    )}
+                  </button>
+                ))}
+              </div>
+              <section className="labs-section">
+                <h3>
+                  <Link2 size={15} />
+                  能量条件
+                </h3>
+                <label className="labs-slider">
+                  <span>
+                    生产者能量<output>{initial.toLocaleString()} kJ</output>
+                  </span>
+                  <input
+                    aria-label="生产者能量"
+                    type="range"
+                    min={100}
+                    max={100000}
+                    step={100}
+                    value={initial}
+                    onChange={(e) => update({ initial: +e.target.value })}
+                  />
+                </label>
+                <label className="labs-slider">
+                  <span>
+                    逐级传递效率
+                    <output>{(efficiency * 100).toFixed(0)}%</output>
+                  </span>
+                  <input
+                    aria-label="传递效率"
+                    type="range"
+                    min={5}
+                    max={20}
+                    step={1}
+                    value={Math.round(efficiency * 100)}
+                    onChange={(e) =>
+                      update({ efficiency: +e.target.value / 100 })
+                    }
+                  />
+                </label>
+                <label className="wb-field">
+                  末级自定目标 / kJ
+                  <input
+                    type="number"
+                    min={0.1}
+                    max={1000}
+                    step={0.1}
+                    value={target}
+                    onChange={(e) => {
+                      const n = +e.target.value;
+                      if (n >= 0.1 && n <= 1000) update({ target: n });
+                    }}
+                  />
+                </label>
+                <label className="wb-field">
+                  移除实验
+                  <select
+                    aria-label="移除营养级"
+                    value={removed || ""}
+                    onChange={(e) =>
+                      update({ removed: e.target.value || null })
+                    }
+                  >
+                    <option value="">完整能量链</option>
+                    {chain.map((id) => (
+                      <option key={id} value={id}>
+                        移除 {SPECIES_BY_ID.get(id)!.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </section>
+              <section className="labs-section">
+                <h3>
+                  <CheckCircle2 size={15} />
+                  实验任务
+                </h3>
+                <label className="wb-field">
+                  <select
+                    aria-label="生态实验任务"
+                    value={task}
+                    onChange={(e) => {
+                      setTask(e.target.value);
+                      setFeedback("");
+                    }}
+                  >
+                    {TASKS.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p>{TASKS.find((t) => t.id === task)!.text}</p>
+                <button className="wb-button is-primary" onClick={verify}>
+                  <CheckCircle2 size={16} />
+                  验证并记录
+                </button>
+              </section>
+              <label className="wb-field">
+                观察笔记
+                <textarea
+                  value={note}
+                  maxLength={200}
+                  rows={2}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+              </label>
+              <button
+                className="wb-button"
+                disabled={!chain.length || records.length >= 100}
+                onClick={() => {
+                  record();
+                  setFeedback("当前构建与条件已记录。");
+                }}
               >
-                  <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6" />
-                  验证逻辑链条
+                <NotebookPen size={15} />
+                记录当前状态
               </button>
-          </footer>
-        </div>
-      </main>
-
-      <style>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          20% { transform: translateX(-4px) rotate(-1deg); }
-          40% { transform: translateX(4px) rotate(1deg); }
-          60% { transform: translateX(-4px) rotate(-1deg); }
-          80% { transform: translateX(4px) rotate(1deg); }
-        }
-        @keyframes energyFlow {
-          0% { transform: translateX(-100%); opacity: 0; }
-          50% { opacity: 1; }
-          100% { transform: translateX(100%); opacity: 0; }
-        }
-        .tech-font { font-family: 'Orbitron', sans-serif; }
-      `}</style>
-    </div>
+              <p className="labs-model-note">
+                分解者分解遗体和排出物，使物质回到环境。能量逐渐散失，不形成闭环。
+              </p>
+            </div>
+          ) : (
+            <div className="labs-inspector-body">
+              <button
+                className="wb-button"
+                disabled={!records.length}
+                onClick={() =>
+                  downloadLabFile(
+                    "ecology-records.csv",
+                    csv([
+                      [
+                        "at",
+                        "habitat",
+                        "chain",
+                        "initial_kJ",
+                        "efficiency",
+                        "target_kJ",
+                        "removed",
+                        "task",
+                        "note",
+                      ],
+                      ...records.map((r) => [
+                        r.at,
+                        r.state.habitat,
+                        r.state.chain.join(" -> "),
+                        r.state.initial,
+                        r.state.efficiency,
+                        r.state.target,
+                        r.state.removed,
+                        r.task,
+                        r.note,
+                      ]),
+                    ]),
+                  )
+                }
+              >
+                <Download size={15} />
+                导出全部记录
+              </button>
+              {!records.length && <div className="wb-empty">暂无生态记录</div>}
+              <ul className="wb-list">
+                {records.map((r) => (
+                  <li key={r.id} className="labs-record">
+                    <strong>
+                      {r.state.chain
+                        .map((id) => SPECIES_BY_ID.get(id)!.name)
+                        .join(" → ")}
+                    </strong>
+                    <small>{new Date(r.at).toLocaleString("zh-CN")}</small>
+                    <p>
+                      {r.note ||
+                        `${r.state.initial} kJ · ${r.state.efficiency * 100}%`}
+                    </p>
+                    <div className="wb-actions">
+                      <button
+                        className="wb-button"
+                        onClick={() => {
+                          setState(r.state);
+                          setNote(r.note);
+                          setTask(
+                            TASKS.some((t) => t.id === r.task)
+                              ? r.task
+                              : "chain",
+                          );
+                          setFeedback("已恢复实验条件。");
+                          setTab("members");
+                        }}
+                      >
+                        恢复实验
+                      </button>
+                      <IconButton
+                        label="移除此条生态记录"
+                        onClick={() =>
+                          setRecords(records.filter((item) => item.id !== r.id))
+                        }
+                      >
+                        <Trash2 size={15} />
+                      </IconButton>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </aside>
+      </div>
+    </Workbench>
   );
-};
-
-export default FoodChainApp;
+}

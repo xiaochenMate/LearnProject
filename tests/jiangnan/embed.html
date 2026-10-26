@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>Jiangnan Embed Test</title><style>html,body,#root{height:100%;margin:0;background:#0c1014}#root>div{height:100%!important}iframe{height:100%;width:100%;border:0}button{cursor:pointer}*{box-sizing:border-box}</style></head><body><div id="root"></div>
+<script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import JiangnanGameApp from '../../components/JiangnanGameApp.tsx';
+const root=createRoot(document.getElementById('root'));
+window.embed={remove:()=>root.render(null),mount:()=>root.render(React.createElement(JiangnanGameApp,{onClose:()=>{}}))};
+window.embed.mount();
+</script></body></html>

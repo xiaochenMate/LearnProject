@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "exbeam-transfer-20261026",
+  "account_id": "32165092642bdb2e884e415dc93278cf",
+  "main": "scripts/cloudflare/transfer-worker.mjs",
+  "compatibility_date": "2026-10-26",
+  "workers_dev": true,
+  "routes": [{ "pattern": "exbeam.com/__exbeam_transfer/*", "zone_name": "exbeam.com" }],
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "exbeam-production",
+    "database_id": "ec260552-1076-401a-9b2f-cf67da6a4fc7"
+  }]
+}

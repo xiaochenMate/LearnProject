@@ -1,0 +1,26 @@
+name: Explorer product checks
+on:
+  push:
+    branches: [main]
+    paths: ['App.tsx', 'components/**', 'lib/**', 'cloudflare/**', 'wrangler*.jsonc', 'scripts/cloudflare/**', 'public/_headers', 'public/images/pieces/**', 'public/games/jiangnan/**', 'tests/cloudflare/**', 'tests/explorer/**', 'tests/universe/**', 'tests/jiangnan/**', 'package*.json', 'index.html', '.github/workflows/explorer.yml']
+  pull_request:
+    paths: ['App.tsx', 'components/**', 'lib/**', 'cloudflare/**', 'wrangler*.jsonc', 'scripts/cloudflare/**', 'public/_headers', 'public/images/pieces/**', 'public/games/jiangnan/**', 'tests/cloudflare/**', 'tests/explorer/**', 'tests/universe/**', 'tests/jiangnan/**', 'package*.json', 'index.html', '.github/workflows/explorer.yml']
+permissions:
+  contents: read
+jobs:
+  explorer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run test:cloudflare
+      - run: npm run test:explorer
+      - run: npm run test:universe
+      - run: npm run test:jiangnan
+      - run: npm run build

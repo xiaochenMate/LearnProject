@@ -1,101 +1,110 @@
+export const SERVER_API = Object.freeze({
+  mode: 'serverAPI',
+  readOnly: true,
+  health: '/api/health',
+  dataStatus: '/api/data-status',
+} as const);
 
-import sql from './neon';
-import { supabase } from './supabase';
+type ClientDataErrorCode =
+  | 'CLIENT_DATABASE_DISABLED'
+  | 'SERVER_API_UNAVAILABLE'
+  | 'SERVER_API_INVALID_RESPONSE';
 
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
+const ERROR_MESSAGES: Record<ClientDataErrorCode, string> = {
+  CLIENT_DATABASE_DISABLED:
+    'Browser database queries are disabled (serverAPI mode). /api/health and /api/data-status provide read-only status, not query results.',
+  SERVER_API_UNAVAILABLE:
+    'The serverAPI status endpoint is unavailable. Database connectivity and migration status are unknown.',
+  SERVER_API_INVALID_RESPONSE:
+    'The serverAPI status endpoint did not return a JSON object. Database connectivity and migration status are unknown.',
+};
+
+export class ClientDataError extends Error {
+  readonly mode = SERVER_API.mode;
+
+  constructor(
+    readonly code: ClientDataErrorCode,
+    readonly endpoint?: string,
+    readonly status?: number,
+  ) {
+    super(ERROR_MESSAGES[code]);
+    this.name = 'ClientDataError';
+  }
 }
 
-const CACHE_TTL = 1000 * 60 * 60; // 1 hour
+export type ServerAPIStatus = Readonly<Record<string, unknown>>;
 
 class DataService {
-  private cache: Map<string, CacheEntry<any>> = new Map();
+  readonly mode = SERVER_API.mode;
 
-  private getCacheKey(query: string, params: any[] = []): string {
-    return `${query}_${JSON.stringify(params)}`;
-  }
-
-  private getFromCache<T>(key: string): T | null {
-    const entry = this.cache.get(key);
-    if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
-      return entry.data;
-    }
-    return null;
-  }
-
-  private setCache<T>(key: string, data: T) {
-    this.cache.set(key, { data, timestamp: Date.now() });
-  }
-
-  /**
-   * Neon (PostgreSQL) Query with Caching
-   */
-  async queryNeon<T>(query: TemplateStringsArray, ...params: any[]): Promise<T> {
-    if (!sql) return [] as unknown as T;
-    
-    const cacheKey = this.getCacheKey(query.join('?'), params);
-    const cached = this.getFromCache<T>(cacheKey);
-    if (cached) return cached;
-
+  private async readStatus(
+    endpoint: typeof SERVER_API.health | typeof SERVER_API.dataStatus,
+    signal?: AbortSignal,
+  ): Promise<ServerAPIStatus> {
+    let response: Response;
     try {
-      const result = await sql(query, ...params);
-      this.setCache(cacheKey, result);
-      return result as unknown as T;
-    } catch (error: any) {
-      if (error && error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
-          return [] as unknown as T;
-      }
-      // console.error('[DataService] Neon Query Error:', error);
-      throw error;
+      response = await fetch(endpoint, {
+        method: 'GET',
+        credentials: 'same-origin',
+        mode: 'same-origin',
+        redirect: 'error',
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+        signal,
+      });
+    } catch {
+      // Do not forward connection errors that might contain server credentials.
+      throw new ClientDataError('SERVER_API_UNAVAILABLE', endpoint);
     }
-  }
 
-  /**
-   * Neon (PostgreSQL) Query with string and params
-   */
-  async query<T>(queryString: string, params: any[] = []): Promise<T> {
-    if (!sql) return [] as unknown as T;
-    
-    const cacheKey = this.getCacheKey(queryString, params);
-    const cached = this.getFromCache<T>(cacheKey);
-    if (cached) return cached;
+    if (!response.ok || response.redirected) {
+      throw new ClientDataError('SERVER_API_UNAVAILABLE', endpoint, response.status);
+    }
 
+    const contentType = response.headers.get('content-type') || '';
+    if (!/^application\/(?:[a-z0-9.+-]+\+)?json(?:\s*;|$)/i.test(contentType)) {
+      throw new ClientDataError('SERVER_API_INVALID_RESPONSE', endpoint, response.status);
+    }
+
+    let payload: unknown;
     try {
-      const result = await sql(queryString, params);
-      this.setCache(cacheKey, result);
-      return result as unknown as T;
-    } catch (error: any) {
-      if (error && error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
-          return [] as unknown as T;
-      }
-      // console.error('[DataService] Neon Query Error:', error);
-      throw error;
+      payload = await response.json();
+    } catch {
+      throw new ClientDataError('SERVER_API_INVALID_RESPONSE', endpoint, response.status);
     }
+    if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new ClientDataError('SERVER_API_INVALID_RESPONSE', endpoint, response.status);
+    }
+
+    // Preserve server-reported readiness; HTTP success alone does not prove a migration.
+    return payload as ServerAPIStatus;
   }
 
-  /**
-   * Supabase Query (Example)
-   */
-  async querySupabase(table: string, select = '*') {
-    if (!supabase) return [];
-    
-    const cacheKey = `supabase_${table}_${select}`;
-    const cached = this.getFromCache(cacheKey);
-    if (cached) return cached;
-
-    const { data, error } = await supabase.from(table).select(select);
-    if (error) throw error;
-    
-    this.setCache(cacheKey, data);
-    return data;
+  getHealth(signal?: AbortSignal): Promise<ServerAPIStatus> {
+    return this.readStatus(SERVER_API.health, signal);
   }
 
-  /**
-   * Clear Cache
-   */
-  clearCache() {
-    this.cache.clear();
+  getDataStatus(signal?: AbortSignal): Promise<ServerAPIStatus> {
+    return this.readStatus(SERVER_API.dataStatus, signal);
+  }
+
+  /** @deprecated Retained only to reject legacy calls without losing data silently. */
+  async queryNeon<T>(_query: TemplateStringsArray, ..._params: any[]): Promise<T> {
+    throw new ClientDataError('CLIENT_DATABASE_DISABLED');
+  }
+
+  /** @deprecated Arbitrary SQL is not part of the serverAPI contract. */
+  async query<T>(_queryString: string, _params: any[] = []): Promise<T> {
+    throw new ClientDataError('CLIENT_DATABASE_DISABLED');
+  }
+
+  /** @deprecated Arbitrary table queries are not part of the serverAPI contract. */
+  async querySupabase(_table: string, _select = '*'): Promise<never> {
+    throw new ClientDataError('CLIENT_DATABASE_DISABLED');
+  }
+
+  clearCache(): void {
+    // Compatibility only: status responses and legacy query results are never cached.
   }
 }
 

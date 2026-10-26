@@ -45,6 +45,7 @@ const galaxyFragment = /* glsl */ `
   ${volumeCommon}
   uniform float uArms;
   uniform float uIrregular;
+  uniform float uElliptical;
   void main() {
     vec3 direction = normalize(vLocal - uCamera);
     vec2 bounds = intersectBox(uCamera, direction);
@@ -56,6 +57,13 @@ const galaxyFragment = /* glsl */ `
     for (int i = 0; i < 64; i++) {
       if (float(i) >= uSteps || transmission < 0.015) break;
       vec3 p = uCamera + direction * (start + (float(i) + 0.5) * stepSize);
+      if (uElliptical > 0.5) {
+        float ellipsoid = length(p * vec3(1.0, 1.15, 1.2));
+        float density = exp(-ellipsoid * 5.0) * (1.0 - smoothstep(0.7, 1.0, ellipsoid));
+        light += transmission * density * vec3(1.0, 0.77, 0.5) * stepSize * 3.0;
+        transmission *= exp(-density * stepSize * 3.0);
+        continue;
+      }
       float r = length(p.xz);
       float edge = 1.0 - smoothstep(0.76, 1.0, r);
       float turbulent = fbm(vec3(p.xz * 14.0, p.y * 3.0));
@@ -273,14 +281,16 @@ export function createGalaxyVisual(
   noise: THREE.Data3DTexture,
   mobile: boolean,
   irregular = false,
+  elliptical = false,
 ): SpaceVisual {
   const group = new THREE.Group();
   const arms = radius > 100 ? 4 : 2;
   const haze = volume(galaxyFragment, noise, mobile, {
     uArms: { value: arms },
     uIrregular: { value: irregular ? 1 : 0 },
+    uElliptical: { value: elliptical ? 1 : 0 },
   });
-  haze.mesh.scale.set(radius, radius * 0.22, radius);
+  haze.mesh.scale.set(radius, radius * (elliptical ? 0.75 : 0.22), radius);
   haze.mesh.renderOrder = 2;
   group.add(haze.mesh);
 
@@ -313,7 +323,21 @@ export function createGalaxyVisual(
       ],
       i * 3,
     );
+    if (elliptical) {
+      const elevation = Math.acos(2 * random() - 1);
+      const azimuth = random() * Math.PI * 2;
+      const sphereRadius = Math.pow(random(), 1.8) * radius;
+      positions.set(
+        [
+          Math.sin(elevation) * Math.cos(azimuth) * sphereRadius,
+          Math.cos(elevation) * sphereRadius * 0.7,
+          Math.sin(elevation) * Math.sin(azimuth) * sphereRadius * 0.85,
+        ],
+        i * 3,
+      );
+    }
     color.copy(warm).lerp(blue, Math.min(1, r * 2.0));
+    if (elliptical) color.copy(warm).lerp(blue, random() * 0.25);
     colors.set([color.r, color.g, color.b], i * 3);
     sizes[i] = radius * (0.0012 + Math.pow(random(), 8) * 0.009);
     brightness[i] = 0.3 + Math.pow(random(), 3) * 1.5;

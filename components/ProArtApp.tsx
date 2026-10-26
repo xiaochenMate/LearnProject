@@ -1,514 +1,967 @@
+import React, { useEffect, useRef, useState } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Brush,
+  Check,
+  Circle,
+  Download,
+  Eraser,
+  Eye,
+  EyeOff,
+  FileDown,
+  Highlighter,
+  Layers,
+  Loader2,
+  Minus,
+  Paintbrush,
+  Pipette,
+  Plus,
+  Redo2,
+  Save,
+  Square,
+  Trash2,
+  Undo2,
+  Upload,
+} from "lucide-react";
+import { Workbench, IconButton } from "./ModuleWorkbench";
+import {
+  readArtwork,
+  readArtworkProject,
+  writeArtworkProject,
+} from "../lib/artworkStorage";
+import {
+  ART_WIDTH as WIDTH,
+  ART_HEIGHT as HEIGHT,
+  canvasBlob,
+  canvasPoint,
+  imageFromBlob,
+  parseArtProject,
+  serializeArtProject,
+  shapeBounds,
+  type ArtLayerMeta,
+  type ArtPoint,
+  type ArtProject,
+  type ArtTool,
+} from "../lib/labsArt";
+import { downloadLabFile } from "../lib/labsCommon";
+import type { ExperienceEvidence } from "../lib/explorerStore";
+import "./labs.css";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  X, Pencil, Eraser, PaintBucket, 
-  Undo2, Redo2, Plus, Trash2, Save, 
-  Layers, Eye, EyeOff, Palette, Hand, 
-  Sliders, ChevronRight, ChevronLeft,
-  Maximize2, Info, PanelRight
-} from 'lucide-react';
-
-type Tool = 'pencil' | 'eraser' | 'bucket' | 'hand';
-
-interface Layer {
-  id: string;
-  name: string;
-  visible: boolean;
+interface Layer extends ArtLayerMeta {
   canvas: HTMLCanvasElement;
 }
+interface Document {
+  background: string | null;
+  active: string;
+  layers: Layer[];
+}
+const COLORS = [
+  "#20252c",
+  "#ffffff",
+  "#a0e7cc",
+  "#78c6e8",
+  "#f3a698",
+  "#f1d275",
+  "#dc8fae",
+  "#8ca1e5",
+];
+const TOOLS = [
+  { id: "pen", name: "圆头画笔", Icon: Brush },
+  { id: "marker", name: "荧光笔", Icon: Highlighter },
+  { id: "eraser", name: "透明橡皮", Icon: Eraser },
+  { id: "line", name: "直线", Icon: Minus },
+  { id: "rectangle", name: "矩形", Icon: Square },
+  { id: "ellipse", name: "椭圆", Icon: Circle },
+  { id: "picker", name: "吸取画布颜色", Icon: Pipette },
+] as const;
+const newCanvas = () => {
+  const c = document.createElement("canvas");
+  c.width = WIDTH;
+  c.height = HEIGHT;
+  return c;
+};
+const newLayer = (name: string): Layer => ({
+  id: crypto.randomUUID(),
+  name,
+  visible: true,
+  opacity: 1,
+  canvas: newCanvas(),
+});
 
-const ProArtApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  // --- 状态管理 ---
-  const [layers, setLayers] = useState<Layer[]>([]);
-  const [activeLayerId, setActiveLayerId] = useState<string>('');
-  const [tool, setTool] = useState<Tool>('pencil');
-  const [brushSize, setBrushSize] = useState(5);
-  const [opacity, setOpacity] = useState(1);
-  const [color, setColor] = useState('#10b981');
-  const [zoom, setZoom] = useState(1);
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [isPanning, setIsPanning] = useState(false);
-  const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
-  const [mouseCanvasPos, setMouseCanvasPos] = useState({ x: 0, y: 0 });
-  const [showRightPanel, setShowRightPanel] = useState(true); 
-  
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const historyRef = useRef<string[][]>([]); 
-  const historyIndexRef = useRef(-1);
-
-  // --- 初始化 ---
+export default function ProArtApp({
+  onDiscover,
+}: {
+  onClose: () => void;
+  onDiscover?: (evidence: ExperienceEvidence) => void;
+}) {
+  const canvas = useRef<HTMLCanvasElement>(null),
+    input = useRef<HTMLInputElement>(null);
+  const doc = useRef<Document | null>(null),
+    history = useRef<ArtProject[]>([]),
+    index = useRef(-1);
+  const locked = useRef(false),
+    dirty = useRef(false),
+    mounted = useRef(true);
+  const stroke = useRef<{
+    id: number;
+    start: ArtPoint;
+    last: ArtPoint;
+    before: ImageData;
+    pressure: number;
+  } | null>(null);
+  const touches = useRef(
+      new Map<number, { x: number; y: number; time: number; moved: boolean }>(),
+    ),
+    gesture = useRef(false),
+    gestureAt = useRef(0),
+    gestureMoved = useRef(false);
+  const preview = useRef<HTMLCanvasElement | null>(null);
+  const [tool, setTool] = useState<ArtTool>("pen"),
+    [color, setColor] = useState("#20252c"),
+    [size, setSize] = useState(7),
+    [opacity, setOpacity] = useState(100),
+    [fill, setFill] = useState(false);
+  const [ready, setReady] = useState(false),
+    [busy, setBusy] = useState(false),
+    [status, setStatus] = useState("正在读取画作");
+  const [layers, setLayers] = useState<ArtLayerMeta[]>([]),
+    [active, setActive] = useState(""),
+    [background, setBackground] = useState<string | null>("#ffffff");
+  const [position, setPosition] = useState({ current: -1, total: 0 }),
+    [format, setFormat] = useState("png");
+  const sync = () => {
+    const d = doc.current!;
+    setLayers(d.layers.map(({ canvas: _canvas, ...meta }) => meta));
+    setActive(d.active);
+    setBackground(d.background);
+  };
+  const paint = (target = canvas.current, withPreview = true, jpg = false) => {
+    const d = doc.current,
+      ctx = target?.getContext("2d");
+    if (!d || !ctx) return;
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    if (d.background || jpg) {
+      ctx.fillStyle = d.background || "#ffffff";
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    }
+    for (const layer of d.layers)
+      if (layer.visible) {
+        ctx.globalAlpha = layer.opacity;
+        ctx.drawImage(layer.canvas, 0, 0);
+        if (withPreview && layer.id === d.active && preview.current)
+          ctx.drawImage(preview.current, 0, 0);
+      }
+    ctx.globalAlpha = 1;
+  };
+  const capture = async (): Promise<ArtProject> => {
+    const d = doc.current!;
+    return {
+      version: 1,
+      width: WIDTH,
+      height: HEIGHT,
+      background: d.background,
+      active: d.active,
+      layers: await Promise.all(
+        d.layers.map(async ({ canvas: c, ...meta }) => ({
+          ...meta,
+          image: await canvasBlob(c),
+        })),
+      ),
+    };
+  };
+  const applyProject = async (project: ArtProject) => {
+    const restored = await Promise.all(
+      project.layers.map(async ({ image, ...meta }) => {
+        const imageElement = await imageFromBlob(image);
+        if (
+          imageElement.naturalWidth !== WIDTH ||
+          imageElement.naturalHeight !== HEIGHT
+        )
+          throw new Error("工程画布尺寸不匹配");
+        const c = newCanvas();
+        c.getContext("2d")!.drawImage(imageElement, 0, 0);
+        return { ...meta, canvas: c };
+      }),
+    );
+    doc.current = {
+      background: project.background,
+      active: project.active,
+      layers: restored,
+    };
+    preview.current = null;
+    sync();
+    paint();
+  };
   useEffect(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1200;
-    canvas.height = 800;
-    const initialLayer: Layer = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: '图层 1',
-      visible: true,
-      canvas: canvas,
-    };
-    setLayers([initialLayer]);
-    setActiveLayerId(initialLayer.id);
-    saveHistory([initialLayer]);
-  }, []);
-
-  const saveHistory = (currentLayers: Layer[]) => {
-    const snapshots = currentLayers.map(l => l.canvas.toDataURL());
-    const newHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
-    newHistory.push(snapshots);
-    if (newHistory.length > 30) newHistory.shift();
-    historyRef.current = newHistory;
-    historyIndexRef.current = newHistory.length - 1;
-  };
-
-  const undo = () => {
-    if (historyIndexRef.current <= 0) return;
-    historyIndexRef.current--;
-    applyHistoryState(historyRef.current[historyIndexRef.current]);
-  };
-
-  const redo = () => {
-    if (historyIndexRef.current >= historyRef.current.length - 1) return;
-    historyIndexRef.current++;
-    applyHistoryState(historyRef.current[historyIndexRef.current]);
-  };
-
-  const applyHistoryState = (snapshots: string[]) => {
-    layers.forEach((layer, i) => {
-      const img = new Image();
-      img.onload = () => {
-        const ctx = layer.canvas.getContext('2d');
-        if (ctx) {
-          ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
-          ctx.drawImage(img, 0, 0);
+    let disposed = false;
+    mounted.current = true;
+    const initialize = async () => {
+      let project: ArtProject | null = null,
+        legacy: Blob | null = null,
+        warning = "";
+      try {
+        project = await readArtworkProject();
+      } catch {
+        warning = "分层存储读取失败；原数据未覆盖。";
+      }
+      if (!project)
+        try {
+          legacy = await readArtwork();
+        } catch {
+          warning = "本机保存不可用，请导出作品。";
         }
-      };
-      img.src = snapshots[i];
-    });
-  };
-
-  const addLayer = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1200;
-    canvas.height = 800;
-    const newLayer: Layer = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: `图层 ${layers.length + 1}`,
-      visible: true,
-      canvas,
+      if (disposed) return;
+      if (project) {
+        await applyProject(project);
+        if (disposed) return;
+        setStatus("已恢复分层画作");
+      } else {
+        const layer = newLayer(legacy ? "原有画作" : "图层 1");
+        if (legacy) {
+          const image = await imageFromBlob(legacy);
+          if (disposed) return;
+          layer.canvas.getContext("2d")!.drawImage(image, 0, 0, WIDTH, HEIGHT);
+        }
+        doc.current = {
+          background: "#ffffff",
+          active: layer.id,
+          layers: [layer],
+        };
+        sync();
+        paint();
+        setStatus(warning || (legacy ? "已恢复原有 PNG 画作" : "新画布"));
+      }
+      const initial = await capture();
+      if (disposed) return;
+      history.current = [initial];
+      index.current = 0;
+      setPosition({ current: 0, total: 1 });
+      setReady(true);
     };
-    const nextLayers = [newLayer, ...layers];
-    setLayers(nextLayers);
-    setActiveLayerId(newLayer.id);
-    saveHistory(nextLayers);
+    void initialize().catch(() => {
+      if (!disposed)
+        setStatus("画作读取失败，原数据未覆盖；请保留浏览器数据。");
+    });
+    return () => {
+      disposed = true;
+      mounted.current = false;
+    };
+  }, []);
+  const commit = async (addHistory = true) => {
+    if (locked.current || !doc.current || stroke.current) return;
+    locked.current = true;
+    setBusy(true);
+    setStatus("正在保存分层画作");
+    try {
+      const project = await capture(),
+        flat = newCanvas();
+      paint(flat, false);
+      const flattened = await canvasBlob(flat);
+      if (addHistory) {
+        history.current = [
+          ...history.current.slice(0, index.current + 1),
+          project,
+        ].slice(-16);
+        index.current = history.current.length - 1;
+        setPosition({ current: index.current, total: history.current.length });
+      }
+      dirty.current = false;
+      await writeArtworkProject(project, flattened);
+      if (mounted.current) setStatus("分层画作已保存在本机");
+    } catch {
+      if (mounted.current)
+        setStatus("本机保存失败，画布仍在；请导出 PNG 或分层工程。");
+    } finally {
+      locked.current = false;
+      if (mounted.current) setBusy(false);
+    }
   };
-
-  const removeLayer = (id: string) => {
-    if (layers.length <= 1) return;
-    const nextLayers = layers.filter(l => l.id !== id);
-    setLayers(nextLayers);
-    if (activeLayerId === id) setActiveLayerId(nextLayers[0].id);
-    saveHistory(nextLayers);
+  const restore = async (next: number) => {
+    if (locked.current || stroke.current || !history.current[next]) return;
+    locked.current = true;
+    setBusy(true);
+    try {
+      await applyProject(history.current[next]);
+      index.current = next;
+      setPosition({ current: next, total: history.current.length });
+      dirty.current = true;
+    } catch {
+      setStatus("撤销恢复失败，当前画布保留。");
+    } finally {
+      locked.current = false;
+      setBusy(false);
+    }
+    if (dirty.current) await commit(false);
   };
-
-  const toggleLayerVisibility = (id: string) => {
-    setLayers(layers.map(l => l.id === id ? { ...l, visible: !l.visible } : l));
+  const mutate = (change: (d: Document) => void) => {
+    if (!ready || locked.current || stroke.current || !doc.current) return;
+    change(doc.current);
+    dirty.current = true;
+    sync();
+    paint();
+    void commit();
   };
-
-  const getCanvasPos = (e: React.MouseEvent | React.TouchEvent) => {
-    const rect = viewportRef.current?.getBoundingClientRect();
-    if (!rect) return { x: 0, y: 0 };
-    
-    let clientX, clientY;
-    if ('touches' in e) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
+  const selected = () =>
+    doc.current!.layers.find((l) => l.id === doc.current!.active)!;
+  const segment = (a: ArtPoint, b: ArtPoint, pressure: number, dot = false) => {
+    const ctx = selected().canvas.getContext("2d")!;
+    ctx.save();
+    ctx.globalCompositeOperation =
+      tool === "eraser" ? "destination-out" : "source-over";
+    ctx.globalAlpha =
+      tool === "eraser" ? 1 : (opacity / 100) * (tool === "marker" ? 0.22 : 1);
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = size * (tool === "marker" ? 2.5 : 1) * pressure;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    if (dot) {
+      ctx.arc(b.x, b.y, ctx.lineWidth / 2, 0, Math.PI * 2);
+      ctx.fill();
     } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
     }
-
-    const x = (clientX - rect.left - (rect.width / 2) - panOffset.x + (1200 * zoom / 2)) / zoom;
-    const y = (clientY - rect.top - (rect.height / 2) - panOffset.y + (800 * zoom / 2)) / zoom;
-    
-    return { x, y };
+    ctx.restore();
   };
-
-  // --- 填充工具核心算法 ---
-  const floodFill = (startX: number, startY: number, fillColor: string) => {
-    const activeLayer = layers.find(l => l.id === activeLayerId);
-    if (!activeLayer) return;
-    const canvas = activeLayer.canvas;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const x = Math.round(startX);
-    const y = Math.round(startY);
-    if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return;
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const pixels = imageData.data;
-
-    const getPixelPos = (px: number, py: number) => (py * canvas.width + px) * 4;
-
-    const startPos = getPixelPos(x, y);
-    const startR = pixels[startPos];
-    const startG = pixels[startPos + 1];
-    const startB = pixels[startPos + 2];
-    const startA = pixels[startPos + 3];
-
-    // 解析填充色 (Hex to RGB)
-    const r = parseInt(fillColor.slice(1, 3), 16);
-    const g = parseInt(fillColor.slice(3, 5), 16);
-    const b = parseInt(fillColor.slice(5, 7), 16);
-
-    // 如果颜色相同则直接返回，防止死循环
-    if (startR === r && startG === g && startB === b && startA === 255) return;
-
-    const stack: [number, number][] = [[x, y]];
-    while (stack.length > 0) {
-      const [curX, curY] = stack.pop()!;
-      const pos = getPixelPos(curX, curY);
-
-      if (
-        pixels[pos] === startR &&
-        pixels[pos + 1] === startG &&
-        pixels[pos + 2] === startB &&
-        pixels[pos + 3] === startA
-      ) {
-        pixels[pos] = r;
-        pixels[pos + 1] = g;
-        pixels[pos + 2] = b;
-        pixels[pos + 3] = 255;
-
-        if (curX > 0) stack.push([curX - 1, curY]);
-        if (curX < canvas.width - 1) stack.push([curX + 1, curY]);
-        if (curY > 0) stack.push([curX, curY - 1]);
-        if (curY < canvas.height - 1) stack.push([curX, curY + 1]);
+  const drawShape = (
+    ctx: CanvasRenderingContext2D,
+    a: ArtPoint,
+    b: ArtPoint,
+    constrained: boolean,
+  ) => {
+    const bounds = shapeBounds(a, b, constrained);
+    ctx.save();
+    ctx.globalAlpha = opacity / 100;
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = size;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    if (tool === "line") {
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+    } else if (tool === "rectangle")
+      ctx.rect(bounds.x, bounds.y, bounds.width, bounds.height);
+    else
+      ctx.ellipse(
+        bounds.x + bounds.width / 2,
+        bounds.y + bounds.height / 2,
+        Math.max(0.01, bounds.width / 2),
+        Math.max(0.01, bounds.height / 2),
+        0,
+        0,
+        Math.PI * 2,
+      );
+    if (fill && tool !== "line") ctx.fill();
+    else ctx.stroke();
+    ctx.restore();
+  };
+  const point = (e: React.PointerEvent<HTMLCanvasElement>) =>
+    canvasPoint(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
+  const pressure = (e: React.PointerEvent<HTMLCanvasElement>) =>
+    e.pointerType === "pen" ? Math.max(0.12, e.pressure) : 1;
+  const start = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (
+      !ready ||
+      locked.current ||
+      (e.pointerType === "mouse" && e.button !== 0)
+    )
+      return;
+    e.preventDefault();
+    if (e.pointerType === "touch") {
+      touches.current.set(e.pointerId, {
+        x: e.clientX,
+        y: e.clientY,
+        time: performance.now(),
+        moved: false,
+      });
+      if (touches.current.size === 2) {
+        const values = [...touches.current.values()];
+        if (Math.abs(values[0].time - values[1].time) < 220) {
+          if (stroke.current) {
+            selected()
+              .canvas.getContext("2d")!
+              .putImageData(stroke.current.before, 0, 0);
+            stroke.current = null;
+          }
+          preview.current = null;
+          gesture.current = true;
+          gestureAt.current = performance.now();
+          gestureMoved.current = false;
+          paint();
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }
+        return;
       }
+      if (touches.current.size > 2 || gesture.current) return;
     }
-
-    ctx.putImageData(imageData, 0, 0);
-    saveHistory(layers);
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    const { x, y } = getCanvasPos(e);
-    if (tool === 'hand' || e.button === 1 || (e.button === 0 && e.altKey)) {
-      setIsPanning(true);
-      setLastPos({ x: e.clientX, y: e.clientY });
+    if (stroke.current) return;
+    const layer = selected();
+    if (!layer.visible || layer.opacity === 0) {
+      setStatus("当前图层不可见，请先显示图层。");
       return;
     }
-
-    if (tool === 'bucket') {
-      floodFill(x, y, color);
-      return;
-    }
-
-    setIsDrawing(true);
-    setLastPos({ x, y });
-    const activeLayer = layers.find(l => l.id === activeLayerId);
-    if (!activeLayer) return;
-    const ctx = activeLayer.canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    ctx.lineWidth = brushSize; ctx.globalAlpha = opacity;
-    ctx.strokeStyle = color; ctx.fillStyle = color;
-    
-    if (tool === 'pencil') { 
-      ctx.beginPath(); ctx.moveTo(x, y); 
-    } else if (tool === 'eraser') { 
-      ctx.globalCompositeOperation = 'destination-out'; ctx.beginPath(); ctx.moveTo(x, y); 
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const { x, y } = getCanvasPos(e);
-    setMouseCanvasPos({ x, y });
-    if (isPanning) {
-      const dx = e.clientX - lastPos.x;
-      const dy = e.clientY - lastPos.y;
-      setPanOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
-      setLastPos({ x: e.clientX, y: e.clientY });
-      return;
-    }
-    if (!isDrawing) return;
-    const activeLayer = layers.find(l => l.id === activeLayerId);
-    if (!activeLayer) return;
-    const ctx = activeLayer.canvas.getContext('2d');
-    if (!ctx) return;
-    if (tool === 'pencil' || tool === 'eraser') { 
-      ctx.lineTo(x, y); ctx.stroke(); 
-    }
-  };
-
-  const handleMouseUp = () => {
-    if (isDrawing) {
-      const activeLayer = layers.find(l => l.id === activeLayerId);
-      if (activeLayer) {
-        const ctx = activeLayer.canvas.getContext('2d');
-        if (ctx) ctx.globalCompositeOperation = 'source-over';
+    const p = point(e);
+    if (tool === "picker") {
+      const pixel = canvas
+        .current!.getContext("2d")!
+        .getImageData(
+          Math.min(WIDTH - 1, Math.floor(p.x)),
+          Math.min(HEIGHT - 1, Math.floor(p.y)),
+          1,
+          1,
+        ).data;
+      if (!pixel[3]) {
+        setStatus("此处为透明像素。");
+        return;
       }
-      setIsDrawing(false);
-      saveHistory(layers);
+      setColor(
+        "#" +
+          [...pixel]
+            .slice(0, 3)
+            .map((n) => n.toString(16).padStart(2, "0"))
+            .join(""),
+      );
+      setTool("pen");
+      return;
     }
-    setIsPanning(false);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    stroke.current = {
+      id: e.pointerId,
+      start: p,
+      last: p,
+      pressure: pressure(e),
+      before: layer.canvas.getContext("2d")!.getImageData(0, 0, WIDTH, HEIGHT),
+    };
+    if (["pen", "marker", "eraser"].includes(tool)) {
+      segment(p, p, pressure(e), true);
+      paint();
+    }
   };
-
+  const move = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const touch = touches.current.get(e.pointerId);
+    if (touch && Math.hypot(e.clientX - touch.x, e.clientY - touch.y) > 20) {
+      touch.moved = true;
+      gestureMoved.current = true;
+    }
+    if (gesture.current || !stroke.current || stroke.current.id !== e.pointerId)
+      return;
+    const p = point(e),
+      s = stroke.current;
+    if (["pen", "marker", "eraser"].includes(tool))
+      segment(s.last, p, pressure(e));
+    else {
+      if (!preview.current) preview.current = newCanvas();
+      const ctx = preview.current.getContext("2d")!;
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+      drawShape(ctx, s.start, p, e.shiftKey);
+    }
+    s.last = p;
+    paint();
+  };
+  const finish = (
+    e: React.PointerEvent<HTMLCanvasElement>,
+    cancelled = false,
+  ) => {
+    touches.current.delete(e.pointerId);
+    if (gesture.current) {
+      if (cancelled) gestureMoved.current = true;
+      if (!touches.current.size) {
+        gesture.current = false;
+        if (
+          !cancelled &&
+          !gestureMoved.current &&
+          performance.now() - gestureAt.current < 500
+        )
+          void restore(index.current - 1);
+      }
+      return;
+    }
+    const s = stroke.current;
+    if (!s || s.id !== e.pointerId) return;
+    if (cancelled)
+      selected().canvas.getContext("2d")!.putImageData(s.before, 0, 0);
+    else if (!["pen", "marker", "eraser"].includes(tool))
+      drawShape(
+        selected().canvas.getContext("2d")!,
+        s.start,
+        point(e),
+        e.shiftKey,
+      );
+    stroke.current = null;
+    preview.current = null;
+    paint();
+    if (e.currentTarget.hasPointerCapture(e.pointerId))
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    if (!cancelled) {
+      dirty.current = true;
+      void commit();
+    }
+  };
+  const exportImage = async () => {
+    if (!ready || locked.current || stroke.current) return;
+    try {
+      const output = newCanvas();
+      paint(output, false, format === "jpeg");
+      const blob = await canvasBlob(
+        output,
+        format === "jpeg" ? "image/jpeg" : "image/png",
+      );
+      downloadLabFile(
+        `exbeam-art-${Date.now()}.${format === "jpeg" ? "jpg" : "png"}`,
+        blob,
+      );
+      setStatus(`${format.toUpperCase()} 作品已生成`);
+      onDiscover?.({
+        key: `artwork-${Date.now()}`,
+        kind: "artwork",
+        title: "完成了一幅画作",
+        detail: `已生成 ${WIDTH} × ${HEIGHT} 像素 ${format.toUpperCase()}，包含 ${doc.current!.layers.filter((l) => l.visible).length} 个可见图层。`,
+      });
+    } catch {
+      setStatus("导出失败，请重试。");
+    }
+  };
+  const exportProject = async () => {
+    if (!ready || locked.current || stroke.current) return;
+    locked.current = true;
+    setBusy(true);
+    try {
+      downloadLabFile(
+        "exbeam-art-project.json",
+        await serializeArtProject(await capture()),
+        "application/json",
+      );
+      setStatus("分层工程已生成，可再次导入恢复。");
+    } catch {
+      setStatus("工程导出失败。");
+    } finally {
+      locked.current = false;
+      setBusy(false);
+    }
+  };
+  const importFile = async (file: File) => {
+    if (!ready || locked.current || stroke.current) return;
+    if (file.size > 35_000_000) {
+      setStatus("文件超过 35 MB，未导入。");
+      return;
+    }
+    locked.current = true;
+    setBusy(true);
+    try {
+      if (file.name.toLowerCase().endsWith(".json"))
+        await applyProject(await parseArtProject(await file.text()));
+      else {
+        if (!["image/png", "image/jpeg", "image/webp"].includes(file.type))
+          throw new Error("请选择 PNG、JPG、WebP 或工程 JSON");
+        if (doc.current!.layers.length >= 4)
+          throw new Error("已有四个图层，请先移除一个图层");
+        const image = await imageFromBlob(file);
+        if (image.naturalWidth * image.naturalHeight > 40_000_000)
+          throw new Error("图像尺寸过大");
+        const l = newLayer("导入图像"),
+          scale = Math.min(
+            WIDTH / image.naturalWidth,
+            HEIGHT / image.naturalHeight,
+          );
+        const w = image.naturalWidth * scale,
+          h = image.naturalHeight * scale;
+        l.canvas
+          .getContext("2d")!
+          .drawImage(image, (WIDTH - w) / 2, (HEIGHT - h) / 2, w, h);
+        doc.current!.layers.push(l);
+        doc.current!.active = l.id;
+        sync();
+        paint();
+      }
+      dirty.current = true;
+    } catch (error) {
+      setStatus(
+        error instanceof Error ? error.message : "导入失败，当前画布保留。",
+      );
+    } finally {
+      locked.current = false;
+      setBusy(false);
+    }
+    if (dirty.current) await commit();
+  };
+  const disabled = !ready || busy,
+    selectedMeta = layers.find((l) => l.id === active);
   return (
-    <div className="w-full h-full relative  flex flex-col font-sans  overflow-hidden select-none      ">
-      
-      {/* 顶部菜单栏 */}
-      
-
-      <div className="flex-1 flex overflow-hidden relative">
-        
-        {/* 左侧工具栏 */}
-        <aside className="w-16 bg-slate-900/90 backdrop-blur-xl border-r border-white/5 flex flex-col items-center py-6 gap-5 shadow-2xl relative z-20">
-          <ToolButton icon={<Pencil size={22} />} active={tool === 'pencil'} onClick={() => setTool('pencil')} title="画笔" />
-          <ToolButton icon={<Eraser size={22} />} active={tool === 'eraser'} onClick={() => setTool('eraser')} title="橡皮" />
-          <ToolButton icon={<PaintBucket size={22} />} active={tool === 'bucket'} onClick={() => setTool('bucket')} title="油漆桶 (填充)" />
-          <ToolButton icon={<Hand size={22} />} active={tool === 'hand'} onClick={() => setTool('hand')} title="抓手" />
-          
-          <div className="w-10 h-px bg-white/5 my-2" />
-          
-          <div className="mt-auto flex flex-col items-center gap-4 pb-4">
-             <div className="w-10 h-10 rounded-xl border-2 border-white/20 p-0.5 shadow-lg overflow-hidden group cursor-pointer relative">
-                <input 
-                  type="color" 
-                  value={color} 
-                  onChange={(e) => setColor(e.target.value)} 
-                  className="absolute inset-0 w-full h-full cursor-pointer opacity-0 z-10" 
-                />
-                <div className="w-full h-full rounded-lg" style={{ backgroundColor: color }} />
-             </div>
-          </div>
-        </aside>
-
-        {/* 画布区域 */}
-        <main 
-          ref={viewportRef}
-          className={`flex-1 bg-[#080c14] relative overflow-hidden outline-none ${tool === 'bucket' ? 'cursor-cell' : 'cursor-crosshair'}`}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onWheel={(e) => {
-            if (e.ctrlKey) {
-              const delta = e.deltaY > 0 ? 0.9 : 1.1;
-              setZoom(prev => Math.min(10, Math.max(0.1, prev * delta)));
-              e.preventDefault();
-            } else {
-              setPanOffset(prev => ({ x: prev.x - e.deltaX, y: prev.y - e.deltaY }));
-            }
-          }}
-        >
-          {/* 画布容器 */}
-          <div 
-            className="absolute"
-            style={{ 
-              width: 1200, height: 800,
-              left: '50%', top: '50%',
-              transform: `translate(-50%, -50%) translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
-              boxShadow: '0 40px 100px -20px rgba(0,0,0,0.8)'
-            }}
+    <Workbench
+      title="自由画室"
+      eyebrow="STUDIO / 1000 × 700"
+      className="labs-workbench labs-art"
+      toolbar={
+        <>
+          <IconButton
+            label="撤销"
+            disabled={disabled || position.current <= 0}
+            onClick={() => void restore(index.current - 1)}
           >
-            {/* 棋盘格背景 */}
-            <div className="absolute inset-0 bg-[#e5e5e5]" style={{ 
-              backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)',
-              backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px'
-            }} />
-            
-            {/* 图层渲染 */}
-            {[...layers].reverse().map((layer) => (
-              <LayerCanvas key={layer.id} layer={layer} />
+            <Undo2 size={17} />
+          </IconButton>
+          <IconButton
+            label="重做"
+            disabled={disabled || position.current >= position.total - 1}
+            onClick={() => void restore(index.current + 1)}
+          >
+            <Redo2 size={17} />
+          </IconButton>
+          <IconButton
+            label="保存分层画作"
+            disabled={disabled}
+            onClick={() => void commit(false)}
+          >
+            <Save size={17} />
+          </IconButton>
+          <IconButton
+            label="导入图像或分层工程"
+            disabled={disabled}
+            onClick={() => input.current?.click()}
+          >
+            <Upload size={17} />
+          </IconButton>
+          <IconButton
+            label="导出分层工程"
+            disabled={disabled}
+            onClick={() => void exportProject()}
+          >
+            <FileDown size={17} />
+          </IconButton>
+          <label className="wb-field labs-export-format">
+            <select
+              aria-label="作品导出格式"
+              value={format}
+              onChange={(e) => setFormat(e.target.value)}
+            >
+              <option value="png">PNG</option>
+              <option value="jpeg">JPG</option>
+            </select>
+          </label>
+          <IconButton
+            label="导出作品"
+            disabled={disabled}
+            onClick={() => void exportImage()}
+          >
+            <Download size={17} />
+          </IconButton>
+        </>
+      }
+      status={
+        <>
+          <span>
+            {busy && <Loader2 className="labs-spin" size={13} />}
+            {status}
+          </span>
+          <span>1000 × 700 px · {layers.length} 图层</span>
+          <span>撤销 {Math.max(0, position.current)} / 15</span>
+        </>
+      }
+    >
+      <input
+        ref={input}
+        hidden
+        type="file"
+        accept="image/png,image/jpeg,image/webp,.json"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void importFile(file);
+          e.target.value = "";
+        }}
+      />
+      <div className="labs-art-layout">
+        <main className="labs-art-main">
+          <div className="labs-art-tools" role="group" aria-label="绘画工具">
+            {TOOLS.map((t) => (
+              <IconButton
+                key={t.id}
+                label={t.name}
+                aria-pressed={tool === t.id}
+                disabled={disabled}
+                onClick={() => setTool(t.id)}
+              >
+                <t.Icon size={18} />
+              </IconButton>
             ))}
+            <span className="labs-tool-divider" />
+            <label className="labs-checkbox">
+              <input
+                type="checkbox"
+                checked={fill}
+                onChange={(e) => setFill(e.target.checked)}
+              />
+              实心图形
+            </label>
           </div>
-
-          {/* 实时状态指示器 */}
-          <div className="absolute bottom-8 left-8 p-4 bg-slate-900/70 backdrop-blur-md rounded-xl border border-white/5 pointer-events-none flex flex-col gap-1 shadow-2xl">
-             <div className="flex items-center gap-2 text-[9px] font-black text-slate-500 uppercase tracking-widest italic opacity-60 mb-1">
-               <Info size={10} /> Telemetry_Output
-             </div>
-             <div className="text-[11px] font-mono text-white/80 whitespace-pre leading-relaxed">
-                DIM: <span className="text-emerald-400">1200x800</span><br/>
-                POS: <span className="text-emerald-400">{mouseCanvasPos.x.toFixed(0)}, {mouseCanvasPos.y.toFixed(0)}</span>
-             </div>
+          <div className="labs-art-board-area">
+            <div className="labs-art-board">
+              <canvas
+                ref={canvas}
+                width={WIDTH}
+                height={HEIGHT}
+                aria-label="自由画室画布"
+                onPointerDown={start}
+                onPointerMove={move}
+                onPointerUp={(e) => finish(e)}
+                onPointerCancel={(e) => finish(e, true)}
+                onLostPointerCapture={(e) => {
+                  if (stroke.current?.id === e.pointerId) finish(e, true);
+                }}
+              />
+              {!ready && (
+                <div className="labs-art-loading">
+                  <Loader2 size={22} className="labs-spin" />
+                  <span>{status}</span>
+                </div>
+              )}
+            </div>
           </div>
         </main>
-
-        {/* 右侧属性面板 */}
-        <aside 
-          className={`bg-slate-900 border-l border-white/5 flex flex-col overflow-hidden z-20 shadow-2xl transition-all duration-500 ease-in-out ${showRightPanel ? 'w-72 opacity-100' : 'w-0 opacity-0'}`}
-        >
-          <div className="p-6 border-b border-white/5 flex items-center justify-between">
-             <div className="flex items-center gap-3">
-                <Sliders size={16} className="text-emerald-500" />
-                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">工具属性</h3>
-             </div>
-             <button onClick={() => setShowRightPanel(false)} className="text-slate-600 hover:text-white transition-colors">
-                <ChevronRight size={18} />
-             </button>
-          </div>
-          
-          <div className="p-6 space-y-8">
-            <div className="space-y-3">
-               <div className="flex justify-between items-center text-[10px] font-bold text-slate-500">
-                  <span className="uppercase tracking-widest">画笔大小</span>
-                  <span className="text-emerald-400 font-mono">{brushSize}px</span>
-               </div>
-               <input 
-                type="range" min="1" max="100" value={brushSize} 
-                onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                className="custom-range" 
-               />
-            </div>
-
-            <div className="space-y-3">
-               <div className="flex justify-between items-center text-[10px] font-bold text-slate-500">
-                  <span className="uppercase tracking-widest">不透明度</span>
-                  <span className="text-emerald-400 font-mono">{(opacity * 100).toFixed(0)}%</span>
-               </div>
-               <input 
-                type="range" min="0.01" max="1" step="0.01" value={opacity} 
-                onChange={(e) => setOpacity(parseFloat(e.target.value))}
-                className="custom-range" 
-               />
-            </div>
-          </div>
-
-          {/* 图层管理 */}
-          <div className="flex-1 flex flex-col min-h-0">
-             <div className="p-6 border-y border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                   <Layers size={16} className="text-emerald-500" />
-                   <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-white">图层管理</h3>
-                </div>
-                <button onClick={addLayer} className="p-1.5 bg-slate-800 hover:bg-emerald-500 text-slate-400 hover:text-black rounded-lg transition-all">
-                  <Plus size={16} />
+        <aside className="labs-inspector">
+          <div className="labs-inspector-body">
+            <h3>
+              <Paintbrush size={15} />
+              笔刷与颜色
+            </h3>
+            <div
+              className="labs-art-swatches"
+              role="group"
+              aria-label="画笔颜色"
+            >
+              {COLORS.map((c) => (
+                <button
+                  key={c}
+                  style={{ background: c }}
+                  aria-label={`颜色 ${c}`}
+                  title={c}
+                  aria-pressed={color === c}
+                  onClick={() => setColor(c)}
+                >
+                  {color === c && (
+                    <Check
+                      size={15}
+                      color={c === "#20252c" ? "#fff" : "#15202a"}
+                    />
+                  )}
                 </button>
-             </div>
-             
-             <div className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
-                {layers.map((layer) => (
-                  <div 
-                    key={layer.id} 
-                    onClick={() => setActiveLayerId(layer.id)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all border ${activeLayerId === layer.id ? 'bg-emerald-500/10 border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-slate-950/40 border-transparent hover:border-white/10'}`}
+              ))}
+              <input
+                aria-label="自定义颜色"
+                title="自定义颜色"
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+              />
+            </div>
+            <label className="labs-slider">
+              <span>
+                笔触大小<output>{size} px</output>
+              </span>
+              <input
+                aria-label="笔触大小"
+                type="range"
+                min={1}
+                max={80}
+                value={size}
+                onChange={(e) => setSize(+e.target.value)}
+              />
+            </label>
+            <label className="labs-slider">
+              <span>
+                笔刷不透明度<output>{opacity}%</output>
+              </span>
+              <input
+                aria-label="笔刷不透明度"
+                type="range"
+                min={5}
+                max={100}
+                value={opacity}
+                onChange={(e) => setOpacity(+e.target.value)}
+              />
+            </label>
+            <section className="labs-section">
+              <div className="labs-section-top">
+                <h3>
+                  <Layers size={15} />
+                  图层
+                </h3>
+                <IconButton
+                  label="新增图层"
+                  disabled={disabled || layers.length >= 4}
+                  onClick={() =>
+                    mutate((d) => {
+                      const l = newLayer(`图层 ${d.layers.length + 1}`);
+                      d.layers.push(l);
+                      d.active = l.id;
+                    })
+                  }
+                >
+                  <Plus size={15} />
+                </IconButton>
+              </div>
+              <ul className="wb-list labs-layers">
+                {[...layers].reverse().map((l) => (
+                  <li
+                    key={l.id}
+                    className={active === l.id ? "is-selected" : ""}
                   >
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(layer.id); }}
-                      className={`transition-colors ${layer.visible ? 'text-emerald-500' : 'text-slate-700'}`}
+                    <IconButton
+                      label={`${l.visible ? "隐藏" : "显示"}${l.name}`}
+                      disabled={disabled}
+                      onClick={() =>
+                        mutate((d) => {
+                          d.layers.find((x) => x.id === l.id)!.visible =
+                            !l.visible;
+                        })
+                      }
                     >
-                      {layer.visible ? <Eye size={18} /> : <EyeOff size={18} />}
+                      {l.visible ? <Eye size={15} /> : <EyeOff size={15} />}
+                    </IconButton>
+                    <button
+                      className="labs-layer-name"
+                      aria-pressed={active === l.id}
+                      disabled={disabled}
+                      onClick={() => {
+                        doc.current!.active = l.id;
+                        sync();
+                      }}
+                    >
+                      {l.name}
+                      <small>{Math.round(l.opacity * 100)}%</small>
                     </button>
-                    <span className={`text-xs flex-1 truncate font-bold tracking-widest ${activeLayerId === layer.id ? 'text-white' : 'text-slate-500'}`}>
-                      {layer.name}
-                    </span>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); removeLayer(layer.id); }}
-                      className="p-1.5 text-slate-600 hover:text-rose-500"
+                    <IconButton
+                      label={`删除${l.name}`}
+                      disabled={disabled || layers.length === 1}
+                      onClick={() =>
+                        mutate((d) => {
+                          d.layers = d.layers.filter((x) => x.id !== l.id);
+                          if (d.active === l.id)
+                            d.active = d.layers[d.layers.length - 1].id;
+                        })
+                      }
                     >
                       <Trash2 size={14} />
-                    </button>
-                  </div>
+                    </IconButton>
+                  </li>
                 ))}
-             </div>
-          </div>
-          
-          {/* 快速调色盘 */}
-          <div className="p-6 bg-slate-950/50 border-t border-white/5 grid grid-cols-6 gap-2">
-            {['#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#10b981', '#3b82f6', '#8b5cf6', '#f43f5e', '#fbbf24'].map(c => (
-              <button 
-                key={c} onClick={() => setColor(c)}
-                className={`aspect-square rounded-md border border-white/5 transition-transform hover:scale-110 ${color === c ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-slate-950 scale-110' : ''}`}
-                style={{ backgroundColor: c }}
-              />
-            ))}
+              </ul>
+              <label className="labs-slider">
+                <span>
+                  图层不透明度
+                  <output>
+                    {Math.round((selectedMeta?.opacity ?? 1) * 100)}%
+                  </output>
+                </span>
+                <input
+                  aria-label="图层不透明度"
+                  type="range"
+                  min={0}
+                  max={100}
+                  disabled={disabled}
+                  value={Math.round((selectedMeta?.opacity ?? 1) * 100)}
+                  onChange={(e) => {
+                    selected().opacity = +e.target.value / 100;
+                    dirty.current = true;
+                    sync();
+                    paint();
+                  }}
+                  onPointerUp={() => {
+                    if (dirty.current) void commit();
+                  }}
+                  onKeyUp={() => {
+                    if (dirty.current) void commit();
+                  }}
+                  onBlur={() => {
+                    if (dirty.current) void commit();
+                  }}
+                />
+              </label>
+              <div className="wb-actions">
+                <IconButton
+                  label="图层上移"
+                  disabled={
+                    disabled || layers[layers.length - 1]?.id === active
+                  }
+                  onClick={() =>
+                    mutate((d) => {
+                      const i = d.layers.findIndex((l) => l.id === d.active);
+                      [d.layers[i], d.layers[i + 1]] = [
+                        d.layers[i + 1],
+                        d.layers[i],
+                      ];
+                    })
+                  }
+                >
+                  <ArrowUp size={14} />
+                </IconButton>
+                <IconButton
+                  label="图层下移"
+                  disabled={disabled || layers[0]?.id === active}
+                  onClick={() =>
+                    mutate((d) => {
+                      const i = d.layers.findIndex((l) => l.id === d.active);
+                      [d.layers[i], d.layers[i - 1]] = [
+                        d.layers[i - 1],
+                        d.layers[i],
+                      ];
+                    })
+                  }
+                >
+                  <ArrowDown size={14} />
+                </IconButton>
+                <button
+                  className="wb-button"
+                  disabled={disabled}
+                  onClick={() =>
+                    mutate(() =>
+                      selected()
+                        .canvas.getContext("2d")!
+                        .clearRect(0, 0, WIDTH, HEIGHT),
+                    )
+                  }
+                >
+                  <Eraser size={14} />
+                  清空当前图层
+                </button>
+              </div>
+            </section>
+            <section className="labs-section">
+              <h3>画纸</h3>
+              <div className="labs-paper">
+                <input
+                  aria-label="画纸颜色"
+                  type="color"
+                  value={background || "#ffffff"}
+                  disabled={disabled}
+                  onChange={(e) =>
+                    mutate((d) => {
+                      d.background = e.target.value;
+                    })
+                  }
+                />
+                <label className="labs-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={background === null}
+                    disabled={disabled}
+                    onChange={(e) =>
+                      mutate((d) => {
+                        d.background = e.target.checked ? null : "#ffffff";
+                      })
+                    }
+                  />
+                  透明背景
+                </label>
+              </div>
+            </section>
           </div>
         </aside>
-
-        {/* 隐藏面板时的唤醒按钮 */}
-        {!showRightPanel && (
-          <button 
-            onClick={() => setShowRightPanel(true)}
-            className="absolute right-0 top-1/2 -translate-y-1/2 bg-emerald-500 text-black py-4 px-1 rounded-l-xl z-20 shadow-2xl animate-pulse"
-          >
-            <ChevronLeft size={16} />
-          </button>
-        )}
       </div>
-
-      <style>{`
-        .custom-range {
-          -webkit-appearance: none;
-          width: 100%;
-          height: 2px;
-          background: #1e293b;
-          border-radius: 5px;
-          outline: none;
-        }
-        .custom-range::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          width: 14px;
-          height: 14px;
-          background: #10b981;
-          border-radius: 50%;
-          cursor: pointer;
-          box-shadow: 0 0 10px rgba(16,185,129,0.5);
-          transition: transform 0.2s;
-        }
-        .custom-range::-webkit-slider-thumb:hover { transform: scale(1.2); }
-        .tech-font { font-family: 'Orbitron', sans-serif; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .cursor-cell { cursor: cell; }
-      `}</style>
-    </div>
+    </Workbench>
   );
-};
-
-// 子组件
-const MenuButton = ({ icon, onClick, title, className = '' }: any) => (
-  <button 
-    onClick={onClick} title={title} 
-    className={`p-2.5 bg-slate-800/50 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all active:scale-95 ${className}`}
-  >
-    {icon}
-  </button>
-);
-
-const ToolButton = ({ icon, active, onClick, title }: any) => (
-  <button 
-    onClick={onClick} title={title}
-    className={`w-11 h-11 flex items-center justify-center rounded-xl transition-all relative ${active ? 'bg-emerald-500 text-black shadow-[0_0_25px_rgba(16,185,129,0.4)]' : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800'}`}
-  >
-    {icon}
-    {active && <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-1 h-3 bg-white rounded-full" />}
-  </button>
-);
-
-const LayerCanvas: React.FC<{ layer: Layer }> = ({ layer }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d')!;
-    const update = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(layer.canvas, 0, 0);
-      requestAnimationFrame(update);
-    };
-    const id = requestAnimationFrame(update);
-    return () => cancelAnimationFrame(id);
-  }, [layer]);
-  return (
-    <canvas 
-      ref={canvasRef} width={1200} height={800}
-      className={`absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-300 ${layer.visible ? 'opacity-100' : 'opacity-0'}`}
-    />
-  );
-};
-
-export default ProArtApp;
+}

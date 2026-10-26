@@ -1,700 +1,946 @@
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
-  ArrowRight,
+  ArrowLeft,
+  ArrowUpRight,
   Bookmark,
-  Clock3,
+  Check,
+  CheckCircle2,
   Compass,
-  Flame,
-  Gamepad2,
-  GraduationCap,
-  LayoutGrid,
+  Download,
+  Expand,
+  FileText,
+  Footprints,
+  HelpCircle,
   Loader2,
-  Moon,
-  Play,
-  Search,
-  Settings,
-  Sun,
-  Wrench,
+  Minimize2,
+  MoreHorizontal,
+  Settings2,
+  Upload,
   X,
-} from 'lucide-react';
-import { EDUCATION_ITEMS, ENTERTAINMENT_ITEMS, UTILITIES_ITEMS } from './constants';
-import { AppItem, Category } from './types';
-import AppCard from './components/AppCard';
-import BrandLogo, { BrandMark } from './components/BrandLogo';
-import ErrorBoundary from './components/ErrorBoundary';
-import Modal from './components/Modal';
-import ModuleIcon from './components/ModuleIcon';
+} from "lucide-react";
+import BrandLogo from "./components/BrandLogo";
+import ErrorBoundary from "./components/ErrorBoundary";
+import ExplorerHome, { ExperienceCard } from "./components/ExplorerHome";
+import ExplorerDialog from "./components/ExplorerDialog";
+import DataStatusPanel from "./components/DataStatusPanel";
+import { EXPERIENCE_BY_ID, Experience } from "./lib/experienceCatalog";
 import {
-  CATEGORY_META,
-  formatFocusTime,
-  getModuleMeta,
-  getStreak,
-  getWeekSeconds,
-  UsageMap,
-} from './lib/product';
+  addDiscovery,
+  createExplorerBackup,
+  Discovery,
+  ExperienceEvidence,
+  ExplorerStore,
+  EXPLORER_STORAGE_KEY,
+  formatDuration,
+  getRecentExperiences,
+  mergeExplorerStores,
+  parseExplorerBackup,
+  readExplorerStore,
+  writeExplorerStore,
+} from "./lib/explorerStore";
+import "./components/explorer.css";
 
-const lazyWithRetry = (componentImport: () => Promise<any>) =>
-  lazy(async () => {
-    const refreshed = sessionStorage.getItem('exbeam-chunk-refresh') === 'true';
-    try {
-      const component = await componentImport();
-      sessionStorage.setItem('exbeam-chunk-refresh', 'false');
-      return component;
-    } catch (error) {
-      if (!refreshed) {
-        sessionStorage.setItem('exbeam-chunk-refresh', 'true');
-        window.location.reload();
-        return new Promise(() => {});
-      }
-      throw error;
-    }
-  });
-
-const Earth3D = lazyWithRetry(() => import('./components/Earth3D'));
-const FoodChainApp = lazyWithRetry(() => import('./components/FoodChainApp'));
-const WaveApp = lazyWithRetry(() => import('./components/WaveApp'));
-const CharacterApp = lazyWithRetry(() => import('./components/CharacterApp'));
-const PoetryApp = lazyWithRetry(() => import('./components/PoetryApp'));
-const HistorySortingApp = lazyWithRetry(() => import('./components/HistorySortingApp'));
-const ClockApp = lazyWithRetry(() => import('./components/ClockApp'));
-const MathSprintApp = lazyWithRetry(() => import('./components/MathSprintApp'));
-const ThreeCharacterApp = lazyWithRetry(() => import('./components/ThreeCharacterApp'));
-const ThousandCharacterApp = lazyWithRetry(() => import('./components/ThousandCharacterApp'));
-const BrainTeaseApp = lazyWithRetry(() => import('./components/BrainTeaseApp'));
-const GobangApp = lazyWithRetry(() => import('./components/GobangApp'));
-const ChineseChessApp = lazyWithRetry(() => import('./components/ChineseChessApp'));
-const ChessApp = lazyWithRetry(() => import('./components/ChessApp'));
-const GoApp = lazyWithRetry(() => import('./components/GoApp'));
-const JiangnanGameApp = lazyWithRetry(() => import('./components/JiangnanGameApp'));
-const ProArtApp = lazyWithRetry(() => import('./components/ProArtApp'));
-const VocabularyApp = lazyWithRetry(() => import('./components/VocabularyApp'));
-const IdiomApp = lazyWithRetry(() => import('./components/IdiomApp'));
-const CurrencyConverterApp = lazyWithRetry(() => import('./components/CurrencyConverterApp'));
-const LibraryView = lazyWithRetry(() => import('./components/LibraryView'));
-const SettingsView = lazyWithRetry(() => import('./components/SettingsView'));
-const ExploreView = lazyWithRetry(() => import('./components/ExploreView'));
-const SummerGardenView = lazyWithRetry(() => import('./components/SummerGardenView'));
-
-type Tab = 'HOME' | 'EXPLORE' | 'LIBRARY' | 'SETTINGS';
-type Theme = 'light' | 'dark';
-type CategoryFilter = 'all' | Category;
-
-const STORAGE = {
-  theme: 'exbeam.theme.v1',
-  saved: 'exbeam.saved.v1',
-  history: 'exbeam.history.v1',
-  usage: 'exbeam.usage.v1',
-};
-
-const TAB_HASH: Record<Tab, string> = {
-  HOME: '#growth',
-  EXPLORE: '#explore',
-  LIBRARY: '#library',
-  SETTINGS: '#settings',
-};
-
-const getTabFromLocation = (): Tab => {
-  const entry = (Object.entries(TAB_HASH) as Array<[Tab, string]>)
-    .find(([, hash]) => hash === window.location.hash);
-  return entry?.[0] || 'HOME';
-};
-
-const safeStorage = {
-  get(key: string) {
-    try {
-      return localStorage.getItem(key);
-    } catch {
-      return null;
-    }
-  },
-  set(key: string, value: string) {
-    try {
-      localStorage.setItem(key, value);
-    } catch {
-      // The product remains usable when storage is unavailable.
-    }
-  },
-  remove(key: string) {
-    try {
-      localStorage.removeItem(key);
-    } catch {
-      // Ignore unavailable storage.
-    }
-  },
-};
-
-const readJson = <T,>(key: string, fallback: T): T => {
-  const value = safeStorage.get(key);
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-};
-
-const NAV_ITEMS: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
-  { id: 'HOME', label: '成长', icon: <LayoutGrid size={18} /> },
-  { id: 'EXPLORE', label: '探索', icon: <Compass size={18} /> },
-  { id: 'LIBRARY', label: '资源库', icon: <Bookmark size={18} /> },
-  { id: 'SETTINGS', label: '设置', icon: <Settings size={18} /> },
-];
-
-const FILTERS: Array<{ id: CategoryFilter; label: string; icon: React.ReactNode }> = [
-  { id: 'all', label: '全部', icon: <LayoutGrid size={15} /> },
-  { id: 'education', label: '学习', icon: <GraduationCap size={15} /> },
-  { id: 'entertainment', label: '游戏', icon: <Gamepad2 size={15} /> },
-  { id: 'utilities', label: '工具', icon: <Wrench size={15} /> },
-];
-
-const LoadingOverlay = () => (
-  <div className="flex h-full w-full items-center justify-center bg-[#F7F8FC] dark:bg-[#0B0D12]">
-    <div className="flex items-center gap-3 text-sm font-medium text-[#69707D] dark:text-white/55">
-      <Loader2 className="h-5 w-5 animate-spin text-[#2563EB]" />
-      正在打开模块
-    </div>
-  </div>
+const Earth3D = lazy(() => import("./components/Earth3D"));
+const WaveApp = lazy(() => import("./components/WaveApp"));
+const FoodChainApp = lazy(() => import("./components/FoodChainApp"));
+const ProArtApp = lazy(() => import("./components/ProArtApp"));
+const CharacterApp = lazy(() => import("./components/CharacterApp"));
+const PoetryApp = lazy(() => import("./components/PoetryApp"));
+const HistorySortingApp = lazy(() => import("./components/HistorySortingApp"));
+const ClockApp = lazy(() => import("./components/ClockApp"));
+const MathSprintApp = lazy(() => import("./components/MathSprintApp"));
+const ThreeCharacterApp = lazy(() => import("./components/ThreeCharacterApp"));
+const ThousandCharacterApp = lazy(
+  () => import("./components/ThousandCharacterApp"),
 );
+const BrainTeaseApp = lazy(() => import("./components/BrainTeaseApp"));
+const GobangApp = lazy(() => import("./components/GobangApp"));
+const ChineseChessApp = lazy(() => import("./components/ChineseChessApp"));
+const ChessApp = lazy(() => import("./components/ChessApp"));
+const GoApp = lazy(() => import("./components/GoApp"));
+const JiangnanGameApp = lazy(() => import("./components/JiangnanGameApp"));
+const VocabularyApp = lazy(() => import("./components/VocabularyApp"));
+const IdiomApp = lazy(() => import("./components/IdiomApp"));
+const CurrencyConverterApp = lazy(
+  () => import("./components/CurrencyConverterApp"),
+);
+const SummerGardenView = lazy(() => import("./components/SummerGardenView"));
 
-const App: React.FC = () => {
-  const allModules = useMemo(() => [...EDUCATION_ITEMS, ...ENTERTAINMENT_ITEMS, ...UTILITIES_ITEMS], []);
-  const [activeTab, setActiveTab] = useState<Tab>(getTabFromLocation);
-  const [selectedItem, setSelectedItem] = useState<AppItem | null>(null);
-  const [runningAppId, setRunningAppId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
-  const [sessionElapsed, setSessionElapsed] = useState(0);
-  const [theme, setTheme] = useState<Theme>(() => {
-    return (safeStorage.get(STORAGE.theme) || safeStorage.get('zst_theme') || 'light') as Theme;
-  });
-  const [savedIds, setSavedIds] = useState<string[]>(() =>
-    readJson(STORAGE.saved, readJson<string[]>('zst_saved_v2', []))
+type View = "explore" | "journal" | "saved" | "settings" | "growth";
+interface Route {
+  view: View;
+  moduleId: string | null;
+}
+function readRoute(): Route {
+  const hash = window.location.hash.slice(1);
+  const aliases: Record<string, View> = { library: "journal", home: "explore" };
+  const view =
+    aliases[hash] ||
+    (["explore", "journal", "saved", "settings", "growth"].includes(hash)
+      ? (hash as View)
+      : "explore");
+  const requested = new URLSearchParams(window.location.search).get("module");
+  return {
+    view,
+    moduleId: requested && EXPERIENCE_BY_ID.has(requested) ? requested : null,
+  };
+}
+const NAV = [
+  { id: "explore" as View, label: "探索", Icon: Compass },
+  { id: "journal" as View, label: "我的足迹", Icon: Footprints },
+  { id: "saved" as View, label: "收藏", Icon: Bookmark },
+];
+const KIND_LABELS = {
+  note: "探索笔记",
+  observation: "观察记录",
+  experiment: "实验验证",
+  challenge: "挑战结果",
+  artwork: "创作记录",
+};
+const newId = () => crypto.randomUUID();
+
+export default function App() {
+  const [route, setRoute] = useState(readRoute);
+  const [store, setStore] = useState(readExplorerStore);
+  const storeRef = useRef(store);
+  const [storageAvailable, setStorageAvailable] = useState(true);
+  const [notice, setNotice] = useState("");
+  const [dialog, setDialog] = useState<"note" | "guide" | null>(null);
+  const [sessionSeconds, setSessionSeconds] = useState(0);
+  const [fullscreen, setFullscreen] = useState(false);
+  const session = useRef<{
+    id: string;
+    moduleId: string;
+    seconds: number;
+    lastTick: number;
+    visible: boolean;
+  } | null>(null);
+  const importInput = useRef<HTMLInputElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
+  const item = route.moduleId ? EXPERIENCE_BY_ID.get(route.moduleId)! : null;
+
+  const update = useCallback(
+    (fn: (current: ExplorerStore) => ExplorerStore) => {
+      const next = fn(storeRef.current);
+      if (next === storeRef.current) return;
+      storeRef.current = next;
+      setStore(next);
+      setStorageAvailable(writeExplorerStore(next));
+    },
+    [],
   );
-  const [historyIds, setHistoryIds] = useState<string[]>(() =>
-    readJson(STORAGE.history, readJson<string[]>('zst_history_v2', []))
+
+  const flushSession = useCallback(() => {
+    const active = session.current;
+    if (!active) return;
+    const now = performance.now();
+    if (active.visible)
+      active.seconds += Math.max(0, (now - active.lastTick) / 1000);
+    active.lastTick = now;
+    active.visible = document.visibilityState === "visible";
+    const seconds = Math.floor(active.seconds);
+    setSessionSeconds(seconds);
+    update((current) => ({
+      ...current,
+      sessions: current.sessions.map((entry) =>
+        entry.id === active.id ? { ...entry, seconds } : entry,
+      ),
+    }));
+  }, [update]);
+
+  const navigate = useCallback((view: View, moduleId: string | null = null) => {
+    const url = new URL(window.location.href);
+    url.hash = view;
+    if (moduleId) url.searchParams.set("module", moduleId);
+    else {
+      url.searchParams.delete("module");
+      url.searchParams.delete("object");
+    }
+    if (moduleId !== 'e1') {
+      url.searchParams.delete('space');
+      url.searchParams.delete('overview');
+      url.searchParams.delete('object');
+    }
+    window.history.pushState(null, "", url);
+    setDialog(null);
+    setRoute({ view, moduleId });
+    window.scrollTo(0, 0);
+    requestAnimationFrame(() =>
+      mainRef.current?.focus({ preventScroll: true }),
+    );
+  }, []);
+  const open = (experience: Experience) => navigate(route.view, experience.id);
+  const toggleSave = (id: string) =>
+    update((current) => ({
+      ...current,
+      saved: current.saved.includes(id)
+        ? current.saved.filter((saved) => saved !== id)
+        : [...current.saved, id],
+    }));
+  const record = useCallback(
+    (evidence: ExperienceEvidence) => {
+      if (!route.moduleId) return;
+      const discovery: Discovery = {
+        ...evidence,
+        moduleId: route.moduleId,
+        id: newId(),
+        createdAt: new Date().toISOString(),
+      };
+      update((current) => addDiscovery(current, discovery));
+    },
+    [route.moduleId, update],
   );
-  const [usage, setUsage] = useState<UsageMap>(() => readJson<UsageMap>(STORAGE.usage, {}));
-  const sessionRef = useRef<{ id: string; startedAt: number; iso: string } | null>(null);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-    safeStorage.set(STORAGE.theme, theme);
-  }, [theme]);
-
-  useEffect(() => safeStorage.set(STORAGE.saved, JSON.stringify(savedIds)), [savedIds]);
-  useEffect(() => safeStorage.set(STORAGE.history, JSON.stringify(historyIds)), [historyIds]);
-  useEffect(() => safeStorage.set(STORAGE.usage, JSON.stringify(usage)), [usage]);
-
-  useEffect(() => {
-    const syncTabFromLocation = () => setActiveTab(getTabFromLocation());
-    window.addEventListener('hashchange', syncTabFromLocation);
-    window.addEventListener('popstate', syncTabFromLocation);
+    document.documentElement.classList.add("dark");
+    const syncRoute = () => {
+      setRoute(readRoute());
+      setDialog(null);
+    };
+    const syncStorage = (event: StorageEvent) => {
+      if (event.key === EXPLORER_STORAGE_KEY) {
+        const next = readExplorerStore();
+        storeRef.current = next;
+        setStore(next);
+      }
+    };
+    window.addEventListener("popstate", syncRoute);
+    window.addEventListener("hashchange", syncRoute);
+    window.addEventListener("storage", syncStorage);
     return () => {
-      window.removeEventListener('hashchange', syncTabFromLocation);
-      window.removeEventListener('popstate', syncTabFromLocation);
+      window.removeEventListener("popstate", syncRoute);
+      window.removeEventListener("hashchange", syncRoute);
+      window.removeEventListener("storage", syncStorage);
     };
   }, []);
-
-  const navigateTab = useCallback((tab: Tab) => {
-    setActiveTab(tab);
-    const hash = TAB_HASH[tab];
-    if (window.location.hash !== hash) {
-      window.history.pushState(null, '', `${window.location.pathname}${window.location.search}${hash}`);
-    }
-  }, []);
-
   useEffect(() => {
-    const requestedId = new URLSearchParams(window.location.search).get('module');
-    const requested = allModules.find(item => item.id === requestedId);
-    if (requested) setSelectedItem(requested);
-  }, [allModules]);
-
-  useEffect(() => {
-    if (!runningAppId) return;
-    setSessionElapsed(0);
-    const timer = window.setInterval(() => {
-      const active = sessionRef.current;
-      if (active) setSessionElapsed(Math.max(0, Math.floor((Date.now() - active.startedAt) / 1000)));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [runningAppId]);
-
-  const handleToggleSave = (id: string) => {
-    setSavedIds(current => (current.includes(id) ? current.filter(itemId => itemId !== id) : [id, ...current]));
-  };
-
-  const handleRunApp = (item: AppItem) => {
-    const now = new Date();
-    setSelectedItem(null);
-    setHistoryIds(current => [item.id, ...current.filter(id => id !== item.id)].slice(0, 30));
-    setUsage(current => {
-      const previous = current[item.id];
-      return {
-        ...current,
-        [item.id]: {
-          launches: (previous?.launches || 0) + 1,
-          totalSeconds: previous?.totalSeconds || 0,
-          lastOpened: now.toISOString(),
-          sessions: previous?.sessions || [],
-        },
-      };
-    });
-    sessionRef.current = { id: item.id, startedAt: Date.now(), iso: now.toISOString() };
-    setRunningAppId(item.id);
-  };
-
-  const closeRunningApp = useCallback(() => {
-    const active = sessionRef.current;
-    if (active) {
-      const seconds = Math.max(1, Math.floor((Date.now() - active.startedAt) / 1000));
-      setUsage(current => {
-        const previous = current[active.id] || {
-          launches: 1,
-          totalSeconds: 0,
-          lastOpened: active.iso,
-          sessions: [],
-        };
-        return {
-          ...current,
-          [active.id]: {
-            ...previous,
-            totalSeconds: previous.totalSeconds + seconds,
-            sessions: [{ startedAt: active.iso, seconds }, ...previous.sessions].slice(0, 100),
-          },
-        };
-      });
-    }
-    sessionRef.current = null;
-    setRunningAppId(null);
-    setSessionElapsed(0);
-  }, []);
-
-  const resetProductData = () => {
-    Object.values(STORAGE).forEach(key => safeStorage.remove(key));
-    setSavedIds([]);
-    setHistoryIds([]);
-    setUsage({});
-  };
-
-  const filteredModules = allModules.filter(item => {
-    const query = searchQuery.trim().toLowerCase();
-    const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
-    const matchesQuery =
-      !query ||
-      item.title.toLowerCase().includes(query) ||
-      item.description.toLowerCase().includes(query) ||
-      item.tags.some(tag => tag.toLowerCase().includes(query));
-    return matchesCategory && matchesQuery;
-  });
-
-  const recentItems = historyIds
-    .map(id => allModules.find(item => item.id === id))
-    .filter(Boolean) as AppItem[];
-  const continueItem = recentItems[0] || allModules.find(item => item.id === 'e20') || allModules[0];
-  const jiangnanItem = allModules.find(item => item.id === 'ent8');
-  const planItems = [
-    continueItem,
-    allModules.find(item => item.id === 'u2'),
-    allModules.find(item => item.id === 'e18'),
-  ].filter((item, index, list): item is AppItem => Boolean(item) && list.findIndex(other => other?.id === item?.id) === index);
-
-  const touchedCount = Object.values(usage).filter(item => item.launches > 0).length;
-  const weekSeconds = getWeekSeconds(usage);
-  const streak = getStreak(usage);
-
-  const renderModule = () => (
-    <ErrorBoundary onReset={closeRunningApp}>
-      <Suspense fallback={<LoadingOverlay />}>
-        {(() => {
-          switch (runningAppId) {
-            case 'e1': return <Earth3D onClose={closeRunningApp} />;
-            case 'e2': return <FoodChainApp onClose={closeRunningApp} />;
-            case 'e3': return <WaveApp onClose={closeRunningApp} />;
-            case 'e4': return <CharacterApp onClose={closeRunningApp} />;
-            case 'e5': return <PoetryApp onClose={closeRunningApp} />;
-            case 'e6': return <HistorySortingApp onClose={closeRunningApp} />;
-            case 'e7': return <ClockApp onClose={closeRunningApp} />;
-            case 'e18': return <MathSprintApp onClose={closeRunningApp} />;
-            case 'e20': return <ThreeCharacterApp onClose={closeRunningApp} />;
-            case 'e21': return <ThousandCharacterApp onClose={closeRunningApp} />;
-            case 'ent3': return <BrainTeaseApp onClose={closeRunningApp} />;
-            case 'ent4': return <GobangApp onClose={closeRunningApp} />;
-            case 'ent5': return <ChineseChessApp onClose={closeRunningApp} />;
-            case 'ent6': return <ChessApp onClose={closeRunningApp} />;
-            case 'ent7': return <GoApp onClose={closeRunningApp} />;
-            case 'ent8': return <JiangnanGameApp onClose={closeRunningApp} />;
-            case 'u1': return <ProArtApp onClose={closeRunningApp} />;
-            case 'u2': return <VocabularyApp onClose={closeRunningApp} />;
-            case 'u3': return <IdiomApp onClose={closeRunningApp} />;
-            case 'u4': return <CurrencyConverterApp onClose={closeRunningApp} />;
-            default: return null;
-          }
-        })()}
-      </Suspense>
-    </ErrorBoundary>
-  );
-
-  if (runningAppId) {
-    const item = allModules.find(module => module.id === runningAppId);
-    if (!item) return null;
-    const minutes = Math.floor(sessionElapsed / 60).toString().padStart(2, '0');
-    const seconds = (sessionElapsed % 60).toString().padStart(2, '0');
-
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-[#F7F8FC] text-[#111318] dark:bg-[#0B0D12] dark:text-white">
-        <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-[#E5E7EB] bg-white px-3 dark:border-white/10 dark:bg-[#111318] md:h-16 md:px-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <BrandMark className="h-8 w-8 shrink-0" />
-            <div className="min-w-0">
-                <div className="hidden text-[10px] font-medium text-[#7A8190] dark:text-white/40 sm:block">
-                ExBeam / {CATEGORY_META[item.category].label}
-              </div>
-              <h1 className="truncate text-sm font-semibold md:text-base">{item.title}</h1>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <div className="mr-1 hidden items-center gap-1.5 text-xs text-[#6C7973] dark:text-white/45 sm:flex">
-              <Clock3 size={14} />
-              <span>{minutes}:{seconds}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => handleToggleSave(item.id)}
-              className={`flex h-9 w-9 items-center justify-center rounded-md ${
-                savedIds.includes(item.id)
-                  ? 'bg-[#EEF2FF] text-[#2563EB] dark:bg-[#2563EB]/20'
-                  : 'text-[#69707D] hover:bg-black/5 dark:text-white/50 dark:hover:bg-white/10'
-              }`}
-              aria-label={savedIds.includes(item.id) ? '取消收藏' : '收藏'}
-              title={savedIds.includes(item.id) ? '取消收藏' : '收藏'}
-            >
-              <Bookmark size={17} fill={savedIds.includes(item.id) ? 'currentColor' : 'none'} />
-            </button>
-            <button
-              type="button"
-              onClick={closeRunningApp}
-              className="flex h-9 w-9 items-center justify-center rounded-md text-[#69707D] hover:bg-black/5 dark:text-white/50 dark:hover:bg-white/10"
-              aria-label="退出模块"
-              title="退出模块"
-            >
-              <X size={18} />
-            </button>
-          </div>
-        </header>
-        <main className="module-stage relative flex min-h-0 flex-1 flex-col overflow-hidden">{renderModule()}</main>
-      </div>
+    document.documentElement.dataset.reducedMotion = String(
+      store.reducedMotion,
     );
-  }
+  }, [store.reducedMotion]);
+  useEffect(() => {
+    if (session.current?.moduleId === route.moduleId) return;
+    flushSession();
+    session.current = null;
+    setSessionSeconds(0);
+    if (!route.moduleId) return;
+    const id = newId();
+    session.current = {
+      id,
+      moduleId: route.moduleId,
+      seconds: 0,
+      lastTick: performance.now(),
+      visible: document.visibilityState === "visible",
+    };
+    update((current) => ({
+      ...current,
+      sessions: [
+        {
+          id,
+          moduleId: route.moduleId!,
+          startedAt: new Date().toISOString(),
+          seconds: 0,
+        },
+        ...current.sessions,
+      ].slice(0, 1000),
+    }));
+  }, [route.moduleId, flushSession, update]);
+  useEffect(() => {
+    const timer = window.setInterval(flushSession, 10000);
+    window.addEventListener("pagehide", flushSession);
+    document.addEventListener("visibilitychange", flushSession);
+    const onFullscreen = () =>
+      setFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFullscreen);
+    return () => {
+      clearInterval(timer);
+      flushSession();
+      window.removeEventListener("pagehide", flushSession);
+      document.removeEventListener("visibilitychange", flushSession);
+      document.removeEventListener("fullscreenchange", onFullscreen);
+    };
+  }, [flushSession]);
+  useEffect(() => {
+    document.title = item ? `${item.title} · ExBeam` : "ExBeam · 互动探索空间";
+  }, [item]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), 4000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
-  const renderHome = () => (
-    <div className="w-full pb-24">
-      <header className="mb-7">
-        <div className="text-xs font-semibold text-[#2563EB] dark:text-[#8EACFF]">今天 · 个人学习工作台</div>
-        <div className="mt-3 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-          <div>
-            <h1 className="text-3xl font-semibold leading-tight text-[#111318] dark:text-white md:text-4xl">今天想专注什么？</h1>
-            <p className="mt-3 text-sm text-[#69707D] dark:text-white/55">选一件事开始，ExBeam 会替你记录投入。</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleRunApp(continueItem)}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#2563EB] px-5 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(37,99,235,0.22)] hover:bg-[#1D4ED8] md:w-auto"
-          >
-            <Play size={16} fill="currentColor" />
-            {recentItems.length ? '继续上次练习' : '开始第一个模块'}
-          </button>
-        </div>
-      </header>
+  const exportRecords = () => {
+    flushSession();
+    const blob = new Blob(
+      [JSON.stringify(createExplorerBackup(storeRef.current), null, 2)],
+      { type: "application/json" },
+    );
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = `exbeam-explorations-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(href), 1000);
+    setNotice("探索记录已导出");
+  };
+  const importRecords = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      if (file.size > 4_000_000) throw new Error("备份文件不能超过 4 MB。");
+      const imported = parseExplorerBackup(await file.text());
+      update((current) => mergeExplorerStores(current, imported));
+      setNotice("记录已合并，原有笔记和收藏均已保留");
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "导入失败，原有记录未改动",
+      );
+    }
+  };
+  const enterFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      setNotice("当前浏览器不支持全屏，可继续使用沉浸视图");
+    }
+  };
 
-      <section className="mb-8 overflow-hidden rounded-xl border border-[#25373D] bg-[#101C20] text-white shadow-[0_18px_46px_rgba(15,23,42,0.18)]">
-        <div className="grid md:grid-cols-[1.35fr_.65fr]">
-          <div className="p-5 md:p-7">
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold tracking-[0.18em] text-[#D8BD88]">
-              <span>新上线</span>
-              <span className="h-1 w-1 rounded-full bg-[#D8BD88]" />
-              <span>3D 战役游戏</span>
-            </div>
-            <h2 className="mt-3 text-2xl font-semibold tracking-wide md:text-3xl">江南 · 烟雨装甲</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/65">
-              驾驶装甲战车穿过白墙黛瓦、石桥河埠与烟雨竹林，完成六章连续救援战役。
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2 text-[11px] text-white/55">
-              <span className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5">六章剧情</span>
-              <span className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5">3D 坦克战</span>
-              <span className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5">支持平板双摇杆</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => jiangnanItem && handleRunApp(jiangnanItem)}
-              disabled={!jiangnanItem}
-              className="mt-6 flex h-11 items-center gap-2 rounded-lg bg-[#D6BE8A] px-5 text-sm font-semibold text-[#172326] shadow-[0_8px_22px_rgba(0,0,0,0.22)] transition-colors hover:bg-[#E7D3A7]"
-            >
-              <Gamepad2 size={17} />
-              进入战场
-              <ArrowRight size={15} />
-            </button>
-          </div>
-          <div className="relative hidden min-h-[220px] items-center justify-center overflow-hidden border-l border-white/10 md:flex">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(216,189,136,0.18),transparent_58%)]" />
-            <div className="absolute h-40 w-40 rounded-full border border-white/10" />
-            <div className="absolute h-28 w-28 rounded-full border border-[#D8BD88]/25" />
-            <Gamepad2 size={66} strokeWidth={1.15} className="relative text-[#D8BD88]" />
-          </div>
-        </div>
-      </section>
-
-      <section className="mb-8 grid gap-4 lg:grid-cols-[1.45fr_1fr]">
-        <div className="rounded-lg border border-[#E2E5EA] bg-white p-5 shadow-[0_8px_28px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-[#15171C] md:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-xs font-semibold text-[#2563EB] dark:text-[#8EACFF]">{recentItems.length ? '继续进行' : '推荐开始'}</div>
-              <h2 className="mt-2 text-xl font-semibold text-[#111318] dark:text-white">{continueItem.title}</h2>
-              <p className="mt-2 line-clamp-2 max-w-xl text-sm leading-6 text-[#69707D] dark:text-white/55">{getModuleMeta(continueItem).outcome}</p>
-            </div>
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#EEF2FF] text-[#2563EB] dark:bg-[#2563EB]/20 dark:text-[#8EACFF]">
-              <ModuleIcon name={continueItem.icon} size={24} />
-            </div>
-          </div>
-          <div className="mt-6 flex items-center justify-between gap-4 border-t border-[#ECEEF2] pt-4 dark:border-white/10">
-            <div className="flex items-center gap-2 text-xs text-[#7A8190] dark:text-white/45">
-              <Clock3 size={14} />
-              建议 {getModuleMeta(continueItem).minutes} 分钟
-            </div>
-            <button type="button" onClick={() => handleRunApp(continueItem)} className="flex items-center gap-2 text-sm font-semibold text-[#2563EB] hover:text-[#1D4ED8]">
-              开始
-              <ArrowRight size={15} />
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 rounded-lg border border-[#E2E5EA] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)] dark:border-white/10 dark:bg-[#15171C]">
-          {[
-            { label: '连续天数', value: streak, unit: '天', icon: <Flame size={17} /> },
-            { label: '本周专注', value: formatFocusTime(weekSeconds), unit: '', icon: <Clock3 size={17} /> },
-            { label: '已探索', value: touchedCount, unit: '个', icon: <Compass size={17} /> },
-          ].map((stat, index) => (
-            <div key={stat.label} className={`flex min-w-0 flex-col justify-center p-4 ${index ? 'border-l border-[#ECEEF2] dark:border-white/10' : ''}`}>
-              <div className="text-[#2563EB] dark:text-[#8EACFF]">{stat.icon}</div>
-              <div className="mt-4 truncate text-lg font-semibold text-[#111318] dark:text-white">
-                {stat.value}{stat.unit}
-              </div>
-              <div className="mt-1 text-[11px] text-[#7A8190] dark:text-white/40">{stat.label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mb-9">
-        <div className="mb-4 flex items-end justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-[#111318] dark:text-white">今日计划</h2>
-            <p className="mt-1 text-sm text-[#7A8190] dark:text-white/45">一个主任务，加两个轻量补充。</p>
-          </div>
-        </div>
-        <div className="grid gap-3 md:grid-cols-3">
-          {planItems.map((item, index) => (
-            <button
-              type="button"
-              key={item.id}
-              onClick={() => handleRunApp(item)}
-              className="flex min-w-0 items-center gap-3 rounded-lg border border-[#E2E5EA] bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-[#BEC5D0] hover:shadow-[0_8px_22px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-[#15171C] dark:hover:border-white/20"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F0F3F9] text-[#566074] dark:bg-white/[0.07] dark:text-white/60">
-                <ModuleIcon name={item.icon} size={20} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[11px] font-medium text-[#7A8190] dark:text-white/40">任务 {index + 1}</div>
-                <div className="mt-1 truncate text-sm font-semibold text-[#111318] dark:text-white">{item.title}</div>
-              </div>
-              <ArrowRight size={15} className="shrink-0 text-[#9AA1AE]" />
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <div className="mb-4">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-[#111318] dark:text-white">所有模块</h2>
-              <p className="mt-1 text-sm text-[#7A8190] dark:text-white/45">选择一个明确目标，直接开始。</p>
-            </div>
-            <span className="text-xs text-[#7A8190] dark:text-white/40">{filteredModules.length} 个结果</span>
-          </div>
-        </div>
-
-        <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_auto]">
-          <label className="relative block">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8B92A0]" size={17} />
-            <input
-              value={searchQuery}
-              onChange={event => setSearchQuery(event.target.value)}
-              placeholder="搜索模块、主题或能力"
-              className="h-11 w-full rounded-lg border border-[#DDE1E8] bg-white pl-10 pr-4 text-sm text-[#111318] outline-none transition-colors focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10 dark:border-white/10 dark:bg-[#15171C] dark:text-white"
-            />
-          </label>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {FILTERS.map(option => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => setActiveCategory(option.id)}
-                className={`flex h-11 shrink-0 items-center gap-2 rounded-lg border px-3.5 text-sm font-medium ${
-                  activeCategory === option.id
-                    ? 'border-[#2563EB] bg-[#2563EB] text-white shadow-[0_4px_12px_rgba(37,99,235,0.18)]'
-                    : 'border-[#DDE1E8] bg-white text-[#69707D] hover:border-[#BEC5D0] dark:border-white/10 dark:bg-[#15171C] dark:text-white/60'
-                }`}
-              >
-                {option.icon}
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {filteredModules.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredModules.map(item => (
-              <AppCard
-                key={item.id}
-                item={item}
-                usage={usage[item.id]}
-                isSaved={savedIds.includes(item.id)}
-                onOpen={setSelectedItem}
-                onRun={handleRunApp}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed border-[#C8D4CD] px-6 py-16 text-center text-sm text-[#71807A] dark:border-white/15">
-            没有找到匹配模块，换个关键词试试。
-          </div>
-        )}
-      </section>
-    </div>
-  );
+  const renderExperience = () => {
+    const props = { onClose: () => navigate(route.view), onDiscover: record };
+    switch (route.moduleId) {
+      case "e1":
+        return <Earth3D {...props} reducedMotion={store.reducedMotion} />;
+      case "e2":
+        return <FoodChainApp {...props} />;
+      case "e3":
+        return <WaveApp {...props} reducedMotion={store.reducedMotion} />;
+      case "u1":
+        return <ProArtApp {...props} />;
+      case "e4":
+        return <CharacterApp {...props} />;
+      case "e5":
+        return <PoetryApp {...props} />;
+      case "e6":
+        return <HistorySortingApp {...props} />;
+      case "e7":
+        return <ClockApp {...props} />;
+      case "e18":
+        return <MathSprintApp {...props} />;
+      case "e20":
+        return <ThreeCharacterApp {...props} />;
+      case "e21":
+        return <ThousandCharacterApp {...props} />;
+      case "ent3":
+        return <BrainTeaseApp {...props} />;
+      case "ent4":
+        return <GobangApp {...props} />;
+      case "ent5":
+        return <ChineseChessApp {...props} />;
+      case "ent6":
+        return <ChessApp {...props} />;
+      case "ent7":
+        return <GoApp {...props} />;
+      case "ent8":
+        return <JiangnanGameApp {...props} />;
+      case "u2":
+        return <VocabularyApp {...props} />;
+      case "u3":
+        return <IdiomApp {...props} />;
+      case "u4":
+        return <CurrencyConverterApp />;
+    }
+  };
+  const recent = getRecentExperiences(store);
+  const discoveries = item
+    ? store.discoveries.filter((entry) => entry.moduleId === item.id)
+    : store.discoveries;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F7F8FC] text-[#111318] transition-colors dark:bg-[#0B0D12] dark:text-white">
-      <aside className="hidden w-[232px] shrink-0 flex-col border-r border-[#E6E8EC] bg-white p-4 dark:border-white/10 dark:bg-[#101217] md:flex">
-        <div className="px-2 py-2">
-          <BrandLogo />
-        </div>
-        <nav className="mt-8 space-y-1">
-          {NAV_ITEMS.map(item => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => navigateTab(item.id)}
-              className={`flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${
-                activeTab === item.id
-                  ? 'bg-[#EEF2FF] text-[#2563EB]'
-                  : 'text-[#69707D] hover:bg-[#F4F6FA] hover:text-[#111318] dark:text-white/50 dark:hover:bg-white/[0.06] dark:hover:text-white'
-              }`}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <div className="mt-auto space-y-3">
-          <div className="rounded-lg border border-[#E5E7EB] bg-[#F8F9FC] p-3 dark:border-white/10 dark:bg-white/[0.03]">
-            <div className="flex items-center gap-2 text-xs font-medium text-[#4B5565] dark:text-white/65">
-              <span className="h-2 w-2 rounded-full bg-[#22C55E]" />
-              学习记录已开启
-            </div>
-            <p className="mt-2 text-[11px] leading-5 text-[#8B92A0] dark:text-white/35">成长工作台可家庭同步，其他记录保存在当前设备。</p>
-          </div>
+    <div className={`explorer-product ${item ? "is-experience" : ""}`}>
+      <a href="#main-content" className="explorer-skip">
+        跳到内容
+      </a>
+      {item ? (
+        <header className="experience-header">
           <button
-            type="button"
-            onClick={() => setTheme(current => (current === 'light' ? 'dark' : 'light'))}
-            className="flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-[#69707D] hover:bg-[#F4F6FA] dark:text-white/50 dark:hover:bg-white/[0.06]"
+            className="ex-icon"
+            onClick={() => navigate(route.view)}
+            title="返回探索"
+            aria-label="返回探索"
           >
-            {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
-            {theme === 'light' ? '暗色模式' : '亮色模式'}
+            <ArrowLeft size={19} />
           </button>
-        </div>
-      </aside>
-
-      <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[#E6E8EC] bg-white/95 px-4 backdrop-blur-md dark:border-white/10 dark:bg-[#0B0D12]/95 md:hidden">
-          <BrandLogo />
-          <button
-            type="button"
-            onClick={() => setTheme(current => (current === 'light' ? 'dark' : 'light'))}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-[#69707D] dark:text-white/55"
-            aria-label="切换主题"
+          <a
+            className="experience-brand"
+            href="#explore"
+            onClick={(event) => {
+              event.preventDefault();
+              navigate("explore");
+            }}
+            aria-label="ExBeam 首页"
           >
-            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+            <BrandLogo compact />
+          </a>
+          <div className="experience-heading">
+            <span>{item.format}</span>
+            <h1>{item.title}</h1>
+          </div>
+          <div className="experience-session">
+            <span className="live-dot" />
+            {formatDuration(sessionSeconds)}
+          </div>
+          <div className="experience-actions">
+            <button
+              className="ex-icon"
+              aria-label="探索任务"
+              title="探索任务"
+              onClick={() => setDialog("guide")}
+            >
+              <HelpCircle size={18} />
+            </button>
+            <button
+              className={`ex-icon ${store.saved.includes(item.id) ? "is-active" : ""}`}
+              aria-label={
+                store.saved.includes(item.id) ? "取消收藏" : "收藏体验"
+              }
+              title={store.saved.includes(item.id) ? "取消收藏" : "收藏体验"}
+              aria-pressed={store.saved.includes(item.id)}
+              onClick={() => toggleSave(item.id)}
+            >
+              <Bookmark
+                size={18}
+                fill={store.saved.includes(item.id) ? "currentColor" : "none"}
+              />
+            </button>
+            <button
+              className="ex-icon fullscreen-action"
+              disabled={!document.fullscreenEnabled}
+              aria-label={fullscreen ? "退出全屏" : "全屏"}
+              title={fullscreen ? "退出全屏" : "全屏"}
+              onClick={enterFullscreen}
+            >
+              {fullscreen ? <Minimize2 size={18} /> : <Expand size={18} />}
+            </button>
+            <button
+              className="ex-button ex-button-secondary notebook-action"
+              aria-label="探索笔记"
+              onClick={() => setDialog("note")}
+            >
+              <FileText size={16} />
+              <span>探索笔记</span>
+              {discoveries.length > 0 && <b>{discoveries.length}</b>}
+            </button>
+          </div>
+        </header>
+      ) : (
+        <header className="explorer-header">
+          <a
+            className="explorer-brand"
+            href="#explore"
+            onClick={(event) => {
+              event.preventDefault();
+              navigate("explore");
+            }}
+            aria-label="ExBeam 首页"
+          >
+            <BrandLogo inverse />
+            <span>互动探索空间</span>
+          </a>
+          <nav aria-label="主导航">
+            {NAV.map(({ id, label, Icon }) => (
+              <a
+                key={id}
+                href={`#${id}`}
+                aria-current={route.view === id ? "page" : undefined}
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigate(id);
+                }}
+              >
+                <Icon size={17} />
+                <span>{label}</span>
+                {id === "saved" && store.saved.length > 0 && (
+                  <b>{store.saved.length}</b>
+                )}
+              </a>
+            ))}
+          </nav>
+          <button
+            className={`ex-icon ${route.view === "settings" ? "is-active" : ""}`}
+            onClick={() => navigate("settings")}
+            title="偏好与数据"
+            aria-label="偏好与数据"
+          >
+            <Settings2 size={19} />
           </button>
         </header>
+      )}
 
-        <div className="mx-auto flex min-h-full w-full max-w-[1180px] flex-col px-4 py-7 sm:px-6 md:px-8 md:py-10 lg:px-10">
-          <Suspense fallback={<LoadingOverlay />}>
-            {activeTab === 'HOME' && <SummerGardenView />}
-            {activeTab === 'EXPLORE' && (
-              <ExploreView
-                allModules={allModules}
-                usage={usage}
-                onOpenItem={setSelectedItem}
-                onRunItem={handleRunApp}
-              />
-            )}
-            {activeTab === 'LIBRARY' && (
-              <LibraryView
-                allModules={allModules}
-                savedIds={savedIds}
-                historyIds={historyIds}
-                usage={usage}
-                onOpenItem={setSelectedItem}
-                onRunItem={handleRunApp}
-                onToggleSave={handleToggleSave}
-                onClearHistory={() => setHistoryIds([])}
-                onExplore={() => navigateTab('EXPLORE')}
-              />
-            )}
-            {activeTab === 'SETTINGS' && (
-              <SettingsView
-                theme={theme}
-                usage={usage}
-                savedCount={savedIds.length}
-                historyCount={historyIds.length}
-                onToggleTheme={() => setTheme(current => (current === 'light' ? 'dark' : 'light'))}
-                onResetData={resetProductData}
-              />
-            )}
-          </Suspense>
+      {!storageAvailable && (
+        <div className="explorer-warning" role="alert">
+          当前浏览器无法保存记录。请先导出备份，避免退出后丢失。
+          <button onClick={exportRecords}>导出记录</button>
         </div>
+      )}
+      <main
+        id="main-content"
+        ref={mainRef}
+        tabIndex={-1}
+        className={item ? "experience-stage" : "explorer-main"}
+      >
+        {item ? (
+          <ErrorBoundary key={item.id} onReset={() => navigate(route.view)}>
+            <Suspense
+              fallback={
+                <div className="experience-loading" role="status">
+                  <Loader2 size={25} className="animate-spin" />
+                  <h2>正在进入{item.title}</h2>
+                  <p>首次打开需要加载场景资源</p>
+                </div>
+              }
+            >
+              <div
+                data-experience={item.id}
+                className="experience-native"
+              >
+                {renderExperience()}
+              </div>
+            </Suspense>
+          </ErrorBoundary>
+        ) : route.view === "explore" ? (
+          <ExplorerHome
+            store={store}
+            onOpen={open}
+            onToggleSave={toggleSave}
+            reducedMotion={store.reducedMotion}
+          />
+        ) : route.view === "saved" ? (
+          <div className="explorer-page">
+            <PageHeading
+              eyebrow="COLLECTION"
+              title="留给下一次好奇"
+              description={`${store.saved.length} 个收藏体验`}
+            />
+            {store.saved.length ? (
+              <div className="experience-grid">
+                {store.saved.map((id) => (
+                  <ExperienceCard
+                    key={id}
+                    experience={EXPERIENCE_BY_ID.get(id)!}
+                    saved
+                    onOpen={open}
+                    onToggleSave={toggleSave}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                Icon={Bookmark}
+                title="把感兴趣的世界留在这里"
+                text="收藏的体验会出现在这里。"
+                action="去探索"
+                onAction={() => navigate("explore")}
+              />
+            )}
+          </div>
+        ) : route.view === "journal" ? (
+          <div className="explorer-page">
+            <PageHeading
+              eyebrow="EXPLORATION LOG"
+              title="每一次探索，都有迹可循"
+              description="观察、实验和自己的想法，都留在这里。"
+            />
+            <div className="explorer-stats">
+              <div>
+                <strong>{recent.length}</strong>
+                <span>体验足迹</span>
+              </div>
+              <div>
+                <strong>{store.discoveries.length}</strong>
+                <span>发现与记录</span>
+              </div>
+              <div>
+                <strong>
+                  {formatDuration(
+                    store.sessions
+                      .filter((entry) => !entry.id.startsWith("legacy-"))
+                      .reduce((sum, entry) => sum + entry.seconds, 0),
+                  )}
+                </strong>
+                <span>前台探索时间</span>
+              </div>
+              <button
+                className="ex-button ex-button-secondary"
+                onClick={exportRecords}
+              >
+                <Download size={16} />
+                导出记录
+              </button>
+            </div>
+            {recent.length > 0 && (
+              <section className="explorer-section">
+                <div className="section-heading">
+                  <h2>继续上次的探索</h2>
+                    <span>{recent.length} 个体验</span>
+                </div>
+                <div className="recent-experiences">
+                  {recent.slice(0, 6).map((id) => {
+                    const experience = EXPERIENCE_BY_ID.get(id)!;
+                    return (
+                      <button key={id} onClick={() => open(experience)}>
+                        <span style={{ background: experience.accent }} />
+                        <div>
+                          <strong>{experience.title}</strong>
+                          <small>
+                            {
+                              store.discoveries.filter(
+                                (entry) => entry.moduleId === id,
+                              ).length
+                            }{" "}
+                            条记录
+                          </small>
+                        </div>
+                        <ArrowUpRight size={18} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+            <section className="explorer-section">
+              <div className="section-heading">
+                <h2>我的发现</h2>
+                <span>{store.discoveries.length} 条</span>
+              </div>
+              {store.discoveries.length ? (
+                <DiscoveryList
+                  entries={store.discoveries}
+                  onOpen={(id) => open(EXPERIENCE_BY_ID.get(id)!)}
+                />
+              ) : (
+                <EmptyState
+                  Icon={FileText}
+                  title="还没有留下发现"
+                  text="完成观察、验证实验，或在体验中的探索笔记写下想法。"
+                  action="开始探索"
+                  onAction={() => navigate("explore")}
+                />
+              )}
+            </section>
+          </div>
+        ) : route.view === "growth" ? (
+          <div className="explorer-family">
+            <div className="explorer-family-heading">
+              <button
+                className="ex-button ex-button-secondary"
+                onClick={() => navigate("explore")}
+              >
+                <ArrowLeft size={16} />
+                返回探索
+              </button>
+              <span>家庭成长计划</span>
+            </div>
+            <ErrorBoundary onReset={() => navigate("explore")}>
+              <Suspense
+                fallback={
+                  <div className="experience-loading">
+                    <Loader2 className="animate-spin" />
+                  </div>
+                }
+              >
+                <SummerGardenView />
+              </Suspense>
+            </ErrorBoundary>
+          </div>
+        ) : (
+          <div className="explorer-page settings-page">
+            <PageHeading
+              eyebrow="PREFERENCES"
+              title="你的探索空间"
+              description="偏好、记录与家庭计划。"
+            />
+            <section className="settings-section">
+              <h2>体验偏好</h2>
+              <label className="settings-row">
+                <div>
+                  <strong>减少动态效果</strong>
+                  <p>首页停止自动旋转，实验默认暂停。场景仍可手动操作。</p>
+                </div>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={store.reducedMotion}
+                  onChange={(event) =>
+                    update((current) => ({
+                      ...current,
+                      reducedMotion: event.target.checked,
+                    }))
+                  }
+                />
+              </label>
+            </section>
+            <section className="settings-section">
+              <h2>探索数据</h2>
+              <div className="settings-row">
+                <div>
+                  <strong>保存在当前浏览器</strong>
+                  <p>
+                    足迹、收藏和笔记不会自动同步到其他设备。导出备份后，可以在另一台设备合并导入。
+                  </p>
+                </div>
+                <CheckCircle2 size={21} />
+              </div>
+              <div className="settings-buttons">
+                <button
+                  className="ex-button ex-button-secondary"
+                  onClick={exportRecords}
+                >
+                  <Download size={16} />
+                  导出探索记录
+                </button>
+                <button
+                  className="ex-button ex-button-secondary"
+                  onClick={() => importInput.current?.click()}
+                >
+                  <Upload size={16} />
+                  合并导入备份
+                </button>
+              </div>
+              <input
+                ref={importInput}
+                type="file"
+                accept="application/json,.json"
+                onChange={importRecords}
+                hidden
+              />
+            </section>
+            <DataStatusPanel />
+            <section className="settings-section">
+              <h2>家庭计划</h2>
+              <div className="settings-row">
+                <div>
+                  <strong>成长花园</strong>
+                  <p>
+                    原有任务、阳光和家庭同步均保留，探索记录与家庭计划目前分别保存。
+                  </p>
+                </div>
+                <button
+                  className="ex-icon"
+                  aria-label="打开成长花园"
+                  title="打开成长花园"
+                  onClick={() => navigate("growth")}
+                >
+                  <ArrowUpRight size={21} />
+                </button>
+              </div>
+            </section>
+            <footer className="explorer-about">
+              <BrandLogo inverse />
+              <p>ExBeam · 互动探索空间</p>
+              <a href="https://exbeam.com" target="_blank" rel="noreferrer">
+                exbeam.com <ArrowUpRight size={13} />
+              </a>
+            </footer>
+          </div>
+        )}
       </main>
 
-      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-[#E6E8EC] bg-white/95 px-2 pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.04)] backdrop-blur-md dark:border-white/10 dark:bg-[#101217]/95 md:hidden">
-        {NAV_ITEMS.map(item => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => navigateTab(item.id)}
-            className={`flex min-w-0 flex-col items-center gap-1 py-1.5 text-[10px] font-medium ${
-              activeTab === item.id ? 'text-[#2563EB] dark:text-[#8EACFF]' : 'text-[#8B92A0] dark:text-white/35'
-            }`}
-          >
-            {item.icon}
-            <span>{item.label}</span>
+      {!item && (
+        <footer className="explorer-footer">
+          <span>ExBeam</span>
+          <span>让好奇心有处可去。</span>
+          <button onClick={() => navigate("settings")}>
+            <MoreHorizontal size={17} />
+            偏好与数据
           </button>
-        ))}
-      </nav>
-
-      {selectedItem && (
-        <Modal
-          item={selectedItem}
-          isSaved={savedIds.includes(selectedItem.id)}
-          usage={usage[selectedItem.id]}
-          onToggleSave={handleToggleSave}
-          onClose={() => setSelectedItem(null)}
-          onRun={handleRunApp}
-        />
+        </footer>
+      )}
+      {notice && (
+        <div className="explorer-toast" role="status">
+          <Check size={16} />
+          <span>{notice}</span>
+          <button aria-label="关闭提示" onClick={() => setNotice("")}>
+            <X size={15} />
+          </button>
+        </div>
+      )}
+      {item && dialog && (
+        <ExplorerDialog
+          title={dialog === "guide" ? "这次探索什么" : "探索笔记"}
+          onClose={() => setDialog(null)}
+        >
+          {dialog === "guide" ? (
+            <div className="experience-guide">
+              <span className="explorer-eyebrow">{item.title}</span>
+              <h3>{item.prompt}</h3>
+              <p>{item.description}</p>
+              <button
+                className="ex-button ex-button-primary"
+                onClick={() => setDialog(null)}
+              >
+                回到体验
+                <ArrowUpRight size={16} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="notebook-editor">
+                <label htmlFor="explorer-note">
+                  关于「{item.title}」的新发现
+                </label>
+                <textarea
+                  id="explorer-note"
+                  maxLength={2000}
+                  value={store.drafts[item.id] || ""}
+                  placeholder="我注意到……我还想知道……"
+                  onChange={(event) =>
+                    update((current) => ({
+                      ...current,
+                      drafts: {
+                        ...current.drafts,
+                        [item.id]: event.target.value,
+                      },
+                    }))
+                  }
+                />
+                <div>
+                  <span>
+                    草稿{storageAvailable ? "已保存在本机" : "暂未保存"} ·{" "}
+                    {(store.drafts[item.id] || "").length}/2000
+                  </span>
+                  <button
+                    className="ex-button ex-button-primary"
+                    disabled={!(store.drafts[item.id] || "").trim()}
+                    onClick={() => {
+                      const note = store.drafts[item.id].trim();
+                      record({
+                        key: `note-${newId()}`,
+                        kind: "note",
+                        title: `${item.title}的发现`,
+                        detail: note,
+                      });
+                      update((current) => ({
+                        ...current,
+                        drafts: { ...current.drafts, [item.id]: "" },
+                      }));
+                      setNotice("发现已加入我的足迹");
+                    }}
+                  >
+                    保存记录
+                    <Check size={15} />
+                  </button>
+                </div>
+              </div>
+              <div className="notebook-history">
+                <h3>
+                  这段旅程的记录 <span>{discoveries.length}</span>
+                </h3>
+                {discoveries.length ? (
+                  <DiscoveryList entries={discoveries} />
+                ) : (
+                  <p>还没有记录，先写下第一条发现。</p>
+                )}
+              </div>
+            </>
+          )}
+        </ExplorerDialog>
       )}
     </div>
   );
-};
+}
 
-export default App;
+function PageHeading({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="explorer-page-heading">
+      <span className="explorer-eyebrow">{eyebrow}</span>
+      <h1>{title}</h1>
+      <p>{description}</p>
+    </div>
+  );
+}
+function EmptyState({
+  Icon,
+  title,
+  text,
+  action,
+  onAction,
+}: {
+  Icon: React.ComponentType<{ size?: number }>;
+  title: string;
+  text: string;
+  action: string;
+  onAction: () => void;
+}) {
+  return (
+    <div className="explorer-empty">
+      <Icon size={30} />
+      <h2>{title}</h2>
+      <p>{text}</p>
+      <button className="ex-button ex-button-primary" onClick={onAction}>
+        {action}
+        <ArrowUpRight size={16} />
+      </button>
+    </div>
+  );
+}
+function DiscoveryList({
+  entries,
+  onOpen,
+}: {
+  entries: Discovery[];
+  onOpen?: (id: string) => void;
+}) {
+  const [visible, setVisible] = useState(24);
+  return (
+    <>
+      <div className="discovery-list">
+        {entries.slice(0, visible).map((entry) => (
+          <article key={entry.id}>
+            <div className="discovery-meta">
+              <span>{KIND_LABELS[entry.kind]}</span>
+              <time dateTime={entry.createdAt}>
+                {new Date(entry.createdAt).toLocaleDateString("zh-CN", {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </time>
+            </div>
+            <h3>{entry.title}</h3>
+            <p>{entry.detail}</p>
+            {onOpen && (
+              <button onClick={() => onOpen(entry.moduleId)}>
+                {EXPERIENCE_BY_ID.get(entry.moduleId)?.title}
+                <ArrowUpRight size={13} />
+              </button>
+            )}
+          </article>
+        ))}
+      </div>
+      {entries.length > visible && (
+        <button
+          className="ex-button ex-button-secondary discovery-more"
+          onClick={() => setVisible((value) => value + 24)}
+        >
+          显示更多记录（还有 {entries.length - visible} 条）
+        </button>
+      )}
+    </>
+  );
+}

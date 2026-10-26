@@ -1,417 +1,748 @@
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Activity,
+  CheckCircle2,
+  Download,
+  FileSpreadsheet,
+  Grid2X2,
+  NotebookPen,
+  Pause,
+  Play,
+  RotateCcw,
+  StepForward,
+  Trash2,
+} from "lucide-react";
+import { Workbench, IconButton } from "./ModuleWorkbench";
+import { useModuleState } from "../lib/moduleSession";
+import type { ExperienceEvidence } from "../lib/explorerStore";
+import {
+  normalizeWaves,
+  phaseDifference,
+  resultantAmplitude,
+  sampleWave,
+  verifyWaveExperiment,
+  type WaveConfig,
+  type WaveExperiment,
+} from "../lib/wavePhysics";
+import {
+  WAVE_PRESETS,
+  WAVE_TASKS,
+  sampleWaveTrace,
+  validWaveRecords,
+  validWaves,
+  type WaveRecord,
+  type WaveView,
+} from "../lib/labsWave";
+import {
+  csv,
+  downloadLabFile,
+  lineChartSvg,
+  readLegacyLab,
+} from "../lib/labsCommon";
+import "./labs.css";
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { 
-  X, Play, Pause, RotateCcw, Radio, ChevronDown, 
-  ChevronUp, Grid, Activity, Layers, Info, Sparkles, Zap
-} from 'lucide-react';
-
-interface WaveConfig {
-  amplitude: number;
-  frequency: number;
-  phase: number;
-}
-
-const WaveApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  // --- 状态管理 ---
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [showGrid, setShowGrid] = useState(true);
-  const [wave1, setWave1] = useState<WaveConfig>({ amplitude: 1.0, frequency: 1.0, phase: 0 });
-  const [wave2, setWave2] = useState<WaveConfig>({ amplitude: 1.0, frequency: 1.0, phase: 0 });
-  const [isW1Expanded, setIsW1Expanded] = useState(true);
-  const [isW2Expanded, setIsW2Expanded] = useState(false); // 移动端默认折叠一个以节省空间
-
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const requestRef = useRef<number | undefined>(undefined);
-  const timeRef = useRef<number>(0);
-  const scaleYRef = useRef<number>(60); // 用于平滑缩放缓存
-
-  // --- 物理指标计算 ---
-  const phaseDiff = useMemo(() => {
-    let diff = Math.abs(wave1.phase - wave2.phase) % 360;
-    return diff > 180 ? 360 - diff : diff;
-  }, [wave1.phase, wave2.phase]);
-
-  const interferenceType = useMemo(() => {
-    if (wave1.frequency !== wave2.frequency) return '非相干叠加';
-    if (phaseDiff < 20) return '相长干涉 (加强)';
-    if (phaseDiff > 160) return '相消干涉 (减弱)';
-    return '部分干涉';
-  }, [phaseDiff, wave1.frequency, wave2.frequency]);
-
-  // --- 高清渲染逻辑 ---
-  const render = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // 高清适配
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    if (canvas.width !== rect.width * dpr) {
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-    }
-    ctx.scale(dpr, dpr);
-    
-    const width = rect.width;
-    const height = rect.height;
-    ctx.clearRect(0, 0, width, height);
-
-    // 动态 Y 轴缩放 (Lerp 平滑化)
-    const targetMaxAmp = wave1.amplitude + wave2.amplitude;
-    const targetScaleY = (height / 2.8) / Math.max(1.5, targetMaxAmp);
-    scaleYRef.current += (targetScaleY - scaleYRef.current) * 0.1; // 缓动
-    
-    const scaleY = scaleYRef.current;
-    const centerY = height / 2;
-    const scaleX = width / (6 * Math.PI); // x 轴跨度 6π
-
-    // 1. 绘制网格
-    if (showGrid) {
-      ctx.strokeStyle = 'rgba(226, 232, 240, 0.8)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let i = -5; i <= 5; i++) {
-        const y = centerY + i * (scaleY * 0.5);
-        ctx.moveTo(0, y); ctx.lineTo(width, y);
-      }
-      for (let i = 0; i <= 12; i++) {
-        const x = i * (width / 12);
-        ctx.moveTo(x, 0); ctx.lineTo(x, height);
-      }
-      ctx.stroke();
-    }
-
-    // 2. 坐标轴
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, centerY); ctx.lineTo(width, centerY);
-    ctx.moveTo(30, 20); ctx.lineTo(30, height - 20);
-    ctx.stroke();
-
-    // 3. 波形绘制函数
-    const drawWave = (config: WaveConfig, color: string, lineWidth: number, isDash: boolean = false, time: number) => {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lineWidth;
-      ctx.lineJoin = 'round';
-      if (isDash) ctx.setLineDash([5, 5]);
-      else ctx.setLineDash([]);
-      
-      const phaseRad = (config.phase * Math.PI) / 180;
-      
-      ctx.beginPath();
-      for (let px = 0; px <= width; px += 2) {
-        const x = px / scaleX;
-        const yVal = config.amplitude * Math.sin(x - 2 * Math.PI * config.frequency * time + phaseRad);
-        const py = centerY - yVal * scaleY;
-        if (px === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.stroke();
-    };
-
-    const t = timeRef.current;
-
-    // 波1 (蓝)
-    drawWave(wave1, 'rgba(59, 130, 246, 0.4)', 2, true, t);
-    // 波2 (橙)
-    drawWave(wave2, 'rgba(249, 115, 22, 0.4)', 2, true, t);
-    
-    // 合成波 (绿)
-    ctx.shadowBlur = 8;
-    ctx.shadowColor = 'rgba(16, 185, 129, 0.3)';
-    ctx.strokeStyle = '#10B981';
-    ctx.lineWidth = 4;
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    for (let px = 0; px <= width; px += 2) {
-        const x = px / scaleX;
-        const y1 = wave1.amplitude * Math.sin(x - 2 * Math.PI * wave1.frequency * t + (wave1.phase * Math.PI / 180));
-        const y2 = wave2.amplitude * Math.sin(x - 2 * Math.PI * wave2.frequency * t + (wave2.phase * Math.PI / 180));
-        const py = centerY - (y1 + y2) * scaleY;
-        if (px === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-    }
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    if (isPlaying) {
-      timeRef.current += 0.006;
-      requestRef.current = requestAnimationFrame(render);
-    }
-  }, [isPlaying, wave1, wave2, showGrid]);
-
+export default function WaveApp({
+  onDiscover,
+  reducedMotion = false,
+}: {
+  onClose: () => void;
+  onDiscover?: (evidence: ExperienceEvidence) => void;
+  reducedMotion?: boolean;
+}) {
+  const [waves, setWaves, available] = useModuleState<[WaveConfig, WaveConfig]>(
+    "exbeam.wave.v2",
+    () => readLegacyLab("exbeam.wave.v2", normalizeWaves),
+    validWaves,
+  );
+  const [records, setRecords, recordsAvailable] = useModuleState<WaveRecord[]>(
+    "exbeam.wave.records.v1",
+    [],
+    validWaveRecords,
+  );
+  const [playing, setPlaying] = useState(
+    () =>
+      !reducedMotion &&
+      !(
+        typeof matchMedia === "function" &&
+        matchMedia("(prefers-reduced-motion: reduce)").matches
+      ),
+  );
+  const [grid, setGrid] = useState(true),
+    [view, setView] = useState<WaveView>("space");
+  const [experiment, setExperiment] = useState<WaveExperiment>("destructive");
+  const [feedback, setFeedback] = useState(""),
+    [verified, setVerified] = useState(false);
+  const [speed, setSpeed] = useState(1),
+    [probe, setProbe] = useState(Math.PI);
+  const [clock, setClock] = useState(0),
+    [redraw, setRedraw] = useState(0),
+    [note, setNote] = useState("");
+  const [tab, setTab] = useState<"sources" | "records">("sources");
+  const canvas = useRef<HTMLCanvasElement>(null),
+    time = useRef(0);
+  const current = WAVE_TASKS.find((t) => t.id === experiment)!;
+  const amplitude = resultantAmplitude(...waves),
+    beat = Math.abs(waves[0].frequency - waves[1].frequency);
+  const a = sampleWave(waves[0], probe, clock),
+    b = sampleWave(waves[1], probe, clock);
   useEffect(() => {
-    requestRef.current = requestAnimationFrame(render);
-    return () => cancelAnimationFrame(requestRef.current!);
-  }, [render]);
-
-  const setPreset = (type: 'same' | 'oppo' | 'beat' | 'standing') => {
-    setIsPlaying(true);
-    timeRef.current = 0;
-    switch(type) {
-      case 'same':
-        setWave1({ amplitude: 1, frequency: 1, phase: 0 });
-        setWave2({ amplitude: 1, frequency: 1, phase: 0 });
-        break;
-      case 'oppo':
-        setWave1({ amplitude: 1, frequency: 1, phase: 0 });
-        setWave2({ amplitude: 1, frequency: 1, phase: 180 });
-        break;
-      case 'beat':
-        setWave1({ amplitude: 1, frequency: 1.0, phase: 0 });
-        setWave2({ amplitude: 1, frequency: 1.15, phase: 0 });
-        break;
-      case 'standing':
-        setWave1({ amplitude: 1, frequency: 1, phase: 0 });
-        setWave2({ amplitude: 1, frequency: -1, phase: 0 });
-        break;
-    }
-  };
-
-  return (
-    <div className="w-full h-full relative  flex flex-col overflow-y-auto no-scrollbar pb-safe     bg-white text-slate-900 bg-white text-slate-900">
-      {/* 头部导航 - 响应式高度 */}
-      
-
-      <main className="flex-1 max-w-[1120px] mx-auto w-full px-4 md:px-6 py-4 md:py-8 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-8">
-        
-        {/* 左侧控制面板 */}
-        <aside className="lg:col-span-4 space-y-4 md:space-y-6">
-          
-          {/* 实时干涉状态指示 */}
-          <div className="bg-slate-900 rounded-[1.5rem] md:rounded-[2rem] p-4 md:p-6 text-white shadow-xl relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-3 md:p-4 opacity-10"><Zap size={60} className="md:w-20 md:h-20" /></div>
-             <div className="relative z-10">
-                <h4 className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 mb-2 md:mb-4">Interference Status</h4>
-                <div className="text-xl md:text-2xl font-black mb-1">{interferenceType}</div>
-                <div className="flex items-center gap-2 text-slate-400 text-xs md:text-sm">
-                  相位差: <span className="text-white font-mono">{phaseDiff.toFixed(1)}°</span>
-                </div>
-                <div className="mt-3 md:mt-4 h-1 md:h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                   <div 
-                    className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-500" 
-                    style={{ width: `${(1 - phaseDiff/180) * 100}%` }}
-                   />
-                </div>
-             </div>
-          </div>
-
-          {/* 波形参数 */}
-          <div className="space-y-3 md:space-y-4">
-             <CollapsibleCard 
-              title="波源 1 (Blue)" 
-              expanded={isW1Expanded} 
-              onToggle={() => setIsW1Expanded(!isW1Expanded)}
-              themeColor="blue"
-             >
-                <div className="space-y-4 md:space-y-5 p-4 md:p-5 pt-1 md:pt-2">
-                  <ControlSlider label="振幅 A" value={wave1.amplitude} min={0} max={2} step={0.1} onChange={(v: number) => setWave1({...wave1, amplitude: v})} />
-                  <ControlSlider label="频率 f" value={wave1.frequency} min={0.2} max={5} step={0.1} unit="Hz" onChange={(v: number) => setWave1({...wave1, frequency: v})} />
-                  <ControlSlider label="相位 φ" value={wave1.phase} min={0} max={360} step={1} unit="°" onChange={(v: number) => setWave1({...wave1, phase: v})} />
-                </div>
-             </CollapsibleCard>
-
-             <CollapsibleCard 
-              title="波源 2 (Orange)" 
-              expanded={isW2Expanded} 
-              onToggle={() => {
-                setIsW2Expanded(!isW2Expanded);
-                // 移动端体验：展开一个时关闭另一个
-                if(window.innerWidth < 1024) setIsW1Expanded(false);
-              }}
-              themeColor="orange"
-             >
-                <div className="space-y-4 md:space-y-5 p-4 md:p-5 pt-1 md:pt-2">
-                  <ControlSlider label="振幅 A" value={wave2.amplitude} min={0} max={2} step={0.1} onChange={(v: number) => setWave2({...wave2, amplitude: v})} />
-                  <ControlSlider label="频率 f" value={wave2.frequency} min={0.2} max={5} step={0.1} unit="Hz" onChange={(v: number) => setWave2({...wave2, frequency: v})} />
-                  <ControlSlider label="相位 φ" value={wave2.phase} min={0} max={360} step={1} unit="°" onChange={(v: number) => setWave2({...wave2, phase: v})} />
-                </div>
-             </CollapsibleCard>
-          </div>
-
-          {/* 交互按钮组 */}
-          <div className="bg-white p-4 md:p-5 rounded-[1.5rem] md:rounded-3xl border border-slate-200 shadow-sm space-y-4">
-             <div className="grid grid-cols-2 gap-3">
-               <button 
-                onClick={() => setIsPlaying(!isPlaying)}
-                className={`py-3 md:py-3.5 rounded-xl md:rounded-2xl font-black text-xs md:text-sm flex items-center justify-center gap-2 transition-all ${isPlaying ? 'bg-slate-100 text-slate-900' : 'bg-blue-600 text-white shadow-lg shadow-blue-200'}`}
-               >
-                 {isPlaying ? <Pause size={16} fill="currentColor"/> : <Play size={16} fill="currentColor"/>}
-                 {isPlaying ? '暂停' : '开始'}
-               </button>
-               <button 
-                onClick={() => { setWave1({amplitude:1, frequency:1, phase:0}); setWave2({amplitude:1, frequency:1, phase:0}); setIsPlaying(false); timeRef.current=0; }}
-                className="py-3 md:py-3.5 bg-slate-50 text-slate-500 rounded-xl md:rounded-2xl font-bold text-xs md:text-sm hover:bg-slate-100 flex items-center justify-center gap-2"
-               >
-                 <RotateCcw size={16} /> 重置
-               </button>
-             </div>
-             
-             <div className="flex flex-wrap gap-1.5 md:gap-2">
-                <PresetTag label="相长干涉" onClick={() => setPreset('same')} />
-                <PresetTag label="相消干涉" onClick={() => setPreset('oppo')} />
-                <PresetTag label="拍频演示" onClick={() => setPreset('beat')} />
-                <PresetTag label="驻波现象" onClick={() => setPreset('standing')} />
-             </div>
-          </div>
-        </aside>
-
-        {/* 右侧绘图区 */}
-        <div className="lg:col-span-8 space-y-4 md:space-y-6">
-          <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-200 shadow-xl p-4 md:p-8 h-[320px] md:min-h-[500px] flex flex-col relative overflow-hidden group">
-             <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-30 pointer-events-none"></div>
-
-             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 md:mb-6 relative z-10">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">
-                  <Layers size={14}/> 实时干涉场
-                </h3>
-                <div className="flex flex-wrap gap-3 md:gap-4">
-                  <LegendItem color="#3B82F6" label="波源 1" />
-                  <LegendItem color="#F97316" label="波源 2" />
-                  <LegendItem color="#10B981" label="合成波" />
-                </div>
-             </div>
-
-             <div className="flex-1 rounded-2xl md:rounded-3xl bg-slate-50/50 border border-slate-100 relative overflow-hidden">
-                <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair" />
-                {!isPlaying && timeRef.current === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-[1px] pointer-events-none transition-opacity duration-500">
-                    <div className="text-center">
-                       <Sparkles className="mx-auto text-blue-400 mb-2 md:mb-3 animate-bounce" size={24}/>
-                       <p className="text-slate-400 text-[10px] md:text-sm font-bold uppercase tracking-widest">点击“开始”启动实验</p>
-                    </div>
-                  </div>
-                )}
-             </div>
-
-             <div className="mt-4 md:mt-6 flex justify-between items-center relative z-10">
-               <button 
-                onClick={() => setShowGrid(!showGrid)}
-                className={`flex items-center gap-2 text-[8px] md:text-[10px] font-black uppercase tracking-widest px-3 md:px-4 py-1.5 md:py-2 rounded-full border transition-all ${showGrid ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-white border-slate-200 text-slate-400'}`}
-               >
-                 <Grid size={12} /> 网格 {showGrid ? '开' : '关'}
-               </button>
-               <div className="text-[8px] md:text-[10px] text-slate-400 font-mono tracking-tighter hidden sm:block">
-                 Y = A₁sin(x-ω₁t+φ₁) + A₂sin(x-ω₂t+φ₂)
-               </div>
-             </div>
-          </div>
-
-          {/* 底部说明卡片 - 移动端折叠或简化 */}
-          <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-200 p-6 md:p-10 grid md:grid-cols-2 gap-6 md:gap-10 shadow-sm">
-             <div className="space-y-3 md:space-y-4">
-                <h3 className="text-lg md:text-xl font-black text-slate-900 flex items-center gap-2 uppercase tracking-tight">
-                  {/* Fix: Merged duplicated className attributes */}
-                  <Info className="text-blue-500 md:w-6 md:h-6" size={20} /> 实验指南
-                </h3>
-                <div className="space-y-2 md:space-y-3">
-                   <div className="p-3 md:p-4 bg-emerald-50 rounded-xl md:rounded-2xl border border-emerald-100 text-xs md:text-sm text-emerald-800">
-                      <strong>相长干涉：</strong>当相位差为 0° 时振幅最强。这是 5G 信号增强的基础。
-                   </div>
-                   <div className="p-3 md:p-4 bg-blue-50 rounded-xl md:rounded-2xl border border-blue-100 text-xs md:text-sm text-blue-800">
-                      <strong>相消干涉：</strong>当相位差为 180° 时波峰对波谷。这正是“主动降噪耳机”的原理。
-                   </div>
-                </div>
-             </div>
-             <div className="bg-slate-50 rounded-2xl md:rounded-3xl p-4 md:p-6 flex flex-col justify-center border border-slate-100">
-                <h4 className="font-black text-slate-800 mb-1.5 md:mb-2 uppercase text-[10px] md:text-xs tracking-widest">进阶观察：驻波</h4>
-                <p className="text-[10px] md:text-xs text-slate-500 leading-relaxed italic">
-                  将两列波频率设为相同但符号相反（一正一负），你会发现合成波在某些点（波节）始终保持静止，这模拟了琴弦颤动的规律。
-                </p>
-             </div>
-          </div>
-        </div>
-      </main>
-
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        input[type=range] {
-          accent-color: #3B82F6;
-          -webkit-appearance: none;
-          background: transparent;
+    if (reducedMotion) setPlaying(false);
+  }, [reducedMotion]);
+  useEffect(() => {
+    const element = canvas.current,
+      ctx = element?.getContext("2d");
+    if (!element || !ctx) return;
+    let frame = 0,
+      previous = performance.now(),
+      lastClock = 0;
+    const draw = (now: number) => {
+      if (playing && document.visibilityState === "visible")
+        time.current = Math.min(
+          3600,
+          time.current + Math.min(0.05, (now - previous) / 1000) * speed,
+        );
+      previous = now;
+      if (now - lastClock > 80 || !playing) {
+        setClock(time.current);
+        lastClock = now;
+      }
+      const { width, height } = element.getBoundingClientRect();
+      if (width && height) {
+        const dpr = Math.min(devicePixelRatio || 1, 2);
+        if (
+          element.width !== Math.round(width * dpr) ||
+          element.height !== Math.round(height * dpr)
+        ) {
+          element.width = Math.round(width * dpr);
+          element.height = Math.round(height * dpr);
         }
-        input[type=range]::-webkit-slider-runnable-track {
-          width: 100%;
-          height: 6px;
-          cursor: pointer;
-          background: #e2e8f0;
-          border-radius: 10px;
-        }
-        input[type=range]::-webkit-slider-thumb {
-          height: 18px;
-          width: 18px;
-          border-radius: 50%;
-          background: white;
-          border: 2px solid #3B82F6;
-          cursor: pointer;
-          -webkit-appearance: none;
-          margin-top: -6px;
-          box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-        }
-        /* 移动端加大滑块触控区域 */
-        @media (max-width: 768px) {
-          input[type=range]::-webkit-slider-thumb {
-            height: 24px;
-            width: 24px;
-            margin-top: -9px;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = "#0c1014";
+        ctx.fillRect(0, 0, width, height);
+        const left = 45,
+          right = width - 18,
+          top = 22,
+          bottom = height - 36;
+        const center = (top + bottom) / 2,
+          scale = (bottom - top) / 9;
+        if (grid) {
+          ctx.strokeStyle = "#ffffff10";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (let i = 0; i <= 12; i++) {
+            const x = left + ((right - left) * i) / 12;
+            ctx.moveTo(x, top);
+            ctx.lineTo(x, bottom);
           }
+          for (let i = -4; i <= 4; i++) {
+            const y = center - i * scale;
+            ctx.moveTo(left, y);
+            ctx.lineTo(right, y);
+          }
+          ctx.stroke();
         }
-      `}</style>
-    </div>
-  );
-};
-
-// --- 子组件 ---
-
-const CollapsibleCard = ({ title, expanded, onToggle, themeColor, children }: any) => {
-  const bgColor = themeColor === 'blue' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700';
+        ctx.strokeStyle = "#ffffff45";
+        ctx.beginPath();
+        ctx.moveTo(left, center);
+        ctx.lineTo(right, center);
+        ctx.stroke();
+        ctx.font = "11px sans-serif";
+        ctx.fillStyle = "#8d9ba8";
+        ctx.fillText("y", 16, 24);
+        [-4, -2, 0, 2, 4].forEach((v) =>
+          ctx.fillText(String(v), 12, center - v * scale + 4),
+        );
+        const trace = sampleWaveTrace(
+          waves,
+          view,
+          time.current,
+          probe,
+          Math.max(200, Math.round(right - left)),
+        );
+        for (let i = 0; i <= 4; i++) {
+          const p = trace[Math.round(((trace.length - 1) * i) / 4)];
+          ctx.fillText(
+            p.axis.toFixed(1),
+            left + ((right - left) * i) / 4 - 10,
+            height - 15,
+          );
+        }
+        ctx.fillText(
+          view === "space" ? "x / rad" : "t / s",
+          right - 42,
+          height - 2,
+        );
+        (["a", "b", "sum"] as const).forEach((key, index) => {
+          ctx.strokeStyle = ["#81b9f9", "#f3a698", "#a0e7cc"][index];
+          ctx.lineWidth = index === 2 ? 2.7 : 1.4;
+          ctx.setLineDash(index === 2 ? [] : [5, 5]);
+          ctx.beginPath();
+          trace.forEach((p, i) => {
+            const x = left + (i / (trace.length - 1)) * (right - left),
+              y = center - p[key] * scale;
+            if (!i) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+        });
+        ctx.setLineDash([]);
+        if (view === "space") {
+          const x = left + (probe / (Math.PI * 6)) * (right - left);
+          ctx.strokeStyle = "#e8eef388";
+          ctx.beginPath();
+          ctx.moveTo(x, top);
+          ctx.lineTo(x, bottom);
+          ctx.stroke();
+          ctx.fillStyle = "#a0e7cc";
+          ctx.beginPath();
+          ctx.arc(
+            x,
+            center -
+              (sampleWave(waves[0], probe, time.current) +
+                sampleWave(waves[1], probe, time.current)) *
+                scale,
+            4,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
+        }
+      }
+      if (playing) frame = requestAnimationFrame(draw);
+    };
+    const observer = new ResizeObserver(() => {
+      if (!playing) draw(performance.now());
+    });
+    observer.observe(element);
+    draw(performance.now());
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [waves, playing, grid, view, probe, speed, redraw]);
+  const seek = (value: number) => {
+    time.current = Math.max(0, Math.min(3600, value));
+    setClock(time.current);
+    setPlaying(false);
+    setRedraw((r) => r + 1);
+  };
+  const change = (index: number, field: keyof WaveConfig, value: number) => {
+    setWaves(
+      (previous) =>
+        previous.map((w, i) =>
+          i === index ? { ...w, [field]: value } : w,
+        ) as [WaveConfig, WaveConfig],
+    );
+    setVerified(false);
+    setFeedback("");
+  };
+  const record = (isVerified: boolean) => {
+    if (records.length >= 100) {
+      setFeedback("记录已达 100 条，请先导出记录再移除旧项。");
+      return;
+    }
+    setRecords((previous) => [
+      {
+        id: crypto.randomUUID(),
+        at: new Date().toISOString(),
+        waves: normalizeWaves(waves),
+        time: time.current,
+        task: experiment,
+        verified: isVerified,
+        note: note.trim(),
+        view,
+        probe,
+        speed,
+      },
+      ...previous,
+    ]);
+  };
+  const verify = () => {
+    const passed = verifyWaveExperiment(experiment, ...waves);
+    setVerified(passed);
+    if (!passed) {
+      setFeedback(
+        experiment === "beats"
+          ? "需要两个非零波源；频率差须大于 0 且不超过 0.5 Hz。"
+          : `需要非零、等振幅、同频波源；相位差应为 ${experiment === "constructive" ? "0" : "180"}°。`,
+      );
+      return;
+    }
+    setFeedback(current.explanation);
+    record(true);
+    onDiscover?.({
+      key: `wave-${experiment}`,
+      kind: "experiment",
+      title: `${current.title} · 验证成功`,
+      detail: `${current.explanation}\n${waves.map((w, i) => `源${i + 1}：A=${w.amplitude}，f=${w.frequency} Hz，φ=${w.phase}°`).join("；")}`,
+    });
+  };
+  const exportTrace = (format: "csv" | "svg") => {
+    const rows = sampleWaveTrace(waves, view, time.current, probe);
+    const metadata = `t=${time.current.toFixed(3)}s; probe=${probe.toFixed(3)}rad; ${waves.map((w, i) => `source${i + 1}: A=${w.amplitude}, f=${w.frequency}Hz, phase=${w.phase}deg`).join("; ")}`;
+    if (format === "csv")
+      downloadLabFile(
+        "wave-samples.csv",
+        csv([
+          [
+            "model",
+            "view",
+            view === "space" ? "x_rad" : "time_s",
+            "source_1",
+            "source_2",
+            "sum",
+            "snapshot_time_s",
+            "probe_rad",
+            "A1",
+            "f1_Hz",
+            "phase1_deg",
+            "A2",
+            "f2_Hz",
+            "phase2_deg",
+          ],
+          ...rows.map((p) => [
+            "linear superposition",
+            view,
+            p.axis,
+            p.a,
+            p.b,
+            p.sum,
+            time.current,
+            probe,
+            waves[0].amplitude,
+            waves[0].frequency,
+            waves[0].phase,
+            waves[1].amplitude,
+            waves[1].frequency,
+            waves[1].phase,
+          ]),
+        ]),
+      );
+    else
+      downloadLabFile(
+        "wave-chart.svg",
+        lineChartSvg(
+          "波动实验 / Linear superposition",
+          (["a", "b", "sum"] as const).map((key, i) => ({
+            name: ["源 1", "源 2", "合成波"][i],
+            color: ["#81b9f9", "#f3a698", "#a0e7cc"][i],
+            points: rows.map((p) => [p.axis, p[key]]),
+          })),
+          view === "space" ? "x / rad" : "t / s",
+          "位移 / 任意单位",
+          metadata,
+        ),
+        "image/svg+xml",
+      );
+    setFeedback(
+      format === "csv" ? "当前采样数据已生成。" : "当前图表 SVG 已生成。",
+    );
+  };
   return (
-    <div className="bg-white rounded-2xl md:rounded-3xl border border-slate-200 shadow-sm overflow-hidden transition-all">
-      <button 
-        onClick={onToggle}
-        className={`w-full px-4 md:px-5 py-3 md:py-4 flex justify-between items-center font-black text-[10px] md:text-xs uppercase tracking-widest transition-colors ${bgColor}`}
-      >
-        <span className="flex items-center gap-2"><Activity size={14}/> {title}</span>
-        {expanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
-      </button>
-      {expanded && children}
-    </div>
+    <Workbench
+      title="波动实验室"
+      eyebrow="WAVE INTERFERENCE"
+      className="labs-workbench labs-wave"
+      toolbar={
+        <>
+          <IconButton
+            label={playing ? "暂停实验" : "播放实验"}
+            onClick={() => setPlaying(!playing)}
+          >
+            {playing ? <Pause size={17} /> : <Play size={17} />}
+          </IconButton>
+          <IconButton
+            label="前进 0.05 秒"
+            onClick={() => seek(time.current + 0.05)}
+          >
+            <StepForward size={17} />
+          </IconButton>
+          <IconButton
+            label="重置参数和时间"
+            onClick={() => {
+              setWaves(normalizeWaves(null));
+              seek(0);
+              setVerified(false);
+              setFeedback("");
+            }}
+          >
+            <RotateCcw size={17} />
+          </IconButton>
+          <IconButton label="导出采样 CSV" onClick={() => exportTrace("csv")}>
+            <FileSpreadsheet size={17} />
+          </IconButton>
+          <IconButton label="导出图表 SVG" onClick={() => exportTrace("svg")}>
+            <Download size={17} />
+          </IconButton>
+        </>
+      }
+      status={
+        <>
+          <span>
+            {available && recordsAvailable
+              ? "参数与记录已保存在本机"
+              : "本机保存不可用，请导出数据"}
+          </span>
+          <span>理想线性叠加 · 位移为任意单位</span>
+          <span>t = {clock.toFixed(2)} s</span>
+        </>
+      }
+    >
+      <div className="labs-layout">
+        <main className="labs-stage">
+          <div className="wb-tabs" aria-label="波形视图">
+            <button
+              aria-pressed={view === "space"}
+              onClick={() => setView("space")}
+            >
+              空间快照
+            </button>
+            <button
+              aria-pressed={view === "time"}
+              onClick={() => setView("time")}
+            >
+              定点时间曲线 · 12 s
+            </button>
+          </div>
+          <div className="labs-legend">
+            <span style={{ color: "#81b9f9" }}>源 1</span>
+            <span style={{ color: "#f3a698" }}>源 2</span>
+            <span style={{ color: "#a0e7cc" }}>合成波</span>
+            <label>
+              <input
+                type="checkbox"
+                checked={grid}
+                onChange={(e) => setGrid(e.target.checked)}
+              />
+              <Grid2X2 size={13} />
+              网格
+            </label>
+          </div>
+          <canvas
+            ref={canvas}
+            aria-label="两列波和合成波的干涉图"
+            className="labs-wave-canvas"
+          />
+          <div className="labs-stats">
+            <div className="wb-stat">
+              <span>相位差</span>
+              <strong>
+                {phaseDifference(waves[0].phase, waves[1].phase).toFixed(0)}°
+              </strong>
+            </div>
+            <div className="wb-stat">
+              <span>{amplitude === null ? "频率差 / 拍频" : "合成振幅"}</span>
+              <strong>
+                {amplitude === null
+                  ? `${beat.toFixed(2)} Hz`
+                  : amplitude.toFixed(3)}
+              </strong>
+            </div>
+            <div className="wb-stat">
+              <span>探针合成位移</span>
+              <strong>{(a + b).toFixed(3)}</strong>
+            </div>
+          </div>
+          <div className="labs-inline-fields">
+            <label className="wb-field">
+              探针 x / rad
+              <input
+                aria-label="探针位置"
+                type="range"
+                min={0}
+                max={Math.PI * 6}
+                step={0.01}
+                value={probe}
+                onChange={(e) => setProbe(+e.target.value)}
+              />
+            </label>
+            <label className="wb-field">
+              时间 / s
+              <input
+                aria-label="实验时间"
+                type="number"
+                min={0}
+                max={3600}
+                step={0.05}
+                value={Number(clock.toFixed(2))}
+                onChange={(e) => seek(+e.target.value)}
+              />
+            </label>
+            <label className="wb-field">
+              播放速率
+              <select value={speed} onChange={(e) => setSpeed(+e.target.value)}>
+                {[0.25, 0.5, 1, 2].map((v) => (
+                  <option key={v} value={v}>
+                    {v}×
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {feedback && (
+            <p className="wb-notice labs-feedback" role="status">
+              {feedback}
+            </p>
+          )}
+        </main>
+        <aside className="labs-inspector">
+          <div className="wb-tabs">
+            <button
+              aria-pressed={tab === "sources"}
+              onClick={() => setTab("sources")}
+            >
+              波源与任务
+            </button>
+            <button
+              aria-pressed={tab === "records"}
+              onClick={() => setTab("records")}
+            >
+              记录 {records.length}
+            </button>
+          </div>
+          {tab === "sources" ? (
+            <div className="labs-inspector-body">
+              <label className="wb-field">
+                实验预设
+                <select
+                  aria-label="波动预设"
+                  defaultValue=""
+                  onChange={(e) => {
+                    const preset = WAVE_PRESETS.find(
+                      (p) => p.id === e.target.value,
+                    );
+                    if (preset) {
+                      setWaves(normalizeWaves(preset.waves));
+                      setVerified(false);
+                      setFeedback("");
+                      seek(0);
+                    }
+                  }}
+                >
+                  <option value="" disabled>
+                    选择一组波源
+                  </option>
+                  {WAVE_PRESETS.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {waves.map((wave, index) => (
+                <fieldset className="labs-fieldset" key={index}>
+                  <legend
+                    style={{ color: index === 0 ? "#81b9f9" : "#f3a698" }}
+                  >
+                    波源 {index + 1}
+                  </legend>
+                  {(
+                    [
+                      {
+                        field: "amplitude",
+                        label: "振幅",
+                        min: 0,
+                        max: 2,
+                        step: 0.1,
+                        unit: "",
+                      },
+                      {
+                        field: "frequency",
+                        label: "频率",
+                        min: 0.2,
+                        max: 3,
+                        step: 0.1,
+                        unit: " Hz",
+                      },
+                      {
+                        field: "phase",
+                        label: "相位",
+                        min: 0,
+                        max: 360,
+                        step: 1,
+                        unit: "°",
+                      },
+                    ] as const
+                  ).map((c) => (
+                    <label className="labs-slider" key={c.field}>
+                      <span>
+                        {c.label}
+                        <output>
+                          {wave[c.field].toFixed(c.field === "phase" ? 0 : 1)}
+                          {c.unit}
+                        </output>
+                      </span>
+                      <input
+                        aria-label={`波源 ${index + 1} ${c.label}`}
+                        type="range"
+                        min={c.min}
+                        max={c.max}
+                        step={c.step}
+                        value={wave[c.field]}
+                        onChange={(e) =>
+                          change(index, c.field, +e.target.value)
+                        }
+                      />
+                    </label>
+                  ))}
+                </fieldset>
+              ))}
+              <section className="labs-section">
+                <h3>
+                  <Activity size={15} />
+                  实验任务
+                </h3>
+                <label className="wb-field">
+                  <select
+                    aria-label="选择波动实验"
+                    value={experiment}
+                    onChange={(e) => {
+                      setExperiment(e.target.value as WaveExperiment);
+                      setVerified(false);
+                      setFeedback("");
+                    }}
+                  >
+                    {WAVE_TASKS.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p>{current.question}</p>
+                <button className="wb-button is-primary" onClick={verify}>
+                  {verified ? (
+                    <CheckCircle2 size={16} />
+                  ) : (
+                    <Activity size={16} />
+                  )}
+                  {verified ? "再次验证并记录" : "验证并记录"}
+                </button>
+              </section>
+              <label className="wb-field">
+                观察笔记
+                <textarea
+                  value={note}
+                  maxLength={200}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={2}
+                />
+              </label>
+              <button
+                className="wb-button"
+                disabled={records.length >= 100}
+                onClick={() => {
+                  record(false);
+                  setFeedback("已记录当前参数，可在记录中恢复。");
+                }}
+              >
+                <NotebookPen size={15} />
+                记录当前状态
+              </button>
+            </div>
+          ) : (
+            <div className="labs-inspector-body">
+              <button
+                className="wb-button"
+                disabled={!records.length}
+                onClick={() =>
+                  downloadLabFile(
+                    "wave-records.csv",
+                    csv([
+                      [
+                        "at",
+                        "task",
+                        "verified",
+                        "time_s",
+                        "A1",
+                        "f1",
+                        "phase1",
+                        "A2",
+                        "f2",
+                        "phase2",
+                        "note",
+                        "view",
+                        "probe_rad",
+                        "speed",
+                      ],
+                      ...records.map((r) => [
+                        r.at,
+                        r.task,
+                        r.verified,
+                        r.time,
+                        r.waves[0].amplitude,
+                        r.waves[0].frequency,
+                        r.waves[0].phase,
+                        r.waves[1].amplitude,
+                        r.waves[1].frequency,
+                        r.waves[1].phase,
+                        r.note,
+                        r.view || "space",
+                        r.probe ?? Math.PI,
+                        r.speed ?? 1,
+                      ]),
+                    ]),
+                  )
+                }
+              >
+                <Download size={15} />
+                导出全部记录
+              </button>
+              {!records.length && <div className="wb-empty">暂无实验记录</div>}
+              <ul className="wb-list">
+                {records.map((r) => (
+                  <li key={r.id} className="labs-record">
+                    <strong>
+                      {WAVE_TASKS.find((t) => t.id === r.task)?.title} ·{" "}
+                      {r.verified ? "已验证" : "观察"}
+                    </strong>
+                    <small>
+                      {new Date(r.at).toLocaleString("zh-CN")} ·{" "}
+                      {r.time.toFixed(2)} s
+                    </small>
+                    <p>
+                      {r.note ||
+                        r.waves
+                          .map(
+                            (w) =>
+                              `${w.amplitude} / ${w.frequency} Hz / ${w.phase}°`,
+                          )
+                          .join("；")}
+                    </p>
+                    <div className="wb-actions">
+                      <button
+                        className="wb-button"
+                        onClick={() => {
+                          setWaves(normalizeWaves(r.waves));
+                          setExperiment(r.task);
+                          setView(r.view || "space");
+                          setProbe(r.probe ?? Math.PI);
+                          setSpeed(r.speed ?? 1);
+                          setNote(r.note);
+                          setVerified(false);
+                          seek(r.time);
+                          setFeedback("已恢复记录参数。");
+                          setTab("sources");
+                        }}
+                      >
+                        恢复参数
+                      </button>
+                      <IconButton
+                        label="移除此条波动记录"
+                        onClick={() =>
+                          setRecords(records.filter((item) => item.id !== r.id))
+                        }
+                      >
+                        <Trash2 size={15} />
+                      </IconButton>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </aside>
+      </div>
+    </Workbench>
   );
-};
-
-const ControlSlider = ({ label, value, min, max, step, unit = '', onChange }: any) => (
-  <div className="space-y-1.5 md:space-y-2">
-    <div className="flex justify-between text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400">
-      <span>{label}</span>
-      <span className="text-slate-900 font-mono">{value.toFixed(1)}{unit}</span>
-    </div>
-    <input 
-      type="range" 
-      min={min} max={max} step={step} 
-      value={value} 
-      onChange={(e) => onChange(parseFloat(e.target.value))}
-      className="w-full"
-    />
-  </div>
-);
-
-const PresetTag = ({ label, onClick }: any) => (
-  <button 
-    onClick={onClick}
-    className="px-2.5 md:px-3 py-1 md:py-1.5 bg-slate-50 border border-slate-200 rounded-full text-[8px] md:text-[10px] font-bold text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-white transition-all whitespace-nowrap"
-  >
-    {label}
-  </button>
-);
-
-const LegendItem = ({ color, label }: any) => (
-  <div className="flex items-center gap-1.5 md:gap-2">
-    <div className="w-2.5 h-0.5 md:w-3 md:h-1 rounded-full" style={{ backgroundColor: color }}></div>
-    <span className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</span>
-  </div>
-);
-
-export default WaveApp;
+}

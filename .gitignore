@@ -15,7 +15,14 @@ deno.lock
 migrated_prompt_history/
 .playwright-cli/
 output/playwright/
+output/imagegen/
+output/cloudflare/
 *.local
+.env
+.env.*
+!.env.example
+.wrangler/
+.migration.local/
 
 # Editor directories and files
 .vscode/*

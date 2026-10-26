@@ -1,4 +1,5 @@
 import { PLANETS } from './solarSystemData';
+import { ADDITIONAL_OBJECTS } from './universeObjects';
 
 export type UniverseScale = 'solar' | 'galaxy' | 'galaxies' | 'cosmos';
 export type CosmicShape =
@@ -29,7 +30,10 @@ export interface CosmicObject {
   image?: string;
   imageCredit?: string;
   imageCaption?: string;
+  texture?: string;
   enterScale?: UniverseScale;
+  surface?: 'rock' | 'ice' | 'volcanic' | 'haze' | 'unknown';
+  elliptical?: boolean;
 }
 
 export const UNIVERSE_SCALES: {
@@ -42,16 +46,16 @@ export const UNIVERSE_SCALES: {
 }[] = [
   {
     id: 'solar',
-    name: '太阳系',
-    english: 'SOLAR SYSTEM',
+    name: '恒星系统',
+    english: 'STELLAR SYSTEMS',
     extent: '行星与卫星',
     defaultId: 'earth',
-    note: '轨道与大小已压缩，公转速度为演示速度。',
+    note: '轨道与大小分别压缩；太阳系星历按统一时钟加速，其他恒星系统为示意。',
   },
   {
     id: 'galaxy',
-    name: '银河系',
-    english: 'MILKY WAY',
+    name: '星系内部',
+    english: 'INSIDE GALAXIES',
     extent: '约 10 万光年',
     defaultId: 'solar-system',
     note: '银河系结构示意；天体位置与大小经重排放大，并非星图。',
@@ -109,6 +113,7 @@ const solarObjects: CosmicObject[] = PLANETS.map((planet) => ({
 
 export const COSMIC_OBJECTS: CosmicObject[] = [
   ...solarObjects,
+  ...ADDITIONAL_OBJECTS,
   {
     id: 'solar-system',
     name: '太阳系',

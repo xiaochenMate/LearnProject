@@ -102,6 +102,7 @@
   color: #6e7783;
 }
 .universe-workspace {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: grid;
@@ -321,6 +322,7 @@
   line-height: 1.6;
 }
 .universe-viewport {
+  touch-action: none;
   position: relative;
   min-width: 0;
   min-height: 0;
@@ -405,6 +407,43 @@
   border-radius: 6px;
   box-shadow: 0 6px 24px #0004;
 }
+.universe-time-controls {
+  position: absolute;
+  top: 24px;
+  right: 22px;
+  color: #bcc6d0;
+  font-size: 10px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.universe-time-controls > div {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 7px;
+}
+.universe-time-controls select {
+  border: 1px solid #ffffff24;
+  border-radius: 4px;
+  padding: 4px 5px;
+  color: #ced9e2;
+  background: #14191f;
+  font-size: 10px;
+}
+.universe-time-controls button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid #ffffff24;
+  background: #14191f;
+}
+@media (max-width: 700px) {
+  .universe-time-controls { top: 88px; right: 16px; font-size: 9px; }
+  .universe-time-controls select { font-size: 9px; }
+}
 .universe-toolbar button {
   width: 34px;
   height: 34px;
@@ -482,6 +521,7 @@
   flex-shrink: 0;
   margin-top: 3px;
 }
+.universe-model-popover a { color: var(--u-mint); text-decoration: underline; }
 .universe-inspector {
   display: flex;
   min-height: 0;
@@ -536,7 +576,7 @@
 .universe-inspector-tabs {
   display: flex;
   padding: 0 22px;
-  gap: 20px;
+  gap: 14px;
   border-bottom: 1px solid var(--u-border);
 }
 .universe-inspector-tabs button {
@@ -1399,5 +1439,253 @@
   .universe-app *,
   .universe-app *::after {
     transition: none !important;
+  }
+}
+
+.universe-address {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  gap: 12px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--u-border);
+  background: #0d1014;
+  flex-shrink: 0;
+}
+.universe-copy-address {
+  position: absolute;
+  top: 100%;
+  right: 12px;
+  z-index: 40;
+  width: min(430px, calc(100% - 24px));
+  padding: 12px;
+  border: 1px solid #ffffff30;
+  background: #171d22;
+  color: #b5daca;
+  font-size: 11px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.universe-copy-address input {
+  width: calc(100% - 28px);
+  min-width: 0;
+  padding: 8px;
+  background: #080b0e;
+  color: #c2cfda;
+  border: 1px solid #ffffff20;
+  font-size: 11px;
+}
+.universe-address-back {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  color: #b5e5d1;
+}
+.universe-address ol {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow-x: auto;
+  gap: 7px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  scrollbar-width: thin;
+}
+.universe-address li {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 7px;
+  font-size: 11px;
+  color: #788594;
+}
+.universe-address li button {
+  min-height: 34px;
+  color: #9da8b6;
+}
+.universe-address li button:hover,
+.universe-address button[aria-current='location'] {
+  color: var(--u-mint);
+}
+.universe-depth {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #849388;
+  font-size: 10px;
+}
+.universe-scene-heading {
+  max-width: calc(100% - 120px);
+  pointer-events: none;
+}
+.universe-scene-heading h2 {
+  overflow-wrap: anywhere;
+}
+.universe-read-science {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 18px;
+  min-height: 36px;
+  color: #b6d4e5;
+  font-size: 12px !important;
+}
+.universe-read-science svg:last-child {
+  margin-left: auto;
+}
+.universe-science {
+  color: #b7c1cd;
+}
+.universe-science-lead {
+  font-size: 12px;
+  line-height: 1.95;
+  margin-bottom: 20px;
+}
+.universe-science > details {
+  border-top: 1px solid var(--u-border);
+}
+.universe-science summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  list-style: none;
+  min-height: 48px;
+  font-size: 12px;
+  color: #d4dbe3;
+}
+.universe-science summary::-webkit-details-marker {
+  display: none;
+}
+.universe-science summary > span {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: #82ad9e;
+}
+.universe-science summary svg {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #8e9baa;
+}
+.universe-science details[open] > summary > svg {
+  transform: rotate(90deg);
+}
+.universe-science details p {
+  font-size: 12px;
+  line-height: 1.95;
+  padding-bottom: 18px;
+  color: #b1bdcb;
+}
+.universe-science h3 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e1e6ed;
+}
+.universe-glossary,
+.universe-related,
+.universe-science-sources {
+  padding-top: 24px;
+  margin-top: 8px;
+  border-top: 1px solid var(--u-border);
+}
+.universe-glossary summary {
+  color: #9fc6c3;
+  min-height: 39px;
+  font-size: 11px;
+}
+.universe-glossary details p {
+  font-size: 11px;
+}
+.universe-related button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  width: 100%;
+  min-height: 48px;
+  gap: 10px;
+  border-bottom: 1px solid #ffffff0a;
+  color: #bfcbd7;
+  font-size: 12px;
+}
+.universe-related button:hover {
+  color: var(--u-mint);
+}
+.universe-related small {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: #7e8d9f;
+}
+.universe-science-sources > p {
+  color: #8d9bac;
+  font-size: 10px;
+  line-height: 1.9;
+  margin-bottom: 14px;
+}
+.universe-science-sources a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 35px;
+  font-size: 10px;
+  color: #a9cbc0;
+}
+.universe-science-sources a:hover {
+  color: #d2f1e5;
+}
+.universe-science-sources a svg {
+  flex-shrink: 0;
+}
+.universe-scale-footer > button {
+  max-width: 44%;
+  line-height: 1.4;
+  text-align: left;
+}
+.universe-scale-footer > span {
+  color: #687b89;
+  font-size: 9px;
+}
+.universe-catalog.is-open {
+  top: 0;
+  bottom: 0;
+}
+.universe-catalog-backdrop {
+  inset: 0;
+}
+@media (max-width: 700px) {
+  .universe-address {
+    padding: 0 8px;
+    gap: 4px;
+    min-height: 38px;
+  }
+  .universe-address li {
+    font-size: 10px;
+    gap: 5px;
+  }
+  .universe-depth {
+    display: none;
+  }
+  .universe-inspector-tabs {
+    gap: 18px;
+  }
+  .universe-science details p {
+    font-size: 13px;
+  }
+  .universe-scale-footer > span {
+    display: none;
+  }
+  .universe-scale-footer > button {
+    max-width: 48%;
+    min-height: 36px;
+    height: auto;
   }
 }

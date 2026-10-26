@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowUpRight,
+  ArrowUpLeft,
   BookOpen,
   Check,
   CheckCircle2,
@@ -13,6 +14,7 @@ import {
   Info,
   Layers3,
   List,
+  Link2,
   Loader2,
   MapPin,
   Minus,
@@ -47,19 +49,60 @@ import {
   UniverseSceneController,
 } from '../lib/universeScene';
 import './universe.css';
+import type { ExperienceEvidence } from '../lib/explorerStore';
+import {
+  contextLocation,
+  enterLocation,
+  leaveLocation,
+  locationForObject,
+  locationFromSearch,
+  SCALE_CONTEXT,
+  UNIVERSE_CONTEXTS,
+  universeAddress,
+  UniverseLocation,
+  ZoomIntent,
+} from '../lib/universeNavigation';
+import {
+  ASTRONOMY_TERMS,
+  SCIENCE_ARTICLES,
+  scienceSearchText,
+} from '../lib/universeScience';
 
 interface Earth3DProps {
   onClose: () => void;
+  onDiscover?: (evidence: ExperienceEvidence) => void;
+  reducedMotion?: boolean;
 }
-type InspectorTab = 'overview' | 'data' | 'observe';
+type InspectorTab = 'overview' | 'science' | 'data' | 'observe';
 type CatalogTab = 'objects' | 'route' | 'notebook';
 const scaleIcons = [Orbit, Sparkles, Globe2, Network];
+const writeAddress = (location: UniverseLocation, replace = false) => {
+  const url = new URL(window.location.href);
+  url.searchParams.set('space', location.contextId);
+  url.searchParams.set('object', location.selectedId);
+  if (location.overview) url.searchParams.set('overview', '1');
+  else url.searchParams.delete('overview');
+  if (url.href !== window.location.href)
+    window.history[replace ? 'replaceState' : 'pushState'](null, '', url);
+};
 
-const Earth3D: React.FC<Earth3DProps> = () => {
+const Earth3D: React.FC<Earth3DProps> = ({
+  onDiscover,
+  reducedMotion = false,
+}) => {
   const [progress, setProgress] = useState(readUniverseProgress);
-  const [selectedId, setSelectedId] = useState(progress.selectedId);
+  const [location, setLocation] = useState<UniverseLocation>(
+    () =>
+      locationFromSearch(window.location.search) ||
+      progress.location ||
+      (progress.visited.length
+        ? locationForObject(progress.selectedId)
+        : contextLocation('universe')),
+  );
+  const { selectedId, overview } = location;
   const selected = COSMIC_BY_ID.get(selectedId)!;
-  const scale = selected.scale;
+  const context = UNIVERSE_CONTEXTS.get(location.contextId)!;
+  const scale = context.scale;
   const scaleIndex = UNIVERSE_SCALES.findIndex((item) => item.id === scale);
   const scaleInfo = UNIVERSE_SCALES[scaleIndex];
   const [detailTab, setDetailTab] = useState<InspectorTab>('overview');
@@ -68,69 +111,147 @@ const Earth3D: React.FC<Earth3DProps> = () => {
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [playing, setPlaying] = useState(
-    () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    () =>
+      !reducedMotion &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
   const [labels, setLabels] = useState(true);
   const [autoRotate, setAutoRotate] = useState(false);
+  const [timeRate, setTimeRate] = useState(1 / 24);
+  const [simulationDate, setSimulationDate] = useState(() => new Date());
+  const timeRef = useRef(simulationDate);
   const [ready, setReady] = useState(false);
   const [sceneError, setSceneError] = useState('');
   const [assetError, setAssetError] = useState(false);
   const [storageAvailable, setStorageAvailable] = useState(true);
   const [sceneRevision, setSceneRevision] = useState(0);
-  const [overview, setOverview] = useState(true);
   const [tourStep, setTourStep] = useState<number | null>(null);
   const [quizAnswer, setQuizAnswer] = useState<number | null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
   const [modelInfoOpen, setModelInfoOpen] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'done' | 'manual'>(
+    'idle',
+  );
   const sceneContainer = useRef<HTMLDivElement>(null);
   const scene = useRef<UniverseSceneController | null>(null);
   const selection = useRef({ id: selectedId, overview });
   const selectRef = useRef<(id: string) => void>(() => undefined);
+  const navigateRef = useRef<(direction: ZoomIntent) => void>(() => undefined);
+  const locationRef = useRef(location);
+  locationRef.current = location;
   const photoDialog = useRef<HTMLDivElement>(null);
+  const addressList = useRef<HTMLOListElement>(null);
   selection.current = { id: selectedId, overview };
 
-  const choose = useCallback((id: string) => {
-    if (!COSMIC_BY_ID.has(id)) return;
-    setSelectedId(id);
-    setOverview(false);
-    setDetailTab('overview');
-    setTourStep(null);
-    setCatalogOpen(false);
-    setPhotoFailed(false);
-    if (
-      COSMIC_BY_ID.get(id)?.scale ===
-      COSMIC_BY_ID.get(selection.current.id)?.scale
-    )
-      scene.current?.select(id);
-  }, []);
+  const setOverview = (value: boolean) => {
+    const next = { ...locationRef.current, overview: value };
+    locationRef.current = next;
+    setLocation(next);
+    writeAddress(next, true);
+  };
+  const travel = useCallback(
+    (next: UniverseLocation, history: 'push' | 'none' = 'push') => {
+      const previous = locationRef.current;
+      locationRef.current = next;
+      setLocation(next);
+      setDetailTab('overview');
+      setTourStep(null);
+      setCatalogOpen(false);
+      setPhotoFailed(false);
+      setPhotoOpen(false);
+      setCopyStatus('idle');
+      if (history === 'push') writeAddress(next);
+      if (next.contextId === previous.contextId) {
+        scene.current?.select(next.selectedId, !next.overview);
+        if (next.overview) scene.current?.overview();
+      }
+    },
+    [],
+  );
+  useEffect(() => {
+    writeAddress(locationRef.current, true);
+    const restore = () => {
+      const next = locationFromSearch(window.location.search);
+      if (next) travel(next, 'none');
+    };
+    window.addEventListener('popstate', restore);
+    return () => window.removeEventListener('popstate', restore);
+  }, [travel]);
+  const choose = useCallback(
+    (id: string) => {
+      if (!COSMIC_BY_ID.has(id)) return;
+      const current = locationRef.current;
+      travel(
+        UNIVERSE_CONTEXTS.get(current.contextId)!.objectIds.includes(id)
+          ? { ...current, selectedId: id, overview: false }
+          : locationForObject(id),
+      );
+    },
+    [travel],
+  );
   selectRef.current = choose;
+  const navigate = (direction: ZoomIntent) => {
+    const next =
+      direction === 'in'
+        ? enterLocation(locationRef.current)
+        : leaveLocation(locationRef.current);
+    if (next) travel(next);
+  };
+  navigateRef.current = navigate;
+  const inward = enterLocation(location);
+  const outward = leaveLocation(location);
+  const address = universeAddress(context.id);
+  const article = SCIENCE_ARTICLES.get(selectedId)!;
 
   const changeScale = (id: UniverseScale) => {
-    const next = UNIVERSE_SCALES.find((item) => item.id === id)!;
-    choose(next.defaultId);
-    setOverview(true);
+    travel(contextLocation(SCALE_CONTEXT[id]));
     setQuery('');
     setTourStep(null);
-    if (id === scale) scene.current?.overview();
   };
 
   useEffect(() => {
     setStorageAvailable(saveUniverseProgress(progress));
   }, [progress]);
   useEffect(() => {
+    progress.observed.forEach((id) => {
+      const object = COSMIC_BY_ID.get(id);
+      if (object)
+        onDiscover?.({
+          key: `universe-observation-${id}`,
+          kind: 'observation',
+          title: `观察了${object.name}`,
+          detail: object.observation,
+        });
+    });
+    Object.entries(progress.notes).forEach(([id, note]) => {
+      const object = COSMIC_BY_ID.get(id);
+      if (object && note.trim())
+        onDiscover?.({
+          key: `universe-note-${id}`,
+          kind: 'note',
+          title: `${object.name}的观察笔记`,
+          detail: note.trim(),
+        });
+    });
+    // Bring existing local discoveries into the shared journal once on entry.
+  }, [onDiscover]);
+  useEffect(() => {
     setProgress((current) => ({
       ...current,
       selectedId,
+      location,
       visited: current.visited.includes(selectedId)
         ? current.visited
         : [...current.visited, selectedId],
     }));
-  }, [selectedId]);
+  }, [selectedId, location]);
   useEffect(() => {
     setQuizAnswer(null);
     setModelInfoOpen(false);
-  }, [scale]);
+    if (addressList.current)
+      addressList.current.scrollLeft = addressList.current.scrollWidth;
+  }, [context.id]);
 
   useEffect(() => {
     const container = sceneContainer.current;
@@ -140,17 +261,40 @@ const Earth3D: React.FC<Earth3DProps> = () => {
     setAssetError(false);
     let controller: UniverseSceneController | null = null;
     try {
-      controller = createUniverseScene(container, scale, {
-        onSelect: (id) => {
-          setTourStep(null);
-          selectRef.current(id);
+      controller = createUniverseScene(
+        container,
+        scale,
+        {
+          onSelect: (id) => {
+            setTourStep(null);
+            selectRef.current(id);
+          },
+          onReady: () => setReady(true),
+          onError: setSceneError,
+          onAssetError: () => setAssetError(true),
+          onNavigate: (direction) => navigateRef.current(direction),
+          onTime: (date) => {
+            timeRef.current = date;
+            setSimulationDate(date);
+          },
         },
-        onReady: () => setReady(true),
-        onError: setSceneError,
-        onAssetError: () => setAssetError(true),
-      });
+        {
+          context,
+          date: timeRef.current,
+          canEnter: (id) =>
+            Boolean(
+              enterLocation({
+                contextId: context.id,
+                selectedId: id,
+                overview: false,
+              }),
+            ),
+          canLeave: Boolean(context.parentId),
+        },
+      );
       controller.select(selection.current.id, !selection.current.overview);
       controller.setPlaying(playing);
+      controller.setTimeRate(timeRate);
       controller.setLabels(labels);
       controller.setAutoRotate(autoRotate);
       scene.current = controller;
@@ -160,15 +304,19 @@ const Earth3D: React.FC<Earth3DProps> = () => {
       );
     }
     return () => {
+      if (controller) timeRef.current = controller.getTime();
       controller?.dispose();
       scene.current = null;
     };
-    // Scene construction only depends on scale; controls update separately.
-  }, [scale, sceneRevision]);
+    // Rebuild only on entering a different space, not on every selection or zoom.
+  }, [context.id, sceneRevision]);
 
   useEffect(() => {
     scene.current?.setPlaying(playing);
   }, [playing]);
+  useEffect(() => {
+    scene.current?.setTimeRate(timeRate);
+  }, [timeRate]);
   useEffect(() => {
     scene.current?.setLabels(labels);
   }, [labels]);
@@ -207,15 +355,11 @@ const Earth3D: React.FC<Earth3DProps> = () => {
     };
   }, [photoOpen]);
 
-  const objectsInScale = COSMIC_OBJECTS.filter(
-    (object) => object.scale === scale,
-  );
+  const objectsInScale = context.objectIds.map((id) => COSMIC_BY_ID.get(id)!);
   const search = query.trim().toLowerCase();
   const catalogObjects = search
     ? COSMIC_OBJECTS.filter((object) =>
-        `${object.name} ${object.english} ${object.type}`
-          .toLowerCase()
-          .includes(search),
+        scienceSearchText(object.id).includes(search),
       )
     : objectsInScale;
   const completed = progress.observed.includes(selectedId);
@@ -229,13 +373,21 @@ const Earth3D: React.FC<Earth3DProps> = () => {
     setOverview(true);
     scene.current?.overview();
   };
-  const toggleObserved = () =>
+  const toggleObserved = () => {
+    if (!completed)
+      onDiscover?.({
+        key: `universe-observation-${selectedId}`,
+        kind: 'observation',
+        title: `观察了${selected.name}`,
+        detail: selected.observation,
+      });
     setProgress((current) => ({
       ...current,
       observed: completed
         ? current.observed.filter((id) => id !== selectedId)
         : [...current.observed, selectedId],
     }));
+  };
   const startRoute = (index: number) => {
     choose(EXPLORATION_ROUTE[index]);
     setTourStep(index);
@@ -288,7 +440,8 @@ const Earth3D: React.FC<Earth3DProps> = () => {
         <strong>{object.name}</strong>
         <small>
           {search
-            ? UNIVERSE_SCALES.find((item) => item.id === object.scale)?.name
+            ? UNIVERSE_CONTEXTS.get(locationForObject(object.id).contextId)!
+                .name
             : object.type}
         </small>
       </span>
@@ -302,15 +455,21 @@ const Earth3D: React.FC<Earth3DProps> = () => {
   );
 
   return (
-    <div className="universe-app" data-scale={scale} onKeyDown={handleKeys}>
+    <div
+      className="universe-app"
+      data-scale={scale}
+      data-context={context.id}
+      data-selected={selectedId}
+      onKeyDown={handleKeys}
+    >
       <nav className="universe-scales" aria-label="宇宙探索尺度">
         <span className="universe-scale-heading">
           <Telescope size={19} />
           <span>探索尺度</span>
         </span>
         <div className="universe-scale-tabs" role="tablist" aria-label="尺度">
-          {UNIVERSE_SCALES.map((item, index) => {
-            const Icon = scaleIcons[index];
+          {[...UNIVERSE_SCALES].reverse().map((item, index) => {
+            const Icon = scaleIcons[3 - index];
             return (
               <button
                 key={item.id}
@@ -331,6 +490,84 @@ const Earth3D: React.FC<Earth3DProps> = () => {
           {progress.visited.length}
           <span>/ {COSMIC_OBJECTS.length}</span>
         </span>
+      </nav>
+      <nav className="universe-address" aria-label="宇宙地址">
+        <button
+          type="button"
+          className="universe-address-back"
+          disabled={!outward}
+          aria-label={
+            outward
+              ? `返回${UNIVERSE_CONTEXTS.get(outward.contextId)!.name}`
+              : '已在最外层'
+          }
+          title="返回上一级"
+          onClick={() => navigate('out')}
+        >
+          <ArrowUpLeft size={15} />
+        </button>
+        <ol ref={addressList}>
+          {address.map((item, index) => (
+            <li key={item.id}>
+              {index > 0 && <ChevronRight size={12} />}
+              <button
+                type="button"
+                aria-current={item.id === context.id ? 'location' : undefined}
+                title={item.name}
+                onClick={() =>
+                  travel(
+                    index < address.length - 1
+                      ? {
+                          contextId: item.id,
+                          selectedId: address[index + 1].portalId!,
+                          overview: false,
+                        }
+                      : contextLocation(item.id),
+                  )
+                }
+              >
+                {item.name}
+              </button>
+            </li>
+          ))}
+        </ol>
+        <span className="universe-depth">{address.length} 层</span>
+        <button
+          type="button"
+          className="universe-address-back"
+          aria-label={
+            copyStatus === 'done' ? '宇宙地址已复制' : '复制当前宇宙地址'
+          }
+          title="复制当前宇宙地址"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(window.location.href);
+              setCopyStatus('done');
+            } catch {
+              setCopyStatus('manual');
+            }
+          }}
+        >
+          {copyStatus === 'done' ? <Check size={15} /> : <Link2 size={15} />}
+        </button>
+        {copyStatus === 'manual' && (
+          <label className="universe-copy-address">
+            当前宇宙地址
+            <input
+              readOnly
+              aria-label="当前宇宙地址"
+              value={window.location.href}
+              onFocus={(event) => event.target.select()}
+            />
+            <button
+              type="button"
+              aria-label="关闭地址"
+              onClick={() => setCopyStatus('idle')}
+            >
+              <X size={14} />
+            </button>
+          </label>
+        )}
       </nav>
       <div className="universe-workspace">
         {catalogOpen && (
@@ -407,7 +644,7 @@ const Earth3D: React.FC<Earth3DProps> = () => {
             {catalogTab === 'objects' && (
               <>
                 <div className="universe-list-heading">
-                  <span>{search ? '全宇宙搜索' : scaleInfo.name}</span>
+                  <span>{search ? '全天体与知识搜索' : context.name}</span>
                   <span>{catalogObjects.length} 个对象</span>
                 </div>
                 {catalogObjects.map((object) => renderObject(object))}
@@ -458,9 +695,9 @@ const Earth3D: React.FC<Earth3DProps> = () => {
                       {COSMIC_BY_ID.get(id)!.name}
                       <small>
                         {
-                          UNIVERSE_SCALES.find(
-                            (item) => item.id === COSMIC_BY_ID.get(id)!.scale,
-                          )?.name
+                          UNIVERSE_CONTEXTS.get(
+                            locationForObject(id).contextId,
+                          )!.name
                         }
                       </small>
                     </span>
@@ -525,7 +762,7 @@ const Earth3D: React.FC<Earth3DProps> = () => {
         </aside>
         <section
           className="universe-viewport"
-          aria-label={`${scaleInfo.name}三维视图`}
+          aria-label={`${context.name}三维视图`}
         >
           <div
             ref={sceneContainer}
@@ -534,9 +771,9 @@ const Earth3D: React.FC<Earth3DProps> = () => {
           />
           <div className="universe-scene-heading">
             <div>
-              <span>{scaleInfo.english}</span>
-              <h2>{overview ? scaleInfo.name : selected.name}</h2>
-              <p>{overview ? scaleInfo.extent : selected.type}</p>
+              <span>{context.english}</span>
+              <h2>{overview ? context.name : selected.name}</h2>
+              <p>{overview ? context.extent : selected.type}</p>
             </div>
           </div>
           <div className="universe-mobile-actions">
@@ -562,10 +799,27 @@ const Earth3D: React.FC<Earth3DProps> = () => {
               <Route size={18} />
             </button>
           </div>
+          {scale === 'solar' && (
+            <div className="universe-time-controls" aria-label="模拟时间">
+              <time dateTime={simulationDate.toISOString()}>
+                {simulationDate.toLocaleString('zh-CN', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })} UTC
+              </time>
+              <div>
+                <select aria-label="时间流速" value={timeRate} onChange={(event) => setTimeRate(Number(event.target.value))}>
+                  <option value={1 / 24}>1 小时 / 秒</option>
+                  <option value={0.25}>6 小时 / 秒</option>
+                  <option value={1}>1 天 / 秒</option>
+                </select>
+                <button type="button" title="回到当前时间" aria-label="回到当前时间" onClick={() => scene.current?.resetTime()}>
+                  <RotateCcw size={13} />
+                </button>
+              </div>
+            </div>
+          )}
           {!ready && !sceneError && (
             <div className="universe-loading" role="status">
               <Loader2 size={24} className="animate-spin" />
-              <span>正在进入{scaleInfo.name}</span>
+              <span>正在进入{context.name}</span>
             </div>
           )}
           {sceneError && (
@@ -699,7 +953,13 @@ const Earth3D: React.FC<Earth3DProps> = () => {
           </div>
           <div className="universe-scene-caption">
             <span className="universe-status-dot" />
-            <span>{scale === 'solar' ? '轨道演示' : '结构示意'}</span>
+            <span>
+              {context.mode === 'detail'
+                ? '近距离观察'
+                : context.mode === 'solar' || context.mode === 'system'
+                  ? '轨道示意'
+                  : '结构示意'}
+            </span>
             <span className="universe-caption-divider">/</span>
             <span>
               {scaleVisited} / {objectsInScale.length} 已探索
@@ -717,7 +977,7 @@ const Earth3D: React.FC<Earth3DProps> = () => {
           {modelInfoOpen && (
             <div className="universe-model-popover" role="status">
               <Info size={14} />
-              <p>{scaleInfo.note}</p>
+              <div><p>{context.note}</p>{scale === 'solar' && <a href="/images/solar-system/SATELLITE-CREDITS.md" target="_blank" rel="noreferrer">影像来源与署名</a>}</div>
               <button
                 type="button"
                 aria-label="关闭模型说明"
@@ -776,6 +1036,7 @@ const Earth3D: React.FC<Earth3DProps> = () => {
             {(
               [
                 ['overview', '认识', Eye],
+                ['science', '科普', Telescope],
                 ['data', '数据', Layers3],
                 ['observe', '观察', BookOpen],
               ] as const
@@ -785,7 +1046,10 @@ const Earth3D: React.FC<Earth3DProps> = () => {
                 key={id}
                 role="tab"
                 aria-selected={detailTab === id}
-                onClick={() => setDetailTab(id)}
+                onClick={() => {
+                  setDetailTab(id);
+                  if (id !== 'overview') setDetailsExpanded(true);
+                }}
               >
                 <Icon size={14} />
                 {label}
@@ -802,22 +1066,30 @@ const Earth3D: React.FC<Earth3DProps> = () => {
             {detailTab === 'overview' && (
               <>
                 <p className="universe-description">{selected.description}</p>
-                {selected.enterScale && (
+                {inward && (
                   <button
                     type="button"
                     className="universe-enter"
-                    onClick={() => changeScale(selected.enterScale!)}
+                    onClick={() => navigate('in')}
                   >
                     <MapPin size={15} />
-                    进入
-                    {
-                      UNIVERSE_SCALES.find(
-                        (item) => item.id === selected.enterScale,
-                      )?.name
-                    }
+                    {UNIVERSE_CONTEXTS.get(inward.contextId)!.mode === 'detail'
+                      ? '近距离观察'
+                      : '进入'}
+                    {UNIVERSE_CONTEXTS.get(inward.contextId)!.name}
                     <ArrowUpRight size={16} />
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="universe-read-science"
+                  onClick={() => {
+                    setDetailTab('science');
+                    setDetailsExpanded(true);
+                  }}
+                >
+                  <BookOpen size={15} /> 阅读科普 <ChevronRight size={14} />
+                </button>
                 {selected.image && (
                   <figure className="universe-photo">
                     <button
@@ -856,18 +1128,83 @@ const Earth3D: React.FC<Earth3DProps> = () => {
                 </div>
                 <div className="universe-model-note">
                   <Info size={13} />
-                  <p>{scaleInfo.note}</p>
+                  <p>{context.note}</p>
                 </div>
                 <a
-                  href={selected.source}
+                  href={article.sources[0].url}
                   target="_blank"
                   rel="noreferrer"
                   className="universe-source"
                 >
-                  NASA 资料与来源
+                  资料与观测来源
                   <ArrowUpRight size={13} />
                 </a>
               </>
+            )}
+            {detailTab === 'science' && (
+              <article
+                className="universe-science"
+                aria-label={`${selected.name}科普`}
+              >
+                <p className="universe-science-lead">{selected.description}</p>
+                {article.sections.map((section, index) => (
+                  <details
+                    key={`${selectedId}-${section.title}`}
+                    open={index === 0}
+                  >
+                    <summary>
+                      <span>{String(index + 1).padStart(2, '0')}</span>
+                      {section.title}
+                      <ChevronRight size={14} />
+                    </summary>
+                    <p>{section.text}</p>
+                  </details>
+                ))}
+                <section className="universe-glossary" aria-label="天文术语">
+                  <h3>读懂这些词</h3>
+                  {article.terms.map((id) => (
+                    <details key={id}>
+                      <summary>
+                        {ASTRONOMY_TERMS[id].name}
+                        <Plus size={13} />
+                      </summary>
+                      <p>{ASTRONOMY_TERMS[id].definition}</p>
+                    </details>
+                  ))}
+                </section>
+                <section className="universe-related" aria-label="相关探索">
+                  <h3>把知识连起来</h3>
+                  {article.related.map((id) => (
+                    <button type="button" key={id} onClick={() => choose(id)}>
+                      <span>
+                        {COSMIC_BY_ID.get(id)!.name}
+                        <small>{COSMIC_BY_ID.get(id)!.type}</small>
+                      </span>
+                      <ArrowUpRight size={14} />
+                    </button>
+                  ))}
+                </section>
+                <section
+                  className="universe-science-sources"
+                  aria-label="科普来源"
+                >
+                  <h3>资料与证据</h3>
+                  <p>
+                    距离与物理量为近似值；不同测量方法与新研究可能修正数值。三维模型不替代观测数据。
+                  </p>
+                  {article.sources.map((source) => (
+                    <a
+                      key={source.url}
+                      href={source.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {source.title}
+                      <ArrowUpRight size={12} />
+                    </a>
+                  ))}
+                </section>
+              </article>
             )}
             {detailTab === 'data' && (
               <>
@@ -888,9 +1225,14 @@ const Earth3D: React.FC<Earth3DProps> = () => {
                       ? '1 天文单位约为 1.496 亿千米，相当于地球到太阳的平均距离。'
                       : '光年是距离单位，不是时间单位。光在真空中传播一年，约走过 9.46 万亿千米。'}
                   </p>
+                  {context.scale === 'solar' && (
+                    <p>
+                      表中的距离要先看参照物：行星通常相对太阳，卫星相对所属行星。温度随昼夜、纬度及大气高度而变；巨行星的温度不代表固体地表。
+                    </p>
+                  )}
                 </div>
                 <a
-                  href={selected.source}
+                  href={article.sources[0].url}
                   target="_blank"
                   rel="noreferrer"
                   className="universe-source"
@@ -932,6 +1274,16 @@ const Earth3D: React.FC<Earth3DProps> = () => {
                   maxLength={500}
                   value={progress.notes[selectedId] || ''}
                   placeholder="写下让你好奇的发现……"
+                  onBlur={() => {
+                    const note = progress.notes[selectedId]?.trim();
+                    if (note)
+                      onDiscover?.({
+                        key: `universe-note-${selectedId}`,
+                        kind: 'note',
+                        title: `${selected.name}的观察笔记`,
+                        detail: note,
+                      });
+                  }}
                   onChange={(event) => {
                     const note = event.target.value;
                     setProgress((current) => ({
@@ -966,13 +1318,20 @@ const Earth3D: React.FC<Earth3DProps> = () => {
                         }
                         onClick={() => {
                           setQuizAnswer(index);
-                          if (index === question.answer)
+                          if (index === question.answer) {
+                            onDiscover?.({
+                              key: `universe-quiz-${scale}`,
+                              kind: 'challenge',
+                              title: `${scaleInfo.name} · 想一想`,
+                              detail: `${question.question}\n${option}\n${question.explanation}`,
+                            });
                             setProgress((current) => ({
                               ...current,
                               quizzes: current.quizzes.includes(scale)
                                 ? current.quizzes
                                 : [...current.quizzes, scale],
                             }));
+                          }
                         }}
                       >
                         <span>{String.fromCharCode(65 + index)}</span>
@@ -1019,32 +1378,21 @@ const Earth3D: React.FC<Earth3DProps> = () => {
       <footer className="universe-scale-footer">
         <button
           type="button"
-          disabled={scaleIndex === 0}
-          onClick={() => changeScale(UNIVERSE_SCALES[scaleIndex - 1].id)}
+          disabled={!outward}
+          onClick={() => navigate('out')}
         >
-          <ChevronLeft size={14} />
-          向内探索
+          <ArrowUpLeft size={14} />
+          {outward
+            ? `返回${UNIVERSE_CONTEXTS.get(outward.contextId)!.name}`
+            : '可观测宇宙 · 最外层'}
         </button>
-        <span>
-          {UNIVERSE_SCALES.map((item, index) => (
-            <React.Fragment key={item.id}>
-              {index > 0 && <ChevronRight size={10} />}
-              <button
-                type="button"
-                aria-current={item.id === scale ? 'location' : undefined}
-                onClick={() => changeScale(item.id)}
-              >
-                {item.name}
-              </button>
-            </React.Fragment>
-          ))}
-        </span>
-        <button
-          type="button"
-          disabled={scaleIndex === 3}
-          onClick={() => changeScale(UNIVERSE_SCALES[scaleIndex + 1].id)}
-        >
-          走向深空
+        <span>{context.extent}</span>
+        <button type="button" disabled={!inward} onClick={() => navigate('in')}>
+          {inward
+            ? `进入${UNIVERSE_CONTEXTS.get(inward.contextId)!.name}`
+            : context.mode === 'detail'
+              ? '已到近距离观察层'
+              : '当前层级无下一级'}
           <ChevronRight size={14} />
         </button>
       </footer>
@@ -1095,7 +1443,9 @@ const Earth3D: React.FC<Earth3DProps> = () => {
         </div>
       )}
       <div className="sr-only" aria-live="polite">
-        {scaleInfo.name}，当前选择：{selected.name}
+        {copyStatus === 'done' && '宇宙地址已复制。'}
+        已进入{context.name}，当前选择：{selected.name}。宇宙地址：
+        {address.map((item) => item.name).join('，')}
       </div>
     </div>
   );

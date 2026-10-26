@@ -1,744 +1,133 @@
+import React, { useMemo, useState } from 'react';
+import { Check, Play, SkipForward, X } from 'lucide-react';
+import { Workbench, IconButton } from './ModuleWorkbench';
+import { MatchSettings, Point, coordinate } from '../lib/strategyCore';
+import { GO_KEY, GoSize, legalGoPoints, newGoMatch, playGo, replayGo, scoreGo, toggleDeadGroup, validGoMatch } from '../lib/strategyGo';
+import { MatchSettingsFields, PlayerClock, ReviewPanel, StoneBoard, StrategyDialog, StrategyToolbar, useStrategyClock, useStrategyMatch } from '../lib/strategyUi';
+import './strategy.css';
 
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
-import { 
-  X, 
-  RotateCcw, 
-  Undo2, 
-  Trophy, 
-  Settings2, 
-  ChevronLeft, 
-  Info, 
-  History,
-  Timer,
-  Volume2,
-  VolumeX,
-  Maximize2,
-  BookOpen,
-  Music
-} from 'lucide-react';
-import { motion as motionBase, AnimatePresence } from 'framer-motion';
-const motion = motionBase as any;
-import { GoEngine, BoardState, StoneColor } from '../lib/goLibrary';
+const COLORS: [string, string] = ['黑方', '白方'];
 
-type GameState = 'SELECTION' | 'PLAYING' | 'SETTLEMENT' | 'SCORING';
-type BoardSize = 9 | 13 | 19;
+export default function GoApp({ onClose }: { onClose: () => void }) {
+  const { match, setMatch, available, storageMessage, saveNow } = useStrategyMatch(GO_KEY, newGoMatch, validGoMatch);
+  const [notice, setNotice] = useState(storageMessage);
+  const [newDialog, setNewDialog] = useState(false);
+  const [resumeDialog, setResumeDialog] = useState(false);
+  const [review, setReview] = useState<number | null>(null);
+  const live = useMemo(() => replayGo(match.size, match.moves), [match.size, match.moves]);
+  const view = useMemo(() => review === null ? live : replayGo(match.size, match.moves, review), [live, match.size, match.moves, review]);
+  const scoring = live.passes >= 2;
+  const finalScore = scoring && match.accepted.every(Boolean);
+  const score = useMemo(() => scoreGo(live.board, match.dead, match.komi), [live, match.dead, match.komi]);
+  const difference = score.black - score.white;
+  const outcome = match.timeout !== null ? `${COLORS[match.timeout]}超时，${COLORS[match.timeout === 0 ? 1 : 0]}获胜`
+    : finalScore ? difference === 0 ? '双方确认：和棋' : `${difference > 0 ? '黑方' : '白方'}胜 ${Math.abs(difference)} 点` : null;
+  const clock = useStrategyClock(match, setMatch, live.turn, scoring || Boolean(outcome), saveNow);
+  const canMove = clock.running && !scoring && !outcome && review === null && !newDialog && !resumeDialog;
+  const legal = useMemo(() => match.hints && review === null && !scoring ? legalGoPoints(live) : new Set<string>(), [match.hints, live, scoring, review]);
+  const board = useMemo(() => view.board.signMap.map(row => row.map(value => value === -1 ? 2 : value)), [view]);
 
-const STONE_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3';
-const CAPTURE_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2578/2578-preview.mp3';
-const BGM_URL = 'https://assets.mixkit.co/active_storage/sfx/138/138-preview.mp3';
-
-// Ambient Particles Component
-const ZenParticles = memo(() => {
-    return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-[1]     bg-transparent text-inherit">
-            {Array.from({length: 40}).map((_, i) => (
-                <div
-                    key={i}
-                    className="absolute bg-amber-500/20 rounded-full blur-[2px] animate-float"
-                    style={{
-                        width: Math.random() * 4 + 2 + 'px',
-                        height: Math.random() * 4 + 2 + 'px',
-                        left: Math.random() * 100 + '%',
-                        bottom: '-20px',
-                        animationDuration: 10 + Math.random() * 20 + 's',
-                        animationDelay: Math.random() * 10 + 's'
-                    }}
-                />
-            ))}
-            <style>{`
-                @keyframes float {
-                    0% { transform: translateY(0) translateX(0); opacity: 0; }
-                    20% { opacity: 0.6; }
-                    80% { opacity: 0.6; }
-                    100% { transform: translateY(-100vh) translateX(${Math.random() > 0.5 ? '100px' : '-100px'}); opacity: 0; }
-                }
-            `}</style>
-        </div>
-    )
-});
-
-// --- Sub-components ---
-
-const Stone = memo(({ type, isLast, isTerritory }: { type: number, isLast: boolean, isTerritory?: boolean }) => {
-  if (isTerritory) {
-    return (
-      <motion.div 
-        initial={{ scale: 0 }}
-        animate={{ scale: 0.4 }}
-        className={`w-[60%] h-[60%] rounded-sm ${type === 11 ? 'bg-slate-900' : 'bg-white'} shadow-sm opacity-60`}
-      />
-    );
+  function place(point: Point) {
+    if (scoring && !outcome && review === null) {
+      if (!live.board.get(point)) return;
+      setMatch(current => ({ ...current, dead: toggleDeadGroup(live.board, current.dead, point), accepted: [false, false] }));
+      return;
+    }
+    if (!canMove) return;
+    try {
+      playGo(live, point);
+      const expected = match.moves;
+      clock.commit(current => current.moves === expected ? { ...current, moves: [...current.moves, point], dead: [], accepted: [false, false] } : current);
+      setNotice('');
+    } catch (cause) { setNotice(cause instanceof Error ? cause.message : '此处不能落子。'); }
   }
 
-  return (
-    <motion.div 
-      initial={isLast ? { scale: 0.3, opacity: 0 } : { scale: 1, opacity: 1 }} 
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-      className={`
-        w-[92%] h-[92%] rounded-full relative z-20 flex items-center justify-center
-        ${type === 1 
-          ? 'bg-gradient-to-br from-slate-700 to-slate-950 shadow-black-stone' 
-          : 'bg-gradient-to-br from-white to-slate-200 shadow-white-stone'
-        }
-        ${isLast ? 'ring-1 ring-red-500/60 ring-offset-1 ring-offset-transparent' : ''}
-      `}
-    >
-      {/* 增强3D光泽感 */}
-      <div className={`absolute top-1 left-1.5 w-[30%] h-[30%] rounded-full blur-[2px] ${type === 1 ? 'bg-white/20' : 'bg-white/60'}`}></div>
-      {isLast && <div className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>}
-    </motion.div>
-  );
-});
+  function pass() {
+    if (!canMove) return;
+    const expected = match.moves;
+    clock.commit(current => current.moves === expected ? { ...current, moves: [...current.moves, null], dead: [], accepted: [false, false] } : current);
+    setNotice(live.passes === 1 ? '双方连续停一手，进入数子确认。死子须双方协商标记，不能自动判死活。' : `${COLORS[live.turn]}停一手，轮到${COLORS[live.turn === 0 ? 1 : 0]}。`);
+  }
 
-const GoApp: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const [gameState, setGameState] = useState<GameState>('SELECTION');
-  const [boardSize, setBoardSize] = useState<BoardSize>(19);
-  const [board, setBoard] = useState<BoardState>(GoEngine.createBoard(19));
-  const [territoryMap, setTerritoryMap] = useState<number[][]>([]);
-  const [history, setHistory] = useState<string[]>([]);
-  const [currentPlayer, setCurrentPlayer] = useState<StoneColor>(1);
-  const [captures, setCaptures] = useState({ b: 0, w: 0 });
-  const [lastMove, setLastMove] = useState<{r: number, c: number} | null>(null);
-  const [passCount, setPassCount] = useState(0);
-  const [timer, setTimer] = useState(0);
-  const [scores, setScores] = useState({ b: 0, w: 0 });
-  const [sfxEnabled, setSfxEnabled] = useState(true);
-  const [musicEnabled, setMusicEnabled] = useState(false);
-  const [showCoords, setShowCoords] = useState(true);
-  const [hoverPos, setHoverPos] = useState<{r: number, c: number} | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [ripples, setRipples] = useState<{id: number, r: number, c: number, color: number}[]>([]);
-  const [cameraShake, setCameraShake] = useState(false);
-  
-  // AI State
-  const [isPvE, setIsPvE] = useState(true);
-  const [playerPreferredColor, setPlayerPreferredColor] = useState<StoneColor>(1);
-  const [aiColor, setAiColor] = useState<StoneColor>(2); // AI is White by default
-  const [isAiThinking, setIsAiThinking] = useState(false);
-  
-  const engineRef = useRef<GoEngine>(new GoEngine(19));
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const captureAudioRef = useRef<HTMLAudioElement | null>(null);
-  const bgmRef = useRef<HTMLAudioElement | null>(null);
+  function goTo(index: number) {
+    clock.pause();
+    setReview(index === match.moves.length ? null : Math.max(0, Math.min(index, match.moves.length)));
+  }
 
-  useEffect(() => {
-    audioRef.current = new Audio(STONE_SOUND_URL);
-    captureAudioRef.current = new Audio(CAPTURE_SOUND_URL);
-    bgmRef.current = new Audio(BGM_URL);
-    bgmRef.current.loop = true;
-    bgmRef.current.volume = 0.2;
+  function undo() {
+    clock.pause();
+    setMatch(current => ({ ...current, moves: current.moves.slice(0, -1), dead: [], accepted: [false, false], timeout: null }));
+    setReview(null);
+    setNotice('已悔一手，提子与劫局已随棋谱还原；已消耗的用时不返还。');
+  }
 
-    return () => {
-        if (bgmRef.current) {
-            bgmRef.current.pause();
-            bgmRef.current.currentTime = 0;
-        }
-    }
-  }, []);
+  const status = review !== null ? `复盘 · 第 ${review} 手` : outcome || (scoring ? '终局 · 双方确认死子与数子' : clock.running ? `${COLORS[live.turn]}落子${live.passes ? ' · 对方已停一手' : ''}` : '对局已暂停');
+  const clockRow = (side: 0 | 1) => <PlayerClock label={COLORS[side]} color={side === 0 ? 'black' : 'white'} remaining={match.remaining[side]} minutes={match.settings.minutes} active={clock.running && live.turn === side} detail={`提子 ${view.board.getCaptures(side === 0 ? 1 : -1)}`} />;
 
-  useEffect(() => {
-      if (bgmRef.current) {
-          if (musicEnabled) {
-              bgmRef.current.play().catch(() => setMusicEnabled(false));
-          } else {
-              bgmRef.current.pause();
-          }
-      }
-  }, [musicEnabled]);
-
-  const showToast = useCallback((msg: string) => {
-      setToastMessage(msg);
-      setTimeout(() => setToastMessage(null), 2500);
-  }, []);
-
-  // Timer logic
-  useEffect(() => {
-    let interval: any;
-    if (gameState === 'PLAYING') {
-      interval = setInterval(() => {
-        setTimer(t => t + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [gameState]);
-
-  const triggerAiMove = useCallback((currentBoard: BoardState, currentHistory: string[], currentAiColor: StoneColor) => {
-    setIsAiThinking(true);
-    const thinkingTime = 600 + Math.random() * 900;
-    
-    setTimeout(() => {
-      const move = engineRef.current.getBestMove(currentBoard, currentAiColor, currentHistory[currentHistory.length - 1]);
-      if (move) {
-        // Apply AI move directly instead of using handlePlaceStone to avoid stale closures
-        const result = engineRef.current.validateMove(currentBoard, move.r, move.c, currentAiColor, currentHistory[currentHistory.length - 1]);
-        if (result) {
-            let isCapture = false;
-            const nextBoard = currentBoard.map(row => [...row]);
-            nextBoard[move.r][move.c] = currentAiColor;
-            
-            if (result.captured.length > 0) {
-                isCapture = true;
-                for (const stone of result.captured) {
-                    nextBoard[stone.r][stone.c] = 0;
-                }
-                setCaptures(prev => ({
-                    ...prev,
-                    [currentAiColor === 1 ? 'b' : 'w']: prev[currentAiColor === 1 ? 'b' : 'w'] + result.captured.length
-                }));
-                if (result.captured.length >= 3) {
-                    setCameraShake(true);
-                    setTimeout(() => setCameraShake(false), 400);
-                    showToast(`${currentAiColor === 1 ? '黑方' : '白方'} 提子 ${result.captured.length} 颗!`);
-                }
-            }
-            
-            playSound(isCapture ? 'capture' : 'stone');
-            const rippleId = Date.now();
-            setRipples(prev => [...prev, {id: rippleId, r: move.r, c: move.c, color: currentAiColor}]);
-            setTimeout(() => {
-                setRipples(prev => prev.filter(rip => rip.id !== rippleId));
-            }, 800);
-            
-            setHistory(prev => [...prev, JSON.stringify(currentBoard)]);
-            setBoard(nextBoard);
-            setLastMove({ r: move.r, c: move.c });
-            setCurrentPlayer(currentAiColor === 1 ? 2 : 1);
-            setPassCount(0);
-        } else {
-            // Fallback pass if something goes wrong
-            handlePassAction(currentAiColor);
-        }
-      } else {
-        handlePassAction(currentAiColor);
-      }
-      setIsAiThinking(false);
-    }, thinkingTime);
-  }, []);
-
-  const formatTime = (s: number) => {
-    const min = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-  };
-
-  const playSound = (type: 'stone' | 'capture' = 'stone') => {
-    if (sfxEnabled) {
-        const audio = type === 'stone' ? audioRef.current : captureAudioRef.current;
-        if (audio) {
-            audio.currentTime = 0;
-            audio.play().catch(() => {});
-        }
-    }
-  };
-
-  const startNewGame = (size: BoardSize) => {
-    setBoardSize(size);
-    engineRef.current = new GoEngine(size);
-    const newBoard = GoEngine.createBoard(size);
-    setBoard(newBoard);
-    
-    let newAiColor: StoneColor = 2;
-    if (isPvE) {
-        newAiColor = playerPreferredColor === 1 ? 2 : 1;
-        setAiColor(newAiColor);
-    }
-    
-    setHistory([]);
-    setPassCount(0);
-    setTimer(0);
-    setCurrentPlayer(1);
-    setCaptures({ b: 0, w: 0 });
-    setLastMove(null);
-    setTerritoryMap([]);
-    setIsAiThinking(false);
-    setToastMessage(null);
-    setGameState('PLAYING');
-
-    if (isPvE && newAiColor === 1) {
-        triggerAiMove(newBoard, [], newAiColor);
-    }
-  };
-
-  const handlePlaceStone = (r: number, c: number, isAiMove = false) => {
-    if (gameState !== 'PLAYING') return;
-    if (isPvE && !isAiMove && currentPlayer === aiColor) return;
-
-    const result = engineRef.current.validateMove(
-        board, 
-        r, 
-        c, 
-        currentPlayer, 
-        history[history.length - 1]
-    );
-
-    if (!result) return;
-
-    let isCapture = false;
-    const nextBoard = board.map(row => [...row]);
-    nextBoard[r][c] = currentPlayer;
-    
-    // Apply captures
-    if (result.captured.length > 0) {
-        isCapture = true;
-        for (const stone of result.captured) {
-            nextBoard[stone.r][stone.c] = 0;
-        }
-        setCaptures(prev => ({
-            ...prev,
-            [currentPlayer === 1 ? 'b' : 'w']: prev[currentPlayer === 1 ? 'b' : 'w'] + result.captured.length
-        }));
-        
-        if (result.captured.length >= 3) {
-            setCameraShake(true);
-            setTimeout(() => setCameraShake(false), 400);
-            showToast(`${currentPlayer === 1 ? '黑方' : '白方'} 提子 ${result.captured.length} 颗!`);
-        }
-    }
-
-    playSound(isCapture ? 'capture' : 'stone');
-    
-    // Add Ripple
-    const rippleId = Date.now();
-    setRipples(prev => [...prev, {id: rippleId, r, c, color: currentPlayer}]);
-    setTimeout(() => {
-        setRipples(prev => prev.filter(rip => rip.id !== rippleId));
-    }, 800);
-
-    setHistory(prev => [...prev, JSON.stringify(board)]);
-    setBoard(nextBoard);
-    setLastMove({ r, c });
-    const nextPlayer = currentPlayer === 1 ? 2 : 1;
-    setCurrentPlayer(nextPlayer);
-    setPassCount(0);
-    
-    if (isPvE && nextPlayer === aiColor) {
-        triggerAiMove(nextBoard, [...history, JSON.stringify(board)], aiColor);
-    }
-  };
-
-  const handlePassAction = (playerColor: StoneColor) => {
-    const colorName = playerColor === 1 ? '黑方' : '白方';
-    showToast(`${colorName} 停着 (Pass)`);
-    
-    setPassCount(prev => {
-        const newPassCount = prev + 1;
-        if (newPassCount >= 2) {
-          showToast('双方停着，对局结束');
-          setTimeout(finishGame, 1500);
-        }
-        return newPassCount;
-    });
-    const nextPlayer = playerColor === 1 ? 2 : 1;
-    setCurrentPlayer(nextPlayer);
-    setLastMove(null);
-    
-    return nextPlayer;
-  };
-
-  const handlePass = (isAiMove = false) => {
-    if (gameState !== 'PLAYING') return;
-    if (isPvE && !isAiMove && currentPlayer === aiColor) return;
-    
-    const nextPlayer = handlePassAction(currentPlayer);
-    if (isPvE && !isAiMove && nextPlayer === aiColor) {
-        triggerAiMove(board, history, aiColor);
-    }
-  };
-
-  const finishGame = () => {
-    const result = engineRef.current.estimateScore(board);
-    setScores({ b: result.black, w: result.white });
-    setTerritoryMap(result.territory);
-    setGameState('SCORING');
-  };
-
-  const handleResign = () => {
-    const winner = currentPlayer === 1 ? 'White' : 'Black';
-    setToastMessage(`${winner === 'White' ? '白方' : '黑方'}不战而胜。`);
-    setTimeout(() => {
-        setGameState('SELECTION');
-    }, 2000);
-  };
-
-  const undoMove = () => {
-    if (history.length === 0) return;
-    const prevHistory = [...history];
-    const rawBoard = prevHistory.pop();
-    if (rawBoard) {
-        setBoard(JSON.parse(rawBoard));
-        setHistory(prevHistory);
-        setCurrentPlayer(currentPlayer === 1 ? 2 : 1);
-        setLastMove(null);
-    }
-  };
-
-  return (
-    <div className="w-full h-full relative bg-zinc-950 text-white flex flex-col items-center overflow-hidden font-sans">
-      <ZenParticles />
-      {/* Header - Recipe 3 Hardware/Specialist Tool style labels */}
-      
-
-      <main className="flex-1 w-full flex flex-col items-center justify-center p-6 relative z-10">
-         <AnimatePresence mode="wait">
-            {gameState === 'SELECTION' ? (
-              <motion.div 
-                key="select"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-sm"
-              >
-                  <div className="text-center mb-8">
-                      <button onClick={onClose} className="absolute top-6 left-6 z-50 flex items-center justify-center p-3 bg-white/5 border border-white/10 hover:bg-white/10 text-white/50 hover:text-white rounded-2xl transition-all group">
-        <ChevronLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
-      </button>
-      <h2 className="text-3xl font-light text-white mb-3 serif-font italic">挑选棋局</h2>
-                      <p className="text-white/30 text-xs font-black uppercase tracking-widest mb-6">Select Match Type</p>
-                      
-                      <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 mb-6">
-                          <button 
-                              onClick={() => setIsPvE(true)}
-                              className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all ${isPvE ? 'bg-amber-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
-                          >
-                              人机对奕 (PvE)
-                          </button>
-                          <button 
-                              onClick={() => setIsPvE(false)}
-                              className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all ${!isPvE ? 'bg-amber-500 text-white shadow-lg' : 'text-white/40 hover:text-white'}`}
-                          >
-                              双人同屏 (PvP)
-                          </button>
-                      </div>
-
-                      <AnimatePresence>
-                          {isPvE && (
-                              <motion.div 
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: 'auto' }}
-                                  exit={{ opacity: 0, height: 0 }}
-                                  className="overflow-hidden mb-6"
-                              >
-                                  <div className="flex justify-center gap-4">
-                                      <button 
-                                          onClick={() => setPlayerPreferredColor(1)}
-                                          className={`px-6 py-2 rounded-full text-xs font-bold transition-all border ${playerPreferredColor === 1 ? 'bg-slate-900 border-amber-500 text-white shadow-md' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
-                                      >
-                                          执黑 (先走)
-                                      </button>
-                                      <button 
-                                          onClick={() => setPlayerPreferredColor(2)}
-                                          className={`px-6 py-2 rounded-full text-xs font-bold transition-all border ${playerPreferredColor === 2 ? 'bg-white border-amber-500 text-slate-900 shadow-md' : 'bg-white/5 border-white/10 text-white/40 hover:text-white'}`}
-                                      >
-                                          执白 (后走)
-                                      </button>
-                                  </div>
-                              </motion.div>
-                          )}
-                      </AnimatePresence>
-                  </div>
-                  <div className="space-y-4">
-                      {[
-                        { s: 9, label: '九路·入门', desc: '练习死活与快速局', icon: '01' },
-                        { s: 13, label: '十三路·进阶', desc: '战略与局部的平衡', icon: '02' },
-                        { s: 19, label: '十九路·终焉', desc: '正规赛事规格，智慧之海', icon: '03' }
-                      ].map((opt) => (
-                        <button 
-                          key={opt.s}
-                          onClick={() => startNewGame(opt.s as BoardSize)}
-                          className="w-full group p-6 bg-white/5 border border-white/10 rounded-3xl flex items-center gap-6 transition-all hover:bg-white/10 hover:-translate-y-1 active:scale-95"
-                        >
-                            <div className="text-2xl font-bold font-serif text-white/10 group-hover:text-amber-500/40 transition-colors uppercase italic">{opt.icon}</div>
-                            <div className="text-left flex-1">
-                                <h3 className="text-lg font-bold text-white mb-1">{opt.label}</h3>
-                                <p className="text-[10px] text-white/40 font-medium">{opt.desc}</p>
-                            </div>
-                            <Maximize2 size={18} className="text-white/20 group-hover:text-amber-500 transition-all" />
-                        </button>
-                      ))}
-                  </div>
-              </motion.div>
-            ) : (
-                <motion.div 
-                  key="playing"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="w-full max-w-3xl flex flex-col items-center lg:flex-row lg:items-start lg:justify-center gap-10"
-                >
-                    {/* Game Stats Panel - Left Side on Desktop */}
-                    <div className="flex flex-row lg:flex-col gap-4 w-full lg:w-48 order-2 lg:order-1">
-                        <PlayerStats 
-                            name={isPvE && aiColor === 1 ? "电脑对手·黑" : "执黑·Black"}
-                            captures={captures.b} 
-                            active={currentPlayer === 1} 
-                            stoneColor="bg-slate-950" 
-                            score={gameState === 'SCORING' ? scores.b : undefined}
-                            isThinking={isPvE && aiColor === 1 && isAiThinking}
-                        />
-                        <PlayerStats 
-                            name={isPvE && aiColor === 2 ? "电脑对手·白" : "执白·White"}
-                            captures={captures.w} 
-                            active={currentPlayer === 2} 
-                            stoneColor="bg-slate-100" 
-                            score={gameState === 'SCORING' ? scores.w : undefined}
-                            isThinking={isPvE && aiColor === 2 && isAiThinking}
-                        />
-                        
-                        <div className="hidden lg:flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl">
-                             <Timer size={14} className="text-white/30" />
-                             <span className="text-sm font-mono font-bold text-white/60 tracking-wider">
-                                {formatTime(timer)}
-                             </span>
-                        </div>
-                    </div>
-
-                    {/* The Board - Center */}
-                    <motion.div 
-                        className="relative order-1 lg:order-2 shrink-0"
-                        animate={cameraShake ? { x: [-3, 3, -3, 3, 0], y: [-2, 2, -2, 2, 0] } : {}}
-                        transition={{ duration: 0.4 }}
-                    >
-                        {/* Toast Notification */}
-                        <AnimatePresence>
-                            {toastMessage && (
-                                <motion.div 
-                                    initial={{ opacity: 0, y: -20, scale: 0.9 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.9 }}
-                                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] pointer-events-none"
-                                >
-                                    <div className="bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-2xl shadow-2xl border border-white/10 font-bold tracking-widest uppercase text-sm">
-                                        {toastMessage}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                        
-                        <div 
-                            className="bg-[#DAB671] rounded-sm shadow-2xl relative border-[6px] border-[#8a6b38]"
-                            style={{ 
-                                width: 'min(90vw, 520px)', 
-                                height: 'min(90vw, 520px)',
-                                backgroundImage: `url('https://images.unsplash.com/photo-1544208062-331ae1872df0?auto=format&fit=crop&q=80&w=800')`,
-                                backgroundSize: 'cover',
-                                backgroundBlendMode: 'overlay'
-                            }}
-                        >
-                            {/* Grid Lines */}
-                            <div className="absolute inset-0 p-[5%] overflow-visible grid" style={{ gridTemplateColumns: `repeat(${boardSize}, 1fr)`, gridTemplateRows: `repeat(${boardSize}, 1fr)` }}>
-                                {Array.from({ length: boardSize * boardSize }).map((_, i) => {
-                                    const r = Math.floor(i / boardSize);
-                                    const c = i % boardSize;
-                                    
-                                    // Calculate star points (Hosshi)
-                                    const isStarPoint = (size: number, r: number, c: number) => {
-                                        if (size === 19) {
-                                            const pts = [3, 9, 15];
-                                            return pts.includes(r) && pts.includes(c);
-                                        } else if (size === 13) {
-                                            const pts = [3, 6, 9];
-                                            return pts.includes(r) && pts.includes(c);
-                                        } else if (size === 9) {
-                                            const pts = [2, 4, 6];
-                                            return pts.includes(r) && pts.includes(c);
-                                        }
-                                        return false;
-                                    };
-
-                                    return (
-                                        <div key={i} className="relative w-full h-full flex items-center justify-center">
-                                            {/* Intersection lines */}
-                                            <div className={`absolute w-[1.5px] h-full bg-slate-900/40 ${r === 0 ? 'top-1/2' : r === boardSize - 1 ? 'bottom-1/2' : 'h-full'}`}></div>
-                                            <div className={`absolute h-[1.5px] w-full bg-slate-900/40 ${c === 0 ? 'left-1/2' : c === boardSize - 1 ? 'right-1/2' : 'w-full'}`}></div>
-                                            
-                                            {/* Ripples */}
-                                            {ripples.map(rip => rip.r === r && rip.c === c && (
-                                                <motion.div 
-                                                    key={rip.id}
-                                                    initial={{ scale: 0.5, opacity: 0.6 }}
-                                                    animate={{ scale: 2.5, opacity: 0 }}
-                                                    transition={{ duration: 0.7, ease: "easeOut" }}
-                                                    className={`absolute w-[90%] h-[90%] rounded-full ${rip.color === 1 ? 'bg-black' : 'bg-white'} z-20 pointer-events-none drop-shadow-xl`}
-                                                />
-                                            ))}
-
-                                            {/* Star points */}
-                                            {isStarPoint(boardSize, r, c) && (
-                                                <div className="absolute w-2 h-2 bg-slate-900/80 rounded-full z-10"></div>
-                                            )}
-
-                                            {/* Interaction Area */}
-                                            <div 
-                                                className="absolute inset-0 z-30 cursor-pointer flex items-center justify-center group"
-                                                onClick={() => handlePlaceStone(r, c)}
-                                                onMouseEnter={() => setHoverPos({r, c})}
-                                                onMouseLeave={() => setHoverPos(null)}
-                                            >
-                                                {board[r][c] === 0 && gameState === 'PLAYING' && (
-                                                    <div className={`w-[85%] h-[85%] rounded-full opacity-0 group-hover:opacity-40 transition-opacity transform group-hover:scale-95 shadow-lg ${currentPlayer === 1 ? 'bg-black' : 'bg-white'}`}></div>
-                                                )}
-                                                {board[r][c] !== 0 && (
-                                                    <Stone type={board[r][c]} isLast={lastMove?.r === r && lastMove?.c === c} />
-                                                )}
-                                                {gameState === 'SCORING' && territoryMap[r][c] > 10 && (
-                                                    <Stone type={territoryMap[r][c]} isLast={false} isTerritory />
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Coords labels */}
-                        {showCoords && (
-                            <>
-                                <div className="absolute -bottom-8 left-0 right-0 p-[5%] flex justify-between px-2 text-[10px] font-black text-white/30 font-mono tracking-tighter">
-                                    {Array.from({length: boardSize}).map((_, i) => <span key={i} className="w-full text-center">{String.fromCharCode(65 + (i >= 8 ? i + 1 : i))}</span>)}
-                                </div>
-                                <div className="absolute top-0 bottom-0 -left-8 p-[5%] flex flex-col justify-between py-2 text-[10px] font-black text-white/30 font-mono tracking-tighter">
-                                    {Array.from({length: boardSize}).map((_, i) => <span key={i} className="h-full flex items-center">{boardSize - i}</span>)}
-                                </div>
-                            </>
-                        )}
-                    </motion.div>
-
-                    {/* Actions Drawer - Bottom on mobile/side on lg */}
-                    <div className="flex flex-col gap-3 w-full lg:w-48 order-3">
-                         {gameState === 'PLAYING' && (
-                            <>
-                                <GameAction 
-                                    icon={<History size={18}/>} 
-                                    title="停着" 
-                                    desc="Pass Turn" 
-                                    onClick={handlePass}
-                                    color="white"
-                                />
-                                <GameAction 
-                                    icon={<Undo2 size={18}/>} 
-                                    title="悔棋" 
-                                    desc="Undo (1)" 
-                                    disabled={history.length === 0}
-                                    onClick={undoMove}
-                                    color="white"
-                                />
-                                <GameAction 
-                                    icon={<X size={18}/>} 
-                                    title="退出" 
-                                    desc="Leave Match" 
-                                    onClick={() => {
-                                        setGameState('SELECTION');
-                                    }}
-                                    color="white"
-                                />
-                                <GameAction 
-                                    icon={<RotateCcw size={18}/>} 
-                                    title="认输" 
-                                    desc="Resign Match" 
-                                    onClick={handleResign}
-                                    color="red"
-                                />
-                            </>
-                         )}
-
-                         {gameState === 'SCORING' && (
-                             <div className="bg-amber-500 p-6 rounded-2xl shadow-xl shadow-amber-500/10">
-                                <Trophy size={20} className="text-white mb-2" />
-                                <h3 className="text-lg font-black text-white leading-tight">即兴结算</h3>
-                                <p className="text-[10px] text-white/60 font-bold uppercase mb-4 tracking-tighter">Final Scoring</p>
-                                <div className="space-y-4">
-                                     <div className="bg-black/10 rounded-xl p-3 flex justify-between items-center">
-                                         <span className="text-[11px] font-bold text-white/80">Black</span>
-                                         <span className="text-xl font-black text-white">{scores.b}</span>
-                                     </div>
-                                     <div className="bg-black/10 rounded-xl p-3 flex justify-between items-center">
-                                         <span className="text-[11px] font-bold text-white/80">White (贴)</span>
-                                         <span className="text-xl font-black text-white">{scores.w}</span>
-                                     </div>
-                                </div>
-                                <button 
-                                    onClick={() => setGameState('SELECTION')}
-                                    className="w-full mt-6 py-3 bg-white text-amber-600 rounded-xl font-black text-[11px] uppercase tracking-widest hover:scale-105 transition-all shadow-lg"
-                                >
-                                    返回大厅
-                                </button>
-                             </div>
-                         )}
-
-                         <div className="p-5 bg-white/5 border border-white/5 rounded-2xl lg:mt-auto">
-                            <Info size={14} className="text-amber-500/40 mb-3" />
-                            <p className="text-[10px] leading-relaxed text-amber-500/50 font-bold uppercase tracking-tight">
-                                中国围棋规则: 黑棋需贴7.5目。双停则进入简易点目自动结算。为计算精确，请确信盘面已无死子后再停着。
-                            </p>
-                         </div>
-                    </div>
-                </motion.div>
-            )}
-         </AnimatePresence>
+  return <Workbench title="围棋" eyebrow="ExBeam / Strategy" className="strategy-workbench"
+    toolbar={<StrategyToolbar onClose={() => { clock.pause(); onClose(); }} onNew={() => { clock.pause(); setNewDialog(true); }} onUndo={undo} canUndo={match.moves.length > 0 && review === null && !outcome}
+      onFlip={() => setMatch(s => ({ ...s, flipped: !s.flipped }))} flipped={match.flipped} hints={match.hints} onHints={() => setMatch(s => ({ ...s, hints: !s.hints }))}
+      running={clock.running} canRun={!scoring && !outcome && review === null && !newDialog} onPause={() => clock.running ? clock.pause() : clock.start()}>
+      <IconButton label="停一手" onClick={pass} disabled={!canMove}><SkipForward size={17} /></IconButton>
+    </StrategyToolbar>}
+    status={<><span>Sabaki · 本地双人</span><span>面积数子 · 白贴 {match.komi} 点</span><span>{available ? '本机自动存档' : '存储不可用：离开后不能续局'}</span></>}>
+    <div className="strategy-layout">
+      <main className="strategy-arena">
+        {notice && <div className="wb-notice strategy-notice" role="status"><span>{notice}</span><IconButton label="关闭提示" onClick={() => setNotice('')}><X size={14} /></IconButton></div>}
+        <div className="strategy-board-column">
+          <div className="strategy-match-state"><div><strong role="status" aria-live="polite">{status}</strong><small>{match.size} 路 · 本地双人</small></div>
+            {!clock.running && !outcome && !scoring && review === null && <button type="button" className="wb-button is-primary" onClick={clock.start}><Play size={15} />{match.moves.length ? '继续' : '开始对局'}</button>}
+            {review !== null && <button type="button" className="wb-button" onClick={() => goTo(match.moves.length)}>回到实战</button>}
+          </div>
+          {clockRow(match.flipped ? 0 : 1)}
+          <StoneBoard board={board} last={match.moves[(review ?? match.moves.length) - 1] || null} flipped={match.flipped} legal={legal} onPoint={place}
+            disabled={!(canMove || scoring && !outcome && review === null)} dead={review === null && scoring ? match.dead : []} territory={review === null && scoring ? score.territory : undefined} name="围棋棋盘" />
+          {clockRow(match.flipped ? 1 : 0)}
+          {canMove && <div className="strategy-actions"><button className="wb-button" type="button" onClick={pass}><SkipForward size={16} />停一手</button></div>}
+        </div>
       </main>
-
-      {/* Internal Shadow styles for stones */}
-      <style>{`
-        .shadow-black-stone { 
-            box-shadow: 
-                inset 1px 1px 3px rgba(255,255,255,0.1),
-                inset -3px -3px 8px rgba(0,0,0,0.8),
-                3px 6px 10px rgba(0,0,0,0.4);
-        }
-        .shadow-white-stone { 
-            box-shadow: 
-                inset 1px 1px 4px rgba(255,255,255,1),
-                inset -2px -2px 5px rgba(0,0,0,0.1),
-                3px 5px 8px rgba(0,0,0,0.15);
-        }
-        .serif-font { font-family: 'Noto Serif SC', serif; }
-      `}</style>
+      <aside className="strategy-aside">
+        {outcome && <div className="strategy-result">{outcome}</div>}
+        {scoring && review === null && <section aria-label="数子确认">
+          <h3>数子{finalScore ? '结果' : '确认'}</h3>
+          <div className="strategy-score"><div><small>黑方 · 子 + 空</small><strong>{score.black}</strong><small>{score.stones[0]} + {score.empty[0]}</small></div><div><small>白方 · 子 + 空 + 贴点</small><strong>{score.white}</strong><small>{score.stones[1]} + {score.empty[1]} + {match.komi}</small></div></div>
+          <p className="strategy-caption">中立点 {score.neutral}；已标死子 {match.dead.length}。提子不额外计分。死子由双方协商，点棋子整组标记；改动后双方确认重置。此为面积计分，不自动判断死活、双活或未收完的官子。</p>
+          {!finalScore && <div className="strategy-actions">{COLORS.map((color, side) => <button key={color} className={`wb-button ${match.accepted[side] ? 'is-primary' : ''}`} type="button" aria-pressed={match.accepted[side]} onClick={() => setMatch(current => {
+            const accepted: [boolean, boolean] = [...current.accepted];
+            accepted[side] = !accepted[side];
+            return { ...current, accepted };
+          })}><Check size={15} />{color}{match.accepted[side] ? '已确认' : '确认'}</button>)}</div>}
+          {!finalScore && <button type="button" className="wb-button" onClick={() => setResumeDialog(true)}><Play size={15} />恢复对弈</button>}
+        </section>}
+        {!scoring && <div className="strategy-summary"><span>手数 <b>{match.moves.length}</b></span><span>白贴 <b>{match.komi}</b> 点</span></div>}
+        <details className="strategy-rule"><summary>本局规则与计分约定</summary><p>黑先白后，采用 Sabaki 引擎处理气、提子、禁自杀和立即劫回提；额外禁止任何落子重现此前棋盘（全局同形），停一手不受同形限制。双方连续停一手进入数子。</p><p>采用中国式面积思路的本地约定：存活棋子 + 仅被单色包围的空点，白方加贴点；混合边界与无边界空点中立。双方协商并标记死子后分别确认。不做自动死活裁决，未解决的争议应恢复对弈。</p><p>仅提供本地双人，不提供围棋 AI 或棋力评级。计时暂停后不累计离线用时；悔棋保留已用时间。</p></details>
+        <ReviewPanel labels={match.moves.map((point, i) => `${i % 2 === 0 ? '黑' : '白'} ${point ? coordinate(point, match.size) : '停一手'}`)} index={review ?? match.moves.length} onChange={goTo} />
+      </aside>
     </div>
-  );
-};
+    {newDialog && <GoNewDialog settings={match.settings} size={match.size} komi={match.komi} onClose={() => setNewDialog(false)} onConfirm={(settings, size, komi) => {
+      clock.pause();
+      setMatch(newGoMatch(settings, size, komi));
+      setNewDialog(false);
+      setReview(null);
+      setNotice('新对局已就绪，计时已暂停。');
+    }} />}
+    {resumeDialog && <StrategyDialog title="恢复对弈" onClose={() => setResumeDialog(false)}><p>撤回最后两次停一手，清除死子标记和双方确认。双方已用时间保持不变。</p><footer><button type="button" className="wb-button" onClick={() => setResumeDialog(false)}>取消</button><button type="button" className="wb-button is-primary" onClick={() => {
+      setMatch(current => ({ ...current, moves: current.moves.slice(0, -2), dead: [], accepted: [false, false] }));
+      setResumeDialog(false);
+      setNotice('已恢复对弈，计时已暂停。');
+    }}>确认恢复</button></footer></StrategyDialog>}
+  </Workbench>;
+}
 
-const PlayerStats = ({ name, captures, active, stoneColor, score, isThinking }: any) => (
-    <div className={`flex-1 p-5 rounded-3xl border transition-all relative overflow-hidden ${active ? 'bg-white/5 border-amber-500/40 shadow-lg' : 'bg-white/5 border-white/5 opacity-40'}`}>
-        {isThinking && (
-           <motion.div 
-               animate={{ x: ['-100%', '100%'] }} 
-               transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-               className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent z-10" 
-           />
-        )}
-        <div className="flex items-center gap-3 mb-2">
-            <div className={`w-3.5 h-3.5 rounded-full ${stoneColor} shadow-md`}></div>
-            <span className="text-[10px] font-black text-white/50 uppercase tracking-widest">{name} {isThinking && <span className="animate-pulse ml-1 text-amber-400">(思考中...)</span>}</span>
-        </div>
-        <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-white">{score !== undefined ? score : captures}</span>
-            <span className="text-[10px] font-bold text-white/30 uppercase tracking-tighter">
-                {score !== undefined ? 'Score' : 'Captures'}
-            </span>
-        </div>
-        {active && !isThinking && (
-            <motion.div 
-                layoutId="active-indicator"
-                className="mt-3 h-0.5 w-full bg-amber-500 rounded-full"
-            />
-        )}
-    </div>
-);
-
-const GameAction = ({ icon, title, desc, onClick, disabled, color }: any) => (
-    <button 
-        onClick={onClick}
-        disabled={disabled}
-        className={`bg-white/5 hover:bg-white/10 border border-white/10 p-5 rounded-2xl flex items-center gap-4 transition-all group disabled:opacity-20 active:scale-95 ${color === 'red' ? 'hover:bg-red-500/10' : ''}`}
-    >
-        <div className={`${color === 'red' ? 'text-red-400' : 'text-amber-500/60'} group-hover:scale-110 transition-transform`}>
-            {icon}
-        </div>
-        <div className="text-left">
-            <div className="text-xs font-black text-white">{title}</div>
-            <div className="text-[9px] font-bold text-white/20 uppercase tracking-tighter">{desc}</div>
-        </div>
-    </button>
-);
-
-export default GoApp;
+function GoNewDialog({ settings, size, komi, onClose, onConfirm }: { settings: MatchSettings; size: GoSize; komi: number; onClose: () => void; onConfirm: (settings: MatchSettings, size: GoSize, komi: number) => void }) {
+  const [value, setValue] = useState(settings);
+  const [boardSize, setBoardSize] = useState(size);
+  const [whiteKomi, setWhiteKomi] = useState(komi);
+  return <StrategyDialog title="新对局" onClose={onClose}><form onSubmit={event => { event.preventDefault(); onConfirm(value, boardSize, whiteKomi); }}>
+    <p>本地双人对局。开始新局将替换当前棋谱和数子结果。</p>
+    <label className="wb-field">棋盘<select value={boardSize} onChange={event => setBoardSize(Number(event.target.value) as GoSize)}><option value="9">9 路</option><option value="13">13 路</option><option value="19">19 路</option></select></label>
+    <label className="wb-field">白方贴点<select value={whiteKomi} onChange={event => setWhiteKomi(Number(event.target.value))}><option value="0">0 点</option><option value="6.5">6.5 点</option><option value="7.5">7.5 点</option></select></label>
+    <MatchSettingsFields value={value} onChange={setValue} colors={COLORS} computer={false} />
+    <footer><button type="button" className="wb-button" onClick={onClose}>取消</button><button type="submit" className="wb-button is-primary">确认新局</button></footer>
+  </form></StrategyDialog>;
+}

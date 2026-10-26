@@ -1,0 +1,1382 @@
+{
+  "sanzijing": {
+    "title": "新刊三字經",
+    "edition": "哈佛燕京图书馆藏本 · 维基文库录文",
+    "pageUrl": "https://zh.wikisource.org/wiki/新刊三字經",
+    "sourceUrl": "https://zh.wikisource.org/w/index.php?title=新刊三字經&oldid=10344699",
+    "scanUrl": "https://ctext.org/library.pl?if=gb&res=97407",
+    "revision": 10344699,
+    "downloadedAt": "2026-10-26",
+    "rights": "古代原文为公有领域。维基文库编校内容依 CC BY-SA 4.0 标示来源并保留相同许可。",
+    "note": "完整保留该馆藏版本的录文（繁体及原有异体字），并非合并各版的现代通行本。该版历史叙述止于宋元，原有个别短行及与精选导读不同的字句均照录，不自行补齐；未提供全篇拼音或译注。古代等级、性别观念与自伤式苦学叙述不作为今天的行为规范。",
+    "paragraphs": [
+      {
+        "id": "san-original-1",
+        "index": 1,
+        "text": "人之初，性本善，性相近，習相遠；",
+        "simplified": "人之初，性本善，性相近，习相远；"
+      },
+      {
+        "id": "san-original-2",
+        "index": 2,
+        "text": "苟不教，性乃遷，教之道，貴以專。",
+        "simplified": "苟不教，性乃迁，教之道，贵以专。"
+      },
+      {
+        "id": "san-original-3",
+        "index": 3,
+        "text": "昔孟母，擇隣處，子不學，斷機杼；",
+        "simplified": "昔孟母，择邻处，子不学，断机杼；"
+      },
+      {
+        "id": "san-original-4",
+        "index": 4,
+        "text": "竇燕山，有義方，教五子，名俱揚。",
+        "simplified": "窦燕山，有义方，教五子，名俱扬。"
+      },
+      {
+        "id": "san-original-5",
+        "index": 5,
+        "text": "養不教，父之過；教不嚴，師之惰。",
+        "simplified": "养不教，父之过；教不严，师之惰。"
+      },
+      {
+        "id": "san-original-6",
+        "index": 6,
+        "text": "子不學，非所宜；幼不學，老何為？",
+        "simplified": "子不学，非所宜；幼不学，老何为？"
+      },
+      {
+        "id": "san-original-7",
+        "index": 7,
+        "text": "玉不琢，不成器；人不學，不知義；",
+        "simplified": "玉不琢，不成器；人不学，不知义；"
+      },
+      {
+        "id": "san-original-8",
+        "index": 8,
+        "text": "為人子，方少時，親師友，習禮儀。",
+        "simplified": "为人子，方少时，亲师友，习礼仪。"
+      },
+      {
+        "id": "san-original-9",
+        "index": 9,
+        "text": "香九齡，能溫席，孝於親，所當執；",
+        "simplified": "香九龄，能温席，孝于亲，所当执；"
+      },
+      {
+        "id": "san-original-10",
+        "index": 10,
+        "text": "融四歲，能讓梨，弟於長，宜先知。",
+        "simplified": "融四岁，能让梨，弟于长，宜先知。"
+      },
+      {
+        "id": "san-original-11",
+        "index": 11,
+        "text": "首孝弟，次見聞，知某數，識某文。",
+        "simplified": "首孝弟，次见闻，知某数，识某文。"
+      },
+      {
+        "id": "san-original-12",
+        "index": 12,
+        "text": "一而十，十而百，百而千，千而萬。",
+        "simplified": "一而十，十而百，百而千，千而万。"
+      },
+      {
+        "id": "san-original-13",
+        "index": 13,
+        "text": "三才者，天地人；三光者，日月星；",
+        "simplified": "三才者，天地人；三光者，日月星；"
+      },
+      {
+        "id": "san-original-14",
+        "index": 14,
+        "text": "三綱者，君臣義，父子親，夫婦別。",
+        "simplified": "三纲者，君臣义，父子亲，夫妇别。"
+      },
+      {
+        "id": "san-original-15",
+        "index": 15,
+        "text": "曰春夏，曰秋冬，此四時，運不窮；",
+        "simplified": "曰春夏，曰秋冬，此四时，运不穷；"
+      },
+      {
+        "id": "san-original-16",
+        "index": 16,
+        "text": "曰南北，曰西東，此四方，應乎中。",
+        "simplified": "曰南北，曰西东，此四方，应乎中。"
+      },
+      {
+        "id": "san-original-17",
+        "index": 17,
+        "text": "曰水火，木金土，此五行，本乎數；",
+        "simplified": "曰水火，木金土，此五行，本乎数；"
+      },
+      {
+        "id": "san-original-18",
+        "index": 18,
+        "text": "曰仁義，禮智信，此五常，不容紊。",
+        "simplified": "曰仁义，礼智信，此五常，不容紊。"
+      },
+      {
+        "id": "san-original-19",
+        "index": 19,
+        "text": "稻粱菽，麥黍稷，此六穀，人所食；",
+        "simplified": "稻粱菽，麦黍稷，此六谷，人所食；"
+      },
+      {
+        "id": "san-original-20",
+        "index": 20,
+        "text": "馬牛羊，雞犬豕，此六畜，人所飼。",
+        "simplified": "马牛羊，鸡犬豕，此六畜，人所饲。"
+      },
+      {
+        "id": "san-original-21",
+        "index": 21,
+        "text": "曰喜怒，曰哀懼，愛惡慾，七情具；",
+        "simplified": "曰喜怒，曰哀惧，爱恶欲，七情具；"
+      },
+      {
+        "id": "san-original-22",
+        "index": 22,
+        "text": "匏土革，木石金，與絲竹，乃八音。",
+        "simplified": "匏土革，木石金，与丝竹，乃八音。"
+      },
+      {
+        "id": "san-original-23",
+        "index": 23,
+        "text": "高曾祖，父而身，身而子，子而孫，",
+        "simplified": "高曾祖，父而身，身而子，子而孙，"
+      },
+      {
+        "id": "san-original-24",
+        "index": 24,
+        "text": "自子孫，至曾玄，廼九族，人之倫。",
+        "simplified": "自子孙，至曾玄，廼九族，人之伦。"
+      },
+      {
+        "id": "san-original-25",
+        "index": 25,
+        "text": "父子恩，夫婦從，兄則友，弟則恭，",
+        "simplified": "父子恩，夫妇从，兄则友，弟则恭，"
+      },
+      {
+        "id": "san-original-26",
+        "index": 26,
+        "text": "長幼序，友與朋，君則敬，臣則忠，",
+        "simplified": "长幼序，友与朋，君则敬，臣则忠，"
+      },
+      {
+        "id": "san-original-27",
+        "index": 27,
+        "text": "此十義，人所同。",
+        "simplified": "此十义，人所同。"
+      },
+      {
+        "id": "san-original-28",
+        "index": 28,
+        "text": "凡訓蒙，須講究；詳訓詁，明句讀。",
+        "simplified": "凡训蒙，须讲究；详训诂，明句读。"
+      },
+      {
+        "id": "san-original-29",
+        "index": 29,
+        "text": "為學者，必有初，小學終，至四書：",
+        "simplified": "为学者，必有初，小学终，至四书："
+      },
+      {
+        "id": "san-original-30",
+        "index": 30,
+        "text": "論語者，二十篇，群弟子，記善言；",
+        "simplified": "论语者，二十篇，群弟子，记善言；"
+      },
+      {
+        "id": "san-original-31",
+        "index": 31,
+        "text": "孟子者，七篇止，講道德，說仁義；",
+        "simplified": "孟子者，七篇止，讲道德，说仁义；"
+      },
+      {
+        "id": "san-original-32",
+        "index": 32,
+        "text": "作中庸，乃孔伋，中不偏，庸不易；",
+        "simplified": "作中庸，乃孔伋，中不偏，庸不易；"
+      },
+      {
+        "id": "san-original-33",
+        "index": 33,
+        "text": "作大學，乃曾子，自脩齊，至平治。",
+        "simplified": "作大学，乃曾子，自修齐，至平治。"
+      },
+      {
+        "id": "san-original-34",
+        "index": 34,
+        "text": "孝經通，四書熟，如六經，始可讀。",
+        "simplified": "孝经通，四书熟，如六经，始可读。"
+      },
+      {
+        "id": "san-original-35",
+        "index": 35,
+        "text": "詩書易，禮春秋，號六經，當講求：",
+        "simplified": "诗书易，礼春秋，号六经，当讲求："
+      },
+      {
+        "id": "san-original-36",
+        "index": 36,
+        "text": "有連山，有歸藏，有周易，三易詳；",
+        "simplified": "有连山，有归藏，有周易，三易详；"
+      },
+      {
+        "id": "san-original-37",
+        "index": 37,
+        "text": "有典謨，有訓誥，有誓命，書之奧；",
+        "simplified": "有典谟，有训诰，有誓命，书之奥；"
+      },
+      {
+        "id": "san-original-38",
+        "index": 38,
+        "text": "我姬公，作周禮，著六經，存治體；",
+        "simplified": "我姬公，作周礼，著六经，存治体；"
+      },
+      {
+        "id": "san-original-39",
+        "index": 39,
+        "text": "大小戴，註禮記，述聖言，禮樂備；",
+        "simplified": "大小戴，注礼记，述圣言，礼乐备；"
+      },
+      {
+        "id": "san-original-40",
+        "index": 40,
+        "text": "曰國風，曰雅頌，號四詩，當諷詠；",
+        "simplified": "曰国风，曰雅颂，号四诗，当讽咏；"
+      },
+      {
+        "id": "san-original-41",
+        "index": 41,
+        "text": "詩既亡，春秋作，寓褒貶，別善惡。",
+        "simplified": "诗既亡，春秋作，寓褒贬，别善恶。"
+      },
+      {
+        "id": "san-original-42",
+        "index": 42,
+        "text": "三傳者，有公羊，有左氏，有穀梁；",
+        "simplified": "三传者，有公羊，有左氏，有穀梁；"
+      },
+      {
+        "id": "san-original-43",
+        "index": 43,
+        "text": "經既明，方讀子，撮其要，記其事。",
+        "simplified": "经既明，方读子，撮其要，记其事。"
+      },
+      {
+        "id": "san-original-44",
+        "index": 44,
+        "text": "五子者，有荀楊。文中子，及老莊。",
+        "simplified": "五子者，有荀杨。文中子，及老庄。"
+      },
+      {
+        "id": "san-original-45",
+        "index": 45,
+        "text": "經子通，讀諸史，考世系，知始終。",
+        "simplified": "经子通，读诸史，考世系，知始终。"
+      },
+      {
+        "id": "san-original-46",
+        "index": 46,
+        "text": "自羲農，至黃帝，號三皇，居上世；",
+        "simplified": "自羲农，至黄帝，号三皇，居上世；"
+      },
+      {
+        "id": "san-original-47",
+        "index": 47,
+        "text": "唐有虞，號二帝，相揖遜，稱盛治。",
+        "simplified": "唐有虞，号二帝，相揖逊，称盛治。"
+      },
+      {
+        "id": "san-original-48",
+        "index": 48,
+        "text": "夏有禹，商有湯，周文武，稱三王；",
+        "simplified": "夏有禹，商有汤，周文武，称三王；"
+      },
+      {
+        "id": "san-original-49",
+        "index": 49,
+        "text": "夏傳子，家天下，四百載，遷夏社；",
+        "simplified": "夏传子，家天下，四百载，迁夏社；"
+      },
+      {
+        "id": "san-original-50",
+        "index": 50,
+        "text": "湯伐夏，國號商，六百載，至紂亡；",
+        "simplified": "汤伐夏，国号商，六百载，至纣亡；"
+      },
+      {
+        "id": "san-original-51",
+        "index": 51,
+        "text": "周武王，始誅紂，八百載，最長久。",
+        "simplified": "周武王，始诛纣，八百载，最长久。"
+      },
+      {
+        "id": "san-original-52",
+        "index": 52,
+        "text": "周轍東，王綱墜，逞干戈，尚游說。",
+        "simplified": "周辙东，王纲坠，逞干戈，尚游说。"
+      },
+      {
+        "id": "san-original-53",
+        "index": 53,
+        "text": "始春秋，終戰國，五霸強，七雄出；",
+        "simplified": "始春秋，终战国，五霸强，七雄出；"
+      },
+      {
+        "id": "san-original-54",
+        "index": 54,
+        "text": "嬴秦氏，始兼并，傳二世，楚漢爭。",
+        "simplified": "嬴秦氏，始兼并，传二世，楚汉争。"
+      },
+      {
+        "id": "san-original-55",
+        "index": 55,
+        "text": "高祖興，漢業建，至孝平，王莽篡。",
+        "simplified": "高祖兴，汉业建，至孝平，王莽篡。"
+      },
+      {
+        "id": "san-original-56",
+        "index": 56,
+        "text": "光武興，為東漢，四百年，終於獻；",
+        "simplified": "光武兴，为东汉，四百年，终于献；"
+      },
+      {
+        "id": "san-original-57",
+        "index": 57,
+        "text": "魏蜀吳，爭峙鼎，號三國，迄兩晉。",
+        "simplified": "魏蜀吴，争峙鼎，号三国，迄两晋。"
+      },
+      {
+        "id": "san-original-58",
+        "index": 58,
+        "text": "宋齊繼，梁陳承，為南朝，都金陵；",
+        "simplified": "宋齐继，梁陈承，为南朝，都金陵；"
+      },
+      {
+        "id": "san-original-59",
+        "index": 59,
+        "text": "北元魏，分東西，宇文周，與高齊；",
+        "simplified": "北元魏，分东西，宇文周，与高齐；"
+      },
+      {
+        "id": "san-original-60",
+        "index": 60,
+        "text": "迨至隋，一土宇，不再傳，失統緒。",
+        "simplified": "迨至隋，一土宇，不再传，失统绪。"
+      },
+      {
+        "id": "san-original-61",
+        "index": 61,
+        "text": "唐高祖，起義師，除隋亂，創國基。",
+        "simplified": "唐高祖，起义师，除隋乱，创国基。"
+      },
+      {
+        "id": "san-original-62",
+        "index": 62,
+        "text": "二十傳，三百載，梁滅之，國乃改；",
+        "simplified": "二十传，三百载，梁灭之，国乃改；"
+      },
+      {
+        "id": "san-original-63",
+        "index": 63,
+        "text": "梁唐晉，及漢周，稱五代，皆有由。",
+        "simplified": "梁唐晋，及汉周，称五代，皆有由。"
+      },
+      {
+        "id": "san-original-64",
+        "index": 64,
+        "text": "炎宋興，受周禪，十八傳，胡元混。",
+        "simplified": "炎宋兴，受周禅，十八传，胡元混。"
+      },
+      {
+        "id": "san-original-65",
+        "index": 65,
+        "text": "十七史，全在茲，載治亂，知興衰；",
+        "simplified": "十七史，全在兹，载治乱，知兴衰；"
+      },
+      {
+        "id": "san-original-66",
+        "index": 66,
+        "text": "讀史者，考實錄，通古今，若親目。",
+        "simplified": "读史者，考实录，通古今，若亲目。"
+      },
+      {
+        "id": "san-original-67",
+        "index": 67,
+        "text": "口而誦，心而惟，朝於斯，夕於斯。",
+        "simplified": "口而诵，心而惟，朝于斯，夕于斯。"
+      },
+      {
+        "id": "san-original-68",
+        "index": 68,
+        "text": "昔仲尼，師項橐，古聖賢，尚勤學；",
+        "simplified": "昔仲尼，师项橐，古圣贤，尚勤学；"
+      },
+      {
+        "id": "san-original-69",
+        "index": 69,
+        "text": "趙中令，讀魯論，彼既仕，學且勤；",
+        "simplified": "赵中令，读鲁论，彼既仕，学且勤；"
+      },
+      {
+        "id": "san-original-70",
+        "index": 70,
+        "text": "披蒲編，削竹簡，彼無書，且知勉；",
+        "simplified": "披蒲编，削竹简，彼无书，且知勉；"
+      },
+      {
+        "id": "san-original-71",
+        "index": 71,
+        "text": "頭懸梁，錐刺股，彼不教，自勤苦；",
+        "simplified": "头悬梁，锥刺股，彼不教，自勤苦；"
+      },
+      {
+        "id": "san-original-72",
+        "index": 72,
+        "text": "如囊螢，如映雪，家雖貧，學不輟；",
+        "simplified": "如囊萤，如映雪，家虽贫，学不辍；"
+      },
+      {
+        "id": "san-original-73",
+        "index": 73,
+        "text": "如負薪，如鑿壁，身雖賤，愈自力。",
+        "simplified": "如负薪，如凿壁，身虽贱，愈自力。"
+      },
+      {
+        "id": "san-original-74",
+        "index": 74,
+        "text": "昉四㱓，能咏詩；泌七歲，能賦棋；",
+        "simplified": "昉四㱓，能咏诗；泌七岁，能赋棋；"
+      },
+      {
+        "id": "san-original-75",
+        "index": 75,
+        "text": "彼穎悟，人稱奇，爾幼學，當効之。",
+        "simplified": "彼颖悟，人称奇，尔幼学，当效之。"
+      },
+      {
+        "id": "san-original-76",
+        "index": 76,
+        "text": "蔡文姬，能辨琴；謝道韞，能咏吟；",
+        "simplified": "蔡文姬，能辨琴；谢道韫，能咏吟；"
+      },
+      {
+        "id": "san-original-77",
+        "index": 77,
+        "text": "彼女子，且聰敏，爾男子，當自警。",
+        "simplified": "彼女子，且聪敏，尔男子，当自警。"
+      },
+      {
+        "id": "san-original-78",
+        "index": 78,
+        "text": "舉神童，作正字，",
+        "simplified": "举神童，作正字，"
+      },
+      {
+        "id": "san-original-79",
+        "index": 79,
+        "text": "彼雖幼，身已仕，爾幼學，須知愧。",
+        "simplified": "彼虽幼，身已仕，尔幼学，须知愧。"
+      },
+      {
+        "id": "san-original-80",
+        "index": 80,
+        "text": "蘇老泉，二十七，始發憤，讀書籍，",
+        "simplified": "苏老泉，二十七，始发愤，读书籍，"
+      },
+      {
+        "id": "san-original-81",
+        "index": 81,
+        "text": "彼既老，猶悔遲，爾小生，宜早思。",
+        "simplified": "彼既老，犹悔迟，尔小生，宜早思。"
+      },
+      {
+        "id": "san-original-82",
+        "index": 82,
+        "text": "若梁灝，八十二，對大廷，魁多士；",
+        "simplified": "若梁灏，八十二，对大廷，魁多士；"
+      },
+      {
+        "id": "san-original-83",
+        "index": 83,
+        "text": "彼既成，眾稱異，爾小生，宜立志。",
+        "simplified": "彼既成，众称异，尔小生，宜立志。"
+      },
+      {
+        "id": "san-original-84",
+        "index": 84,
+        "text": "犬守夜，鷄司晨，苟不學，曷為人？",
+        "simplified": "犬守夜，鸡司晨，苟不学，曷为人？"
+      },
+      {
+        "id": "san-original-85",
+        "index": 85,
+        "text": "蚕吐絲，蜂釀蜜，人無用，不如物。",
+        "simplified": "蚕吐丝，蜂酿蜜，人无用，不如物。"
+      },
+      {
+        "id": "san-original-86",
+        "index": 86,
+        "text": "幼而學，壯而行，上致君，下澤民；",
+        "simplified": "幼而学，壮而行，上致君，下泽民；"
+      },
+      {
+        "id": "san-original-87",
+        "index": 87,
+        "text": "揚名聲，顯父母，光於前，垂於後。",
+        "simplified": "扬名声，显父母，光于前，垂于后。"
+      },
+      {
+        "id": "san-original-88",
+        "index": 88,
+        "text": "人遺子，金滿籯，我教子，惟一經；",
+        "simplified": "人遗子，金满籯，我教子，惟一经；"
+      },
+      {
+        "id": "san-original-89",
+        "index": 89,
+        "text": "勤有功，戲無益，戒之哉，宜自勗。",
+        "simplified": "勤有功，戏无益，戒之哉，宜自勗。"
+      }
+    ],
+    "simplifiedSourceUrl": "https://zh.wikisource.org/zh-hans/新刊三字經"
+  },
+  "qianziwen": {
+    "title": "千字文",
+    "edition": "周兴嗣 · 维基文库录文",
+    "pageUrl": "https://zh.wikisource.org/wiki/千字文",
+    "sourceUrl": "https://zh.wikisource.org/w/index.php?title=千字文&oldid=5752664",
+    "revision": 5752664,
+    "downloadedAt": "2026-10-26",
+    "rights": "古代原文为公有领域。维基文库编校内容依 CC BY-SA 4.0 标示来源并保留相同许可。",
+    "note": "完整保留来源中的 125 行、1000 字正文（繁体及原有异体字）；来源所列“一作”异文另附在对应行后，不混入正文，不自行改成通行字。未提供全篇拼音或译注，历史宇宙观与礼制不等同于现代科学或行为规范。",
+    "paragraphs": [
+      {
+        "id": "qian-original-1",
+        "index": 1,
+        "text": "天地玄黃　宇宙洪荒",
+        "variants": "天地玄一作「元」黃　宇宙洪荒",
+        "simplified": "天地玄黄　宇宙洪荒"
+      },
+      {
+        "id": "qian-original-2",
+        "index": 2,
+        "text": "日月盈昃　辰宿列張",
+        "simplified": "日月盈昃　辰宿列张"
+      },
+      {
+        "id": "qian-original-3",
+        "index": 3,
+        "text": "寒來暑往　秋收冬藏",
+        "simplified": "寒来暑往　秋收冬藏"
+      },
+      {
+        "id": "qian-original-4",
+        "index": 4,
+        "text": "閏餘成歲　律召調陽",
+        "variants": "閏餘成歲　律召一作「呂、侶」調陽",
+        "simplified": "闰馀成岁　律召调阳"
+      },
+      {
+        "id": "qian-original-5",
+        "index": 5,
+        "text": "雲騰致雨　露結爲霜",
+        "simplified": "云腾致雨　露结为霜"
+      },
+      {
+        "id": "qian-original-6",
+        "index": 6,
+        "text": "金生麗水　玉出崐崗",
+        "variants": "金生麗水　玉出崐一作「崑」崗",
+        "simplified": "金生丽水　玉出崐岗"
+      },
+      {
+        "id": "qian-original-7",
+        "index": 7,
+        "text": "劍號巨闕　珠稱夜光",
+        "simplified": "剑号巨阙　珠称夜光"
+      },
+      {
+        "id": "qian-original-8",
+        "index": 8,
+        "text": "菓珎李柰　菜重芥薑",
+        "simplified": "果珎李奈　菜重芥姜"
+      },
+      {
+        "id": "qian-original-9",
+        "index": 9,
+        "text": "海鹹河淡　鱗潛羽翔",
+        "variants": "海鹹一作「醎」河淡　鱗潛羽翔",
+        "simplified": "海咸河淡　鳞潜羽翔"
+      },
+      {
+        "id": "qian-original-10",
+        "index": 10,
+        "text": "龍師火帝　鳥官人皇",
+        "simplified": "龙师火帝　鸟官人皇"
+      },
+      {
+        "id": "qian-original-11",
+        "index": 11,
+        "text": "始制文字　乃服衣裳",
+        "variants": "始制一作「製」文字　乃服衣裳",
+        "simplified": "始制文字　乃服衣裳"
+      },
+      {
+        "id": "qian-original-12",
+        "index": 12,
+        "text": "推位讓國　有虞陶唐",
+        "simplified": "推位让国　有虞陶唐"
+      },
+      {
+        "id": "qian-original-13",
+        "index": 13,
+        "text": "弔民伐罪　周發殷湯",
+        "variants": "弔民伐罪　周發殷一作「商」湯",
+        "simplified": "吊民伐罪　周发殷汤"
+      },
+      {
+        "id": "qian-original-14",
+        "index": 14,
+        "text": "坐朝問道　垂拱平章",
+        "variants": "坐一作「座」朝問道　垂一作「誰」拱平章",
+        "simplified": "坐朝问道　垂拱平章"
+      },
+      {
+        "id": "qian-original-15",
+        "index": 15,
+        "text": "愛育黎首　臣伏戎羌",
+        "simplified": "爱育黎首　臣伏戎羌"
+      },
+      {
+        "id": "qian-original-16",
+        "index": 16,
+        "text": "遐迩壹體　率賓歸王",
+        "variants": "遐迩壹一作「一」體　率賓歸王",
+        "simplified": "遐迩壹体　率宾归王"
+      },
+      {
+        "id": "qian-original-17",
+        "index": 17,
+        "text": "鳴鳳在樹　白駒食場",
+        "variants": "鳴鳳在樹一作「竹」　白駒食場",
+        "simplified": "鸣凤在树　白驹食场"
+      },
+      {
+        "id": "qian-original-18",
+        "index": 18,
+        "text": "化被草木　賴及萬方",
+        "simplified": "化被草木　赖及万方"
+      },
+      {
+        "id": "qian-original-19",
+        "index": 19,
+        "text": "盖此身髮　四大五常",
+        "variants": "盖此身髮一作「𩬊」　四大五常",
+        "simplified": "盖此身发　四大五常"
+      },
+      {
+        "id": "qian-original-20",
+        "index": 20,
+        "text": "恭惟鞠養　豈敢毀傷",
+        "simplified": "恭惟鞠养　岂敢毁伤"
+      },
+      {
+        "id": "qian-original-21",
+        "index": 21,
+        "text": "女慕貞絜　男效才良",
+        "variants": "女慕貞絜一作「潔、烈」　男效才良",
+        "simplified": "女慕贞絜　男效才良"
+      },
+      {
+        "id": "qian-original-22",
+        "index": 22,
+        "text": "知過必改　得能莫忘",
+        "variants": "知過必改　得一作「德」能莫忘",
+        "simplified": "知过必改　得能莫忘"
+      },
+      {
+        "id": "qian-original-23",
+        "index": 23,
+        "text": "罔談彼短　靡恃己長",
+        "variants": "罔談彼一作「佊」短　靡恃己長",
+        "simplified": "罔谈彼短　靡恃己长"
+      },
+      {
+        "id": "qian-original-24",
+        "index": 24,
+        "text": "信使可覆　器欲難量",
+        "simplified": "信使可覆　器欲难量"
+      },
+      {
+        "id": "qian-original-25",
+        "index": 25,
+        "text": "墨悲絲淬　詩讚羔羊",
+        "variants": "墨悲絲淬一作「染」　詩讚羔羊",
+        "simplified": "墨悲丝淬　诗赞羔羊"
+      },
+      {
+        "id": "qian-original-26",
+        "index": 26,
+        "text": "景行維賢　剋念作聖",
+        "variants": "景行維賢　剋一作「克、尅」念作聖",
+        "simplified": "景行维贤　克念作圣"
+      },
+      {
+        "id": "qian-original-27",
+        "index": 27,
+        "text": "德建名立　形端表正",
+        "variants": "德一作「得」建名立　形端表正",
+        "simplified": "德建名立　形端表正"
+      },
+      {
+        "id": "qian-original-28",
+        "index": 28,
+        "text": "空谷傳聲　虛堂習聽",
+        "simplified": "空谷传声　虚堂习听"
+      },
+      {
+        "id": "qian-original-29",
+        "index": 29,
+        "text": "禍因惡積　福緣善慶",
+        "variants": "禍因惡積一作「𥢧」　福緣善慶",
+        "simplified": "祸因恶积　福缘善庆"
+      },
+      {
+        "id": "qian-original-30",
+        "index": 30,
+        "text": "尺璧非寶　寸陰是竸",
+        "variants": "尺璧非寶　寸陰是竸一作「競」",
+        "simplified": "尺璧非宝　寸阴是竸"
+      },
+      {
+        "id": "qian-original-31",
+        "index": 31,
+        "text": "資父事君　曰嚴與敬",
+        "variants": "資父事君　曰嚴與一作「以」敬",
+        "simplified": "资父事君　曰严与敬"
+      },
+      {
+        "id": "qian-original-32",
+        "index": 32,
+        "text": "孝當竭力　忠則盡命",
+        "simplified": "孝当竭力　忠则尽命"
+      },
+      {
+        "id": "qian-original-33",
+        "index": 33,
+        "text": "臨深履薄　夙興溫清",
+        "variants": "臨深履薄　夙興溫清一作「凊」",
+        "simplified": "临深履薄　夙兴温清"
+      },
+      {
+        "id": "qian-original-34",
+        "index": 34,
+        "text": "似蘭斯馨　如松之盛",
+        "simplified": "似兰斯馨　如松之盛"
+      },
+      {
+        "id": "qian-original-35",
+        "index": 35,
+        "text": "川流不息　淵澄取暎",
+        "variants": "川流不息　淵澄取暎一作「映」",
+        "simplified": "川流不息　渊澄取暎"
+      },
+      {
+        "id": "qian-original-36",
+        "index": 36,
+        "text": "容止若思　言辭安定",
+        "simplified": "容止若思　言辞安定"
+      },
+      {
+        "id": "qian-original-37",
+        "index": 37,
+        "text": "篤初誠美　慎終宜令",
+        "variants": "篤初誠一作「成」美　慎終宜令",
+        "simplified": "笃初诚美　慎终宜令"
+      },
+      {
+        "id": "qian-original-38",
+        "index": 38,
+        "text": "榮業所基　籍甚無竟",
+        "simplified": "荣业所基　籍甚无竟"
+      },
+      {
+        "id": "qian-original-39",
+        "index": 39,
+        "text": "學優登仕　攝職從政",
+        "simplified": "学优登仕　摄职从政"
+      },
+      {
+        "id": "qian-original-40",
+        "index": 40,
+        "text": "存以甘棠　去而益詠",
+        "variants": "存以甘棠一作「當」　去而益詠",
+        "simplified": "存以甘棠　去而益咏"
+      },
+      {
+        "id": "qian-original-41",
+        "index": 41,
+        "text": "樂殊貴賤　禮別尊卑",
+        "simplified": "乐殊贵贱　礼别尊卑"
+      },
+      {
+        "id": "qian-original-42",
+        "index": 42,
+        "text": "上和下睦　夫唱婦随",
+        "simplified": "上和下睦　夫唱妇随"
+      },
+      {
+        "id": "qian-original-43",
+        "index": 43,
+        "text": "外受傅訓　入奉母儀",
+        "simplified": "外受傅训　入奉母仪"
+      },
+      {
+        "id": "qian-original-44",
+        "index": 44,
+        "text": "諸姑伯叔　猶子比兒",
+        "simplified": "诸姑伯叔　犹子比儿"
+      },
+      {
+        "id": "qian-original-45",
+        "index": 45,
+        "text": "孔懷兄弟　同氣連枝",
+        "simplified": "孔怀兄弟　同气连枝"
+      },
+      {
+        "id": "qian-original-46",
+        "index": 46,
+        "text": "交友投分　切磨箴規",
+        "simplified": "交友投分　切磨箴规"
+      },
+      {
+        "id": "qian-original-47",
+        "index": 47,
+        "text": "仁慈隱惻　造次弗離",
+        "variants": "仁慈隱惻　造次弗一作「沸」離",
+        "simplified": "仁慈隐恻　造次弗离"
+      },
+      {
+        "id": "qian-original-48",
+        "index": 48,
+        "text": "節義廉退　顛沛匪虧",
+        "simplified": "节义廉退　颠沛匪亏"
+      },
+      {
+        "id": "qian-original-49",
+        "index": 49,
+        "text": "性靜情逸　心動神疲",
+        "simplified": "性静情逸　心动神疲"
+      },
+      {
+        "id": "qian-original-50",
+        "index": 50,
+        "text": "守眞志滿　逐物意移",
+        "simplified": "守真志满　逐物意移"
+      },
+      {
+        "id": "qian-original-51",
+        "index": 51,
+        "text": "堅持雅撡　好爵自縻",
+        "variants": "堅持雅撡一作「㩰、操」　好爵自縻一作「糜」",
+        "simplified": "坚持雅操　好爵自縻"
+      },
+      {
+        "id": "qian-original-52",
+        "index": 52,
+        "text": "都邑華夏　東西二京",
+        "variants": "都邑華夏　東西二一作「貳」京",
+        "simplified": "都邑华夏　东西二京"
+      },
+      {
+        "id": "qian-original-53",
+        "index": 53,
+        "text": "背芒面洛　浮渭據涇",
+        "variants": "背芒一作「邙」面洛　浮渭據涇",
+        "simplified": "背芒面洛　浮渭据泾"
+      },
+      {
+        "id": "qian-original-54",
+        "index": 54,
+        "text": "宮殿盤鬱　樓觀飛驚",
+        "simplified": "宫殿盘郁　楼观飞惊"
+      },
+      {
+        "id": "qian-original-55",
+        "index": 55,
+        "text": "圖寫禽獸　畫綵仙靈",
+        "variants": "圖寫禽獸　畫綵一作「彩、𢵛」仙靈",
+        "simplified": "图写禽兽　画彩仙灵"
+      },
+      {
+        "id": "qian-original-56",
+        "index": 56,
+        "text": "丙舍傍啟　甲帳對楹",
+        "variants": "丙舍傍啟　甲帳對一作「𦳲」楹",
+        "simplified": "丙舍傍启　甲帐对楹"
+      },
+      {
+        "id": "qian-original-57",
+        "index": 57,
+        "text": "肆筵設席　鼓瑟吹笙",
+        "simplified": "肆筵设席　鼓瑟吹笙"
+      },
+      {
+        "id": "qian-original-58",
+        "index": 58,
+        "text": "升階納陛　弁轉疑星",
+        "variants": "升一作「昇」階納陛　弁轉疑星",
+        "simplified": "升阶纳陛　弁转疑星"
+      },
+      {
+        "id": "qian-original-59",
+        "index": 59,
+        "text": "右通廣內　左達承明",
+        "simplified": "右通广内　左达承明"
+      },
+      {
+        "id": "qian-original-60",
+        "index": 60,
+        "text": "既集墳典　亦聚羣英",
+        "simplified": "既集坟典　亦聚群英"
+      },
+      {
+        "id": "qian-original-61",
+        "index": 61,
+        "text": "杜稾鍾隸　漆書壁經",
+        "variants": "杜稾一作「稿」鍾隸　漆一作「柒」書壁一作「碧」經",
+        "simplified": "杜稿锺隶　漆书壁经"
+      },
+      {
+        "id": "qian-original-62",
+        "index": 62,
+        "text": "府羅將相　路俠槐卿",
+        "variants": "府羅將相　路俠一作「梜」槐卿",
+        "simplified": "府罗将相　路侠槐卿"
+      },
+      {
+        "id": "qian-original-63",
+        "index": 63,
+        "text": "戶封八縣　家給千兵",
+        "simplified": "户封八县　家给千兵"
+      },
+      {
+        "id": "qian-original-64",
+        "index": 64,
+        "text": "高冠陪輦　驅轂振纓",
+        "variants": "高冠陪輦　驅一作「駈」轂振纓",
+        "simplified": "高冠陪辇　驱毂振缨"
+      },
+      {
+        "id": "qian-original-65",
+        "index": 65,
+        "text": "世祿侈富　車駕肥輕",
+        "simplified": "世禄侈富　车驾肥轻"
+      },
+      {
+        "id": "qian-original-66",
+        "index": 66,
+        "text": "策功茂實　勒碑刻銘",
+        "simplified": "策功茂实　勒碑刻铭"
+      },
+      {
+        "id": "qian-original-67",
+        "index": 67,
+        "text": "磻溪伊尹　佐時阿衡",
+        "variants": "磻溪一作「磎」伊尹　佐時阿衡",
+        "simplified": "磻溪伊尹　佐时阿衡"
+      },
+      {
+        "id": "qian-original-68",
+        "index": 68,
+        "text": "奄宅曲阜　微旦孰營",
+        "simplified": "奄宅曲阜　微旦孰营"
+      },
+      {
+        "id": "qian-original-69",
+        "index": 69,
+        "text": "桓公匡合　濟弱扶傾",
+        "simplified": "桓公匡合　济弱扶倾"
+      },
+      {
+        "id": "qian-original-70",
+        "index": 70,
+        "text": "綺廻漢惠　說感武丁",
+        "variants": "綺廻漢惠　說一作「悅」感武丁",
+        "simplified": "绮回汉惠　说感武丁"
+      },
+      {
+        "id": "qian-original-71",
+        "index": 71,
+        "text": "俊乂密勿　多士寔寧",
+        "variants": "俊乂一作「𭃆」密勿　多士寔寧",
+        "simplified": "俊乂密勿　多士寔宁"
+      },
+      {
+        "id": "qian-original-72",
+        "index": 72,
+        "text": "晉楚更霸　趙魏困橫",
+        "simplified": "晋楚更霸　赵魏困横"
+      },
+      {
+        "id": "qian-original-73",
+        "index": 73,
+        "text": "假途滅虢　踐土會盟",
+        "simplified": "假途灭虢　践土会盟"
+      },
+      {
+        "id": "qian-original-74",
+        "index": 74,
+        "text": "何遵約法　韓弊煩刑",
+        "variants": "何遵約法　韓弊煩刑一作「形」",
+        "simplified": "何遵约法　韩弊烦刑"
+      },
+      {
+        "id": "qian-original-75",
+        "index": 75,
+        "text": "起翦頗牧　用軍最精",
+        "simplified": "起翦颇牧　用军最精"
+      },
+      {
+        "id": "qian-original-76",
+        "index": 76,
+        "text": "宣威沙漠　馳譽丹青",
+        "variants": "宣威沙漠一作「莫」　馳譽丹青",
+        "simplified": "宣威沙漠　驰誉丹青"
+      },
+      {
+        "id": "qian-original-77",
+        "index": 77,
+        "text": "九州禹跡　百郡秦并",
+        "variants": "九州禹跡　百郡秦并一作「併」",
+        "simplified": "九州禹迹　百郡秦并"
+      },
+      {
+        "id": "qian-original-78",
+        "index": 78,
+        "text": "嶽宗恆岱　禪主云亭",
+        "variants": "嶽宗恆一作「泰」岱　禪主云亭",
+        "simplified": "岳宗恒岱　禅主云亭"
+      },
+      {
+        "id": "qian-original-79",
+        "index": 79,
+        "text": "雁門紫塞　雞田赤城",
+        "variants": "雁門紫塞　雞一作「荊」田赤城",
+        "simplified": "雁门紫塞　鸡田赤城"
+      },
+      {
+        "id": "qian-original-80",
+        "index": 80,
+        "text": "昆池碣石　鉅野洞庭",
+        "variants": "昆一作「混」池碣石　鉅野洞庭",
+        "simplified": "昆池碣石　钜野洞庭"
+      },
+      {
+        "id": "qian-original-81",
+        "index": 81,
+        "text": "曠遠緜邈　巖岫杳冥",
+        "simplified": "旷远绵邈　岩岫杳冥"
+      },
+      {
+        "id": "qian-original-82",
+        "index": 82,
+        "text": "治本於農　務茲稼穡",
+        "variants": "治本於農　務茲一作「慈」稼穡",
+        "simplified": "治本于农　务兹稼穑"
+      },
+      {
+        "id": "qian-original-83",
+        "index": 83,
+        "text": "俶載南畝　我藝黍稷",
+        "variants": "俶載南畝　我一作「俄」藝黍稷",
+        "simplified": "俶载南亩　我艺黍稷"
+      },
+      {
+        "id": "qian-original-84",
+        "index": 84,
+        "text": "稅熟貢新　勸賞黜陟",
+        "variants": "稅熟貢新　勸賞一作「償」黜陟",
+        "simplified": "税熟贡新　劝赏黜陟"
+      },
+      {
+        "id": "qian-original-85",
+        "index": 85,
+        "text": "孟軻敦素　史魚秉直",
+        "variants": "孟軻敦素　史魚一作「事儀」秉直",
+        "simplified": "孟轲敦素　史鱼秉直"
+      },
+      {
+        "id": "qian-original-86",
+        "index": 86,
+        "text": "庶幾中庸　勞謙謹勑",
+        "variants": "庶幾中庸　勞謙謹勑一作「敕」",
+        "simplified": "庶几中庸　劳谦谨敕"
+      },
+      {
+        "id": "qian-original-87",
+        "index": 87,
+        "text": "聆音察理　鑑貌辯色",
+        "variants": "聆音察理　鑑貌辯一作「辨」色",
+        "simplified": "聆音察理　鉴貌辩色"
+      },
+      {
+        "id": "qian-original-88",
+        "index": 88,
+        "text": "貽厥嘉猷　勉其祗植",
+        "simplified": "贻厥嘉猷　勉其祗植"
+      },
+      {
+        "id": "qian-original-89",
+        "index": 89,
+        "text": "省躬譏誡　寵增抗極",
+        "simplified": "省躬讥诫　宠增抗极"
+      },
+      {
+        "id": "qian-original-90",
+        "index": 90,
+        "text": "殆辱近恥　林睾幸即",
+        "variants": "殆辱近恥一作「耻、𦔺」　林一作「臨」睾一作「皋」幸即",
+        "simplified": "殆辱近耻　林睾幸即"
+      },
+      {
+        "id": "qian-original-91",
+        "index": 91,
+        "text": "兩䟽見機　解組誰逼",
+        "variants": "兩䟽一作「疏、踈」見機　解組誰逼",
+        "simplified": "两䟽见机　解组谁逼"
+      },
+      {
+        "id": "qian-original-92",
+        "index": 92,
+        "text": "索居閑處　沈默寂寥",
+        "variants": "索居閑一作「閒」處　沈默寂寥一作「寮」",
+        "simplified": "索居闲处　沉默寂寥"
+      },
+      {
+        "id": "qian-original-93",
+        "index": 93,
+        "text": "求古尋論　散慮逍遙",
+        "variants": "求一作「味」古尋論　散慮一作「慮散」逍遙",
+        "simplified": "求古寻论　散虑逍遥"
+      },
+      {
+        "id": "qian-original-94",
+        "index": 94,
+        "text": "欣奏累遣　慼謝歡招",
+        "simplified": "欣奏累遣　戚谢欢招"
+      },
+      {
+        "id": "qian-original-95",
+        "index": 95,
+        "text": "渠荷的歷　園莽抽條",
+        "variants": "渠荷一作「河」的歷　園莽抽條",
+        "simplified": "渠荷的历　园莽抽条"
+      },
+      {
+        "id": "qian-original-96",
+        "index": 96,
+        "text": "枇杷晚翠　梧桐早雕",
+        "variants": "枇杷一作「笓笆」晚翠　梧桐早一作「蚤」雕一作「凋、彫」",
+        "simplified": "枇杷晚翠　梧桐早雕"
+      },
+      {
+        "id": "qian-original-97",
+        "index": 97,
+        "text": "陳根委翳　落葉飄颻",
+        "variants": "陳根委翳　落葉飄颻一作「搖」",
+        "simplified": "陈根委翳　落叶飘飖"
+      },
+      {
+        "id": "qian-original-98",
+        "index": 98,
+        "text": "游鵾獨運　凌摩絳霄",
+        "simplified": "游鹍独运　凌摩绛霄"
+      },
+      {
+        "id": "qian-original-99",
+        "index": 99,
+        "text": "耽讀翫市　寓目囊箱",
+        "variants": "耽讀翫一作「玩」市　寓目囊箱",
+        "simplified": "耽读玩市　寓目囊箱"
+      },
+      {
+        "id": "qian-original-100",
+        "index": 100,
+        "text": "易輶攸畏　屬耳垣𡓜",
+        "variants": "易輶攸畏　屬耳垣𡓜一作「牆」",
+        "simplified": "易𬨎攸畏　属耳垣𡓜"
+      },
+      {
+        "id": "qian-original-101",
+        "index": 101,
+        "text": "具膳飡飯　適口充腸",
+        "variants": "具膳飡一作「餐、喰」飯　適口充腸",
+        "simplified": "具膳餐饭　适口充肠"
+      },
+      {
+        "id": "qian-original-102",
+        "index": 102,
+        "text": "飽飫享宰　飢厭糟糠",
+        "variants": "飽飫享一作「烹」宰　飢厭糟糠",
+        "simplified": "饱饫享宰　饥厌糟糠"
+      },
+      {
+        "id": "qian-original-103",
+        "index": 103,
+        "text": "親戚故舊　老少異粮",
+        "variants": "親戚故舊　老少異粮一作「糧」",
+        "simplified": "亲戚故旧　老少异粮"
+      },
+      {
+        "id": "qian-original-104",
+        "index": 104,
+        "text": "妾御績紡　侍巾帷房",
+        "simplified": "妾御绩纺　侍巾帷房"
+      },
+      {
+        "id": "qian-original-105",
+        "index": 105,
+        "text": "紈扇員潔　銀燭瑋煌",
+        "variants": "紈扇員一作「圓」潔　銀燭瑋一作「煒」煌",
+        "simplified": "纨扇员洁　银烛玮煌"
+      },
+      {
+        "id": "qian-original-106",
+        "index": 106,
+        "text": "晝眠夕寐　籃笋象床",
+        "variants": "晝眠夕寐　籃笋一作「筍」象床一作「牀」",
+        "simplified": "昼眠夕寐　篮笋象床"
+      },
+      {
+        "id": "qian-original-107",
+        "index": 107,
+        "text": "絃歌酒讌　接杯舉觴",
+        "variants": "絃一作「弦」歌酒讌　接杯舉觴",
+        "simplified": "弦歌酒䜩　接杯举觞"
+      },
+      {
+        "id": "qian-original-108",
+        "index": 108,
+        "text": "矯手頓足　悅豫且康",
+        "simplified": "矫手顿足　悦豫且康"
+      },
+      {
+        "id": "qian-original-109",
+        "index": 109,
+        "text": "嫡後嗣續　祭祀烝嘗",
+        "variants": "嫡後嗣續　祭祀烝一作「蒸」嘗",
+        "simplified": "嫡后嗣续　祭祀烝尝"
+      },
+      {
+        "id": "qian-original-110",
+        "index": 110,
+        "text": "稽顙再拜　悚懼恐惶",
+        "simplified": "稽颡再拜　悚惧恐惶"
+      },
+      {
+        "id": "qian-original-111",
+        "index": 111,
+        "text": "牋牒簡要　顧答審詳",
+        "variants": "牋一作「箋」牒簡要　顧答審詳",
+        "simplified": "笺牒简要　顾答审详"
+      },
+      {
+        "id": "qian-original-112",
+        "index": 112,
+        "text": "骸垢想浴　執熱願涼",
+        "variants": "骸垢想浴一作「洛」　執熱願涼",
+        "simplified": "骸垢想浴　执热愿凉"
+      },
+      {
+        "id": "qian-original-113",
+        "index": 113,
+        "text": "驢騾犢特　駭躍超驤",
+        "simplified": "驴骡犊特　骇跃超骧"
+      },
+      {
+        "id": "qian-original-114",
+        "index": 114,
+        "text": "誅斬賊盜　捕獲叛亡",
+        "simplified": "诛斩贼盗　捕获叛亡"
+      },
+      {
+        "id": "qian-original-115",
+        "index": 115,
+        "text": "布射遼丸　嵇琴阮嘯",
+        "simplified": "布射辽丸　嵇琴阮啸"
+      },
+      {
+        "id": "qian-original-116",
+        "index": 116,
+        "text": "恬筆倫紙　鈞巧任釣",
+        "simplified": "恬笔伦纸　钧巧任钓"
+      },
+      {
+        "id": "qian-original-117",
+        "index": 117,
+        "text": "釋紛利俗　並皆佳妙",
+        "simplified": "释纷利俗　并皆佳妙"
+      },
+      {
+        "id": "qian-original-118",
+        "index": 118,
+        "text": "毛施淑姿　工嚬研笑",
+        "variants": "毛施淑姿　工嚬一作「顰」研一作「妍」笑",
+        "simplified": "毛施淑姿　工嚬研笑"
+      },
+      {
+        "id": "qian-original-119",
+        "index": 119,
+        "text": "年矢每催　羲暉朗曜",
+        "variants": "年矢每催　羲一作「曦」暉朗曜一作「耀」",
+        "simplified": "年矢每催　羲晖朗曜"
+      },
+      {
+        "id": "qian-original-120",
+        "index": 120,
+        "text": "璇璣懸斡　晦魄環照",
+        "variants": "璇一作「旋」璣懸斡　晦魄環照",
+        "simplified": "璇玑悬斡　晦魄环照"
+      },
+      {
+        "id": "qian-original-121",
+        "index": 121,
+        "text": "指薪脩祜　永綏吉劭",
+        "simplified": "指薪修祜　永绥吉劭"
+      },
+      {
+        "id": "qian-original-122",
+        "index": 122,
+        "text": "矩步引領　俯仰廊廟",
+        "simplified": "矩步引领　俯仰廊庙"
+      },
+      {
+        "id": "qian-original-123",
+        "index": 123,
+        "text": "束帶矜莊　徘徊瞻眺",
+        "simplified": "束带矜庄　徘徊瞻眺"
+      },
+      {
+        "id": "qian-original-124",
+        "index": 124,
+        "text": "孤陋寡聞　愚蒙等誚",
+        "simplified": "孤陋寡闻　愚蒙等诮"
+      },
+      {
+        "id": "qian-original-125",
+        "index": 125,
+        "text": "謂語助者　焉哉乎也",
+        "simplified": "谓语助者　焉哉乎也"
+      }
+    ],
+    "simplifiedSourceUrl": "https://zh.wikisource.org/zh-hans/千字文"
+  }
+}
